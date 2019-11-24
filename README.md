@@ -4,19 +4,21 @@ This project includes both hardware and software for interfacing to a Morningsta
 
 Testing has been done with Prostar MPPT and Prostar Gen3 controllers. MODBUS-TCP works with Morningstar's MSView.
 
+![image of hardware](https://github.com/mike-s123/MStar-WLAN/tree/master/pics/board.png)
+
 ## Getting Started
 
-Hardware info is found in the "hardware/pcb" directory, where there are Eagle .brd and .sch files, along with parts info.
+Hardware info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with parts info.
 
 ### Prerequisites
 
 Library versions are noted in the .ino. The ESP8266 and/or ESP32 core for Arduino needs to be installed.
 
-The "data" directory needs to be uploaded to the board. The board will access them using SPIFFS. The files are used to define the different controllers, and also contain some documentation.
+The "data" directory needs to be uploaded to the board. The board will access the files using SPIFFS. The files are used to define the different controllers, and also contain some documentation.
 
 ## Operation
 
-Using a 6P6C cable, connect to the Meterbus port of a Morningstar controller.
+Using a standard "rollover" 6P6C cable, connect to the Meterbus port of a Morningstar controller. A 4P4C cable should also work, if it's short.
 
 The MStar-WLAN will initially come up as a wireless access point with SSID "MStar" and PSK of "morningstar". It will have an address of 192.168.4.1. 
 
@@ -24,13 +26,18 @@ The web interface has some minimal security. Any page which allows configuration
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP.
 
+![image of status page](https://github.com/mike-s123/MStar-WLAN/tree/master/pics/status.png)
+
+
+![image of status page](https://github.com/mike-s123/MStar-WLAN/tree/master/pics/charge_settings.png)
+
 ## Support
 
 There is none. This was a personal project, I'm freely offering it to others. Feel free to contribute back if you can.
 
 ## More Info
 
-More info may be found under
+More info may be found under the data directory.
  
 ## Contributing
 
