@@ -4,7 +4,7 @@ This project includes both hardware and software for interfacing to a Morningsta
 
 Testing has been done with Prostar MPPT and Prostar Gen3 controllers. MODBUS-TCP works with Morningstar's MSView.
 
-![image of hardware](https://github.com/mike-s123/MStar-WLAN/tree/master/pics/board.png)
+![image of hardware](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/board.png)
 
 ## Getting Started
 
@@ -26,10 +26,10 @@ The web interface has some minimal security. Any page which allows configuration
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP.
 
-![image of status page](https://github.com/mike-s123/MStar-WLAN/tree/master/pics/status.png)
+![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 
 
-![image of status page](https://github.com/mike-s123/MStar-WLAN/tree/master/pics/charge_settings.png)
+![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/charge_settings.png)
 
 ## Support
 
@@ -39,14 +39,6 @@ There is none. This was a personal project, I'm freely offering it to others. Fe
 
 More info may be found under the data directory.
  
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
-
 ## Author
 
 * **Mike Sauve** - *Initial work* - [mike-s123](https://github.com/mike-s123/)
