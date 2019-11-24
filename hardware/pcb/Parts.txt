@@ -1,0 +1,13 @@
+MStar-WLAN parts list
+
+Notes: C1 must be large, the power provided by the controller isn't always steady. The VR needs to be a switcher, a linear consumes too much power. As shown on the schematic, many parts are only needed if using a WROVER.
+
+Most parts are standard, these are specific:
+C1 - United Chemi-Con EGXF250ELL202MJ30S (2000uF/25V, 10mm dia, 30mm long)
+VR - OKI-78SR-3.3/1.5-W36-C
+8P8C - Kobiconn 154-UL6661
+J3 - microUSB Hirose ZX62R-B-5P(30)
+Case - Hammond RL6105
+USB/Serial - FTDI FT231XS-R
+Reset - Rohm IMH3AT110
+RTC - DS3231(ZS-042 module)
