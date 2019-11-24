@@ -126,7 +126,7 @@ String getPasswordFromEEPROM() {
     debugMsgContinue(": " + epass);
   #endif
   #if DEBUG_ON>2
-    debugMsg(F("."));
+    debugMsg("");
   #endif
   return epass;
 }
@@ -289,7 +289,7 @@ boolean connectToWLAN(const char* ssid, const char* password) {
 
   WiFi.mode(WIFI_STA);  // station only 
   
-  if (password && strlen(password) > 0 ) {
+  if (password && strlen(password) > 0 ) {    
     WiFi.begin(ssid, password);
   } else {
     WiFi.begin(ssid);
@@ -306,7 +306,7 @@ boolean connectToWLAN(const char* ssid, const char* password) {
       debugMsgContinue(".");
     #endif
     retries++;
-    if (retries > 20) {
+    if (retries > 30) {
       #if DEBUG_ON>0
         debugMsg("");
       #endif      

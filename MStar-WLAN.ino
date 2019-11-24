@@ -20,10 +20,10 @@
  *   some parts subject to other licenses as noted.
  */
 
-#define SOFTWARE_VERSION "v0.63"
+#define SOFTWARE_VERSION "v0.191124"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Updated SDK, readDeviceID working to select model,</br>\
-DS3231 clock, new board layout, array watts, ESP8266 ping."
+DS3231 clock, new board layout, array watts, fixed RTC check."
 
 #define DEBUG_ON 3                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
@@ -218,7 +218,7 @@ ZEeprom * clk_eeprom;
 #define AGE_OFFSET -24       // aging offset for ds3231, higher is slower
                             // ~0.1 ppm per (~9 ms/day, 0.26 sec/month), higher is slower, 
                             // 11.6 ppm is ~ 1 sec/day
-bool useRTC = true;
+bool useRTC = false;
 bool twentyFourHourClock = true;
 bool Century=false;
 bool h12;
@@ -299,22 +299,31 @@ void setup() {
   #endif
 
     Wire.begin(SDA_PIN, SCL_PIN);
-    delay(10);
-    if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)
+    if (Wire.requestFrom(DS3231_I2C, 2)) {
+      useRTC = true;
+    } else {
       #if DEBUG_ON>0
-        debugMsg(F("Initializing RTC"));
-      #endif
-      Clock.enableOscillator(true, true, 0);  // Ena osc, sqw on batt, 1 Hz
-      delay(2);
-      setRTC();   // Clears OSF flag
-      delay(2);
+        debugMsg(F("No RTC found"));
+      #endif      
+    }
+    if (useRTC) {
+      delay(10);
+      if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)
+        #if DEBUG_ON>0
+          debugMsg(F("Initializing RTC"));
+        #endif
+        Clock.enableOscillator(true, true, 0);  // Ena osc, sqw on batt, 1 Hz
+        delay(2);
+        setRTC();   // Clears OSF flag
+        delay(2);
         if (!Clock.oscillatorCheck()) {
           useRTC = false;
           #if DEBUG_ON>0
             debugMsg(F("RTC check failed"));  // probably no RTC
           #endif
+        }
       }
-    }
+    }  
     // Initialize EEPROM library.
     clk_eeprom= new ZEeprom();
     clk_eeprom->begin(Wire,AT24Cxx_BASE_ADDR,AT24C32);
@@ -1288,9 +1297,9 @@ void wlanPageHandler()
       debugMsgContinue(".");
       #endif
     }
-
-    if (WiFi.status() == WL_CONNECTED) {
     storeCredentialsInEEPROM(server.arg(F("ssid")), server.arg(F("password")));
+    if (WiFi.status() == WL_CONNECTED) {
+//    storeCredentialsInEEPROM(server.arg(F("ssid")), server.arg(F("password")));
     #if DEBUG_ON>0
       debugMsg("");
       debugMsg(F("WiFi connected"));
