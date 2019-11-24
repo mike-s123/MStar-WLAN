@@ -35,7 +35,7 @@ Connecting to http://192.168.4.1/ will display the main status page. Other pages
 
 ## Support
 
-There is none. This was a personal project, I'm freely offering it to others for non-commercial use. Feel free to contribute back if you can.
+There is none. This was a personal project, I'm freely offering it to others for non-commercial use. Feel free to contribute back if you can. Things which need attention or might be an important future direction are commented with "TODO".
 
 ## More Info
 
@@ -44,6 +44,7 @@ More info may be found under the data directory.
 ## Author
 
 * **Mike Sauve** - *Initial work* - [mike-s123](https://github.com/mike-s123/)
+Programming is not my day job, so don't be harsh about style or efficiency.
 
 ## License
 
