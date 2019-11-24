@@ -1,0 +1,87 @@
+Controller definitions - .csv files
+===================================
+For each controller to be supported, a .csv file of a specific format need to be
+placed in the SPIFFS filesystem. This file defines various registers/coils/strings
+for the particular controller. Morningstar is _very_ inconsistent between controllers,
+each is unique. Also, don't trust that the Morningstar Modbus documentation for any
+controller is accurate, there are lots of errors. The filename starts with a unique 
+model name (currently, PS-PWM and PS-MPPT are used for Prostar (gen3) and Prostar MPPT). 
+The .csv file for a PS-MPPT is named:
+
+PS-MPPT.csv     Defines the Modbus registers
+
+=============================================================================
+
+File format
+--------------------
+Fields are comma delimited. 
+
+The first field of each line indicates what data
+it defines:
+
+r, Registers
+c, Coils
+l, Load faults
+m, alarMs 
+y, arraY faults
+
+Blank lines, and lines not beginning as above are ignored. Lines beginning with letters are reserved, 
+so comments should start with a symbol (e.g. ! or #).
+
+Each line must end with a comma, unless there's a final comment.
+Comments are optional, and are ignored.
+No error checking is done on import, the files are assumed to be correct.
+The last line of the file must have a \ as the first character, to indicate end-of-file.
+Entries of each type must be sorted - the first item (PDU address, bit number) must be in order.
+Line endings may be LF (/n, Linux, MacOS) or CR/LF (/r/n, Windows).
+
+
+Register entries
+--------------------
+Example line:
+r,19,adc_va_f_shadow,Array Voltage,V,Float16,RO,[comment]
+
+r  = this defines a register
+
+19 = Modbus PDU address, zero based, decimal. Note that these match the "PDU Addr" numbers in 
+the Morningstar documentation but are in decimal. The PDU Addr is also what's reported when polling via json.
+
+adc_va = variable name as given by Morningstar (HI / LO removed), except the following ones should be standardized (Morningstar is inconsistent). "adc_vb_f_1m", "adc_ib_f_1m", "vb_ref", "T_batt", "adc_va", "adc_ia", "adc_il", "Ahc_daily", "Ahl_daily", "time_ab_daily", "time_fl_daily", "time_eq_daily", "Vb_min_daily", "Vb_max_daily", "adc_vl", "Va_max_daily"
+
+
+Array Voltage = Description
+
+V = Units, one of 
+   "-",    "V",  "A", "C",     "Ah", "kWh", "W",  "d",  "h",   "s"        ...meaning...
+    noUnit, Volt, Amp, Celcius, Ah,   kWh,   Watt, days, hours, seconds
+
+Float16 = Datatype, one of
+   "none", "f16", "n10", "dn10", "int", "uint", "dint", "bitf", "dbitf", "bcd", "n673", "n1032", "n1800", "r417", "n100", "n79_16", "n989_5", "n96_667"
+   
+RO = Read-Only. Writeable registers are marked RW.
+   
+====================
+
+Coil line format
+---------------------
+Example line:
+c,0,EqTrig,Equalize triggered,[comment]
+
+c = this defines a coil
+0 = Modbus PDU address
+EqTrig = Coil name
+Equalize triggered = Coil description
+
+======================
+
+Alarm definition format. Load ("l") and Array ("y") are similar.
+---------------------
+Example line:
+m,0,RTS Open,[comment]
+
+0 = bit number in alarm bitfield
+RTS Open = alarm text
+
+
+   
+   
