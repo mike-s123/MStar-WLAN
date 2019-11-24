@@ -1,1 +1,3 @@
 data/jquery.min.js linguist-vendored
+data/ace.js linguist-vendored
+data/mode-html.js linguist-vendored
