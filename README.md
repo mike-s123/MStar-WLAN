@@ -1,6 +1,8 @@
 # MStar-WLAN
 
-This project includes both hardware and software for interfacing to a Morningstar solar controller via wireless. The core is an ESP8266 based WEMOS D1 Mini Pro board (or alternately, an ESP32-WROVER-B, which is a work in progress). It supports web monitoring/configuration, MODBUS/TCP, and a RESTful API.
+This project includes both hardware and software for interfacing to a Morningstar solar controller via wireless LAN (WiFi). The core is an ESP8266 based WEMOS D1 Mini Pro board (or alternately, an ESP32-WROVER-B (16MB), which is a work in progress). These were chosen because they have a large flash for storing files, which allows having documentation on-board. It supports monitoring/configuration via a web interface, MODBUS/TCP, or a RESTful API.
+
+It is coded using the Arduino IDE, which is "odd", hence code being in .h files. The printed circuit board was done in Eagle.
 
 Testing has been done with Prostar MPPT and Prostar Gen3 controllers. MODBUS-TCP works with Morningstar's MSView.
 
@@ -8,13 +10,13 @@ Testing has been done with Prostar MPPT and Prostar Gen3 controllers. MODBUS-TCP
 
 ## Getting Started
 
-Hardware info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with parts info.
+Hardware info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with some parts info.
 
 ### Prerequisites
 
 Library versions are noted in the .ino. The ESP8266 and/or ESP32 core for Arduino needs to be installed.
 
-The "data" directory needs to be uploaded to the board. The board will access the files using SPIFFS. The files are used to define the different controllers, and also contain some documentation.
+The "data" directory needs to be uploaded to the board ("sketch data upload"). The board will access the files using SPIFFS. The files are used to define the different controllers, and also contain some documentation.
 
 ## Operation
 
@@ -33,7 +35,7 @@ Connecting to http://192.168.4.1/ will display the main status page. Other pages
 
 ## Support
 
-There is none. This was a personal project, I'm freely offering it to others. Feel free to contribute back if you can.
+There is none. This was a personal project, I'm freely offering it to others for non-commercial use. Feel free to contribute back if you can.
 
 ## More Info
 
@@ -45,8 +47,8 @@ More info may be found under the data directory.
 
 ## License
 
-* Original work, License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
+* Original work by Mike Sauve, License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
 
-* some HTML/CSS stuff is from [Ian Sparkes](https://bitbucket.org/isparkes/nixiefirmwarev2/src), and is also CC-BY-NC.
+* Some HTML/CSS stuff is from [Ian Sparkes](https://bitbucket.org/isparkes/nixiefirmwarev2/src), and is also CC-BY-NC.
 
-* libraries used will have their own licenses. some parts subject to other licenses as noted.
+* Libraries used will have their own licenses. Some parts may be subject to other licenses as noted.

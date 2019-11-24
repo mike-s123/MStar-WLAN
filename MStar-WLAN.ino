@@ -182,8 +182,7 @@ DS3231 clock, new board layout, array watts, ESP8266 ping."
 // ------------------------------------------  Globals (mostly)  --------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-//const char *ap_ssid = AP_SSID;
-const char *ap_ssid = AP_SSID ;
+const char *ap_ssid = AP_SSID;
 const char *ap_password = AP_PSK;
 const char *web_username = WEB_USERNAME;
 const char *web_password = WEB_PASSWORD;
