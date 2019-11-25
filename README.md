@@ -2,9 +2,13 @@
 
 This project includes both hardware and software for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). The core is an ESP8266 based WEMOS D1 Mini Pro (16M) board (or alternately, an ESP32-WROVER-B (16MB), which is a work in progress). These were chosen because they have a large flash for storing files, which allows having documentation on-board. It supports monitoring/configuration via a web interface, MODBUS/TCP, or a RESTful API.
 
+A WEMOS will less flash memory will probably work fine. The additional flash memory is there in order to support config and documentation files for additional controllers beyond what's currently provided.
+
 It is coded using the [Arduino IDE](https://www.arduino.cc/en/Main/Software), which is a bit "odd", hence code being split amongst .h files. The printed circuit board was done in [Eagle](https://www.autodesk.com/products/eagle/overview).
 
-Testing has been done with Prostar MPPT and Prostar Gen3 controllers. MODBUS-TCP works with Morningstar's MSView, allowing it to be used to monitor and configure a controller wirelessly.
+Testing has been done with Prostar MPPT and Prostar Gen3 controllers, and the information files for those have been provided. Others will need to have .csv files (see data/csv_file_desc.txt)and controller image files (e.g. data/PS-MPPT.png) added.
+
+MODBUS-TCP works with Morningstar's MSView, allowing it to be used to monitor and configure a controller wirelessly.
 
 ![image of hardware](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/board.png)
 
