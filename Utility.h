@@ -286,7 +286,6 @@ boolean connectToWLAN(const char* ssid, const char* password) {
   #ifdef ARDUINO_ARCH_ESP8266
     WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
   #endif
-
   WiFi.mode(WIFI_STA);  // station only 
   
   if (password && strlen(password) > 0 ) {    

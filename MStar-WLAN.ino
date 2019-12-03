@@ -22,10 +22,10 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191203.a"
+#define SOFTWARE_VERSION "v0.191203.b"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Updated ESP platform and Arduino IDE. <br/>\
-        work on support for LittleFS."
+#define BUILD_NOTES "Updated ESP platform and Arduino IDE. Work on support for LittleFS.<br/>\
+                     Dynamic hostname."
 
 #define DEBUG_ON 3                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
@@ -84,6 +84,7 @@
 #include <Update.h>
 #include <FS.h>
 #define FILESYSTEM SPIFFS
+#define FS_TYPE "SPIFFS"
 #include <SPIFFS.h>
 #include <HardwareSerial.h>
 #endif
@@ -125,6 +126,8 @@
   #define UPDATE_USERNAME ""
   #define UPDATE_PASSWORD ""
 #endif
+
+#define HOSTNAME "MStar-WLAN"
 
 #define JSON_VERSION "1.0"               // changes with api changes
 #define JSON_VERSION_MIN "1.0"           // changes when backward compatibility is broken
@@ -222,6 +225,7 @@ int blinkTopTime = 2000;
 unsigned long lastMillis = 0;
 int mbAddr = mbusSlave;
 String model = MODEL;
+String my_hostname;
 File fsUploadFile;              // a File object to temporarily store the received file
 
 String referrer; 
@@ -272,6 +276,10 @@ byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // Apri
 #include "ControllerFiles.h"
 #include "HTML.h"
 #include "RestPage.h"
+
+
+
+
 
 void setup() {
   #ifdef ARDUINO_ARCH_ESP8266
@@ -380,6 +388,15 @@ void setup() {
 /*
  * WiFi setup
  */
+
+  byte mac[6];
+  WiFi.macAddress(mac);
+  my_hostname = HOSTNAME + String("-") + String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
+  WiFi.hostname(my_hostname);
+  #if DEBUG_ON>0
+    debugMsgContinue(F("Using hostname: "));
+    debugMsg(my_hostname);
+  #endif
 
   WiFi.persistent(true);
   // Try to connect, if we have valid credentials
@@ -614,7 +631,7 @@ void setup() {
   //   the fully-qualified domain name is "esp8266.local"
   // - second argument is the IP address to advertise
   //   we send our IP address on the WiFi network
-  if (!MDNS.begin("MStar-WLAN")) {
+  if (!MDNS.begin("MStar-WLAN", WiFi.localIP())) {
     #if DEBUG_ON>0
       debugMsg(F("Error setting up MDNS responder!"));
     #endif
@@ -904,6 +921,7 @@ void platformPageHandler()
   response_message += getTableHead2Col(F("Current Status"), F("Name"), F("Value"));
   if ( WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress ip = WiFi.localIP();
+    response_message += getTableRow2Col(F("hostname"), my_hostname);
     response_message += getTableRow2Col(F("WLAN IP"), formatIPAsString(ip));
     response_message += getTableRow2Col(F("WLAN MAC"), WiFi.macAddress());
     response_message += getTableRow2Col(F("WLAN SSID"), WiFi.SSID());
