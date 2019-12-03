@@ -10,20 +10,22 @@
  *   -IwIP: v2 Higher bandwidth
  *   -vtables: IRAM
  *   
- *   ESP32 - M5Stack-FIRE, Large SPIFFS (7 MB)
+ *   ESP32 - M5Stack-FIRE, Large FILESYSTEM (7 MB)
  *   cpu: fastest
- *   flash: 2M+ SPIFFS
+ *   flash: 2M+ FILESYSTEM
  *   lwIP: v2 higher bandwidth
  *   vTables: IRAM
  *   
  *   Original work, License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  *   some parts subject to other licenses as noted.
+ *   
+ *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191124"
+#define SOFTWARE_VERSION "v0.191203.a"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Updated SDK, readDeviceID working to select model,</br>\
-DS3231 clock, new board layout, array watts, fixed RTC check."
+#define BUILD_NOTES "Updated ESP platform and Arduino IDE. <br/>\
+        work on support for LittleFS."
 
 #define DEBUG_ON 3                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
@@ -35,12 +37,25 @@ DS3231 clock, new board layout, array watts, fixed RTC check."
 #include <sstream>
 #include <EEPROM.h>
 #include <FS.h>
+
 #include <Wire.h>
 #include <DS3231.h>   // Andrew Wickert, et al 1.0.2
 #include <ZEeprom.h>  // Pierre Valleau 1.0.0
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
 #ifdef ARDUINO_ARCH_ESP8266
+  #define FS_SPIFFS
+//  #define FS_LITTLEFS
+  #ifdef FS_SPIFFS
+    #define FILESYSTEM SPIFFS
+    #define FS_TYPE "SPIFFS"
+//    #include <SPIFFS.h>
+  #endif
+  #ifdef FS_LITTLEFS
+    #define FILESYSTEM LittleFS
+    #define FS_TYPE "LittleFS"
+    #include <LittleFS.h>
+  #endif
   #include <ESP8266WiFi.h>
   #include <ESP8266WiFiAP.h>
   #include <ESP8266WiFiGeneric.h>
@@ -68,6 +83,7 @@ DS3231 clock, new board layout, array watts, fixed RTC check."
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <FS.h>
+#define FILESYSTEM SPIFFS
 #include <SPIFFS.h>
 #include <HardwareSerial.h>
 #endif
@@ -118,8 +134,6 @@ DS3231 clock, new board layout, array watts, fixed RTC check."
 // GPIO 2 (D4) for Wemos D1 mini
 #define WIFI_PIN 2
 //#define WIFI_PIN BUILTIN_LED
-
-#define FILESYSTEM SPIFFS
 
 #define EEPROM_SIZE 512
 #define EEPROM_SIG "mjs!"
@@ -195,6 +209,8 @@ const char *update_username = UPDATE_USERNAME;
 const char *update_password = UPDATE_PASSWORD;
 const char *serialNumber = SERIAL_NUMBER;
 
+const char *fs_type = FS_TYPE;
+
 boolean wlanConnected = false;
 boolean largeFlash = false;
 boolean mbActive = false;    // whether we're using mbus
@@ -267,7 +283,13 @@ void setup() {
   #ifdef ARDUINO_ARCH_ESP8266
     Serial.begin(9600, SERIAL_8N2);
     U0C0 = BIT(UCRXI) | BIT(UCTXI) | BIT(UCBN) | BIT(UCBN + 1) | BIT(UCSBN) | BIT(UCSBN + 1); // Inverse RX & TX, 8N2
-    Serial.swap();  //use alternate UART pins, so now GPIO 15(D8,TX)/13(D7,RX)
+    /*
+     * Here we swap to the alternate UART pins, so they're now GPIO15(D8,TX) and GPIO13(D7,RX)
+     * This is so we can use the more reliable hardware UART to talk to MODBUS
+     * We'll then use softwareserial to send debug messages out the old UART
+     * pins (which go to the USB/serial chip).
+     */
+    Serial.swap();  //
     #if DEBUG_ON>0
       logger = new SoftwareSerial(3, 1);
       delay(100);
@@ -423,9 +445,10 @@ void setup() {
   }
 
   #if DEBUG_ON>0
-    debugMsg(F("Starting SPIFFS"));
+    debugMsgContinue(F("Starting "));
+    debugMsg(fs_type);
   #endif
-  SPIFFS.begin();
+  FILESYSTEM.begin();
   
   server.on("/",               statusPageHandler);
   server.on(F("/status"),      statusPageHandler);
@@ -529,7 +552,7 @@ void setup() {
   });
   
   //TODO doesn't work on ESP32
-  server.serveStatic("/", SPIFFS, "/", "max-age=43200"); // tell browser to cache SPIFFS stuff for 12 hours
+  server.serveStatic("/", FILESYSTEM, "/", "max-age=43200"); // tell browser to cache files for 12 hours
 
   #ifdef ARDUINO_ARCH_ESP32
     #if DEBUG_ON>2
@@ -942,7 +965,7 @@ void platformPageHandler()
   String ota = formatBytes(ESP.getFreeSketchSpace());
   if ( largeFlash ) { ota += F(" (OTA update capable)"); }
   response_message += getTableRow2Col(F("Free sketch size"), ota);
-  response_message += getTableRow2Col(F("SDK version"), String(ESP.getSdkVersion()));
+  response_message += getTableRow2Col(F("ESP version"), ESP.getFullVersion());
   
   #ifdef ARDUINO_ARCH_ESP8266
     response_message += getTableRow2Col(F("Free heap"), formatBytes(ESP.getFreeHeap()));
@@ -950,14 +973,13 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Stack low watermark"), formatBytes(ESP.getFreeContStack()));
   
     FSInfo fs_info;
-    SPIFFS.info(fs_info);
-    response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(fs_info.totalBytes));
-    response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(fs_info.usedBytes));
-    response_message += getTableRow2Col(F("SPIFFS block size"), formatBytes(fs_info.blockSize));
-    response_message += getTableRow2Col(F("SPIFFS page size"), formatBytes(fs_info.pageSize));
-    response_message += getTableRow2Col(F("SPIFFS max open files"), String(fs_info.maxOpenFiles));
+    FILESYSTEM.info(fs_info);
+    response_message += getTableRow2Col(fs_type + String(F(" size")), formatBytes(fs_info.totalBytes));
+    response_message += getTableRow2Col(fs_type + String(F(" used")), formatBytes(fs_info.usedBytes));
+    response_message += getTableRow2Col(fs_type + String(F(" block size")), formatBytes(fs_info.blockSize));
+    response_message += getTableRow2Col(fs_type + String(F(" page size")), formatBytes(fs_info.pageSize));
+    response_message += getTableRow2Col(fs_type + String(F(" max open files")), String(fs_info.maxOpenFiles));
     
-    response_message += getTableRow2Col(F("ESP Core version"), String(ESP.getCoreVersion()));
     response_message += getTableRow2Col(F("Chip ID"), String(ESP.getChipId()));
     response_message += getTableRow2Col(F("Flash Chip ID"), "0x"+String(ESP.getFlashChipId(),HEX));
     response_message += getTableRow2Col(F("Flash size"), formatBytes(ESP.getFlashChipRealSize()));
@@ -1068,7 +1090,7 @@ void statusPageHandler () {
   }
   response_message += F("\" alt=\"controller\">");
   float adc_pa = 0;
-  for ( int i=0 ; i < 16 ; i++) {
+  for ( int i=0 ; (i < 16) && !noController ; i++) {
     if ( registers[i] == F("adc_va") || registers[i] == F("adc_ia") ) { //handle power calculation
       int addy;
       float vary;

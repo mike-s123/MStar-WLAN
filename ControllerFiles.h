@@ -5,7 +5,7 @@ void getRegFromFile(String model) {
   #if DEBUG_ON>0
   debugMsg("Reading registers from /" + model + ".csv");
   #endif
-  File regFile = SPIFFS.open("/" + model + ".csv", "r");
+  File regFile = FILESYSTEM.open("/" + model + ".csv", "r");
   if (!regFile) {
     #if DEBUG_ON>0
     debugMsg("register file not found!");
@@ -129,7 +129,7 @@ void getCoilFromFile(String model) {
   #if DEBUG_ON>0
   debugMsg("Reading coils from /" + model + ".csv");
   #endif
-  File coilFile = SPIFFS.open("/" + model + ".csv", "r");
+  File coilFile = FILESYSTEM.open("/" + model + ".csv", "r");
   if (!coilFile) {
     #if DEBUG_ON>0
     debugMsg(F("Coil file not found!"));
@@ -190,7 +190,7 @@ void getAlarmFromFile(String model) {
   #if DEBUG_ON>0
   debugMsg("Reading alarms from /" + model + ".csv");
   #endif
-  File alarmFile = SPIFFS.open("/" + model + ".csv", "r");
+  File alarmFile = FILESYSTEM.open("/" + model + ".csv", "r");
   if (!alarmFile) {
     #if DEBUG_ON>0
     debugMsg(F("Alarm file not found!"));
@@ -255,7 +255,7 @@ void getArrayFromFile(String model) {
   #if DEBUG_ON>0
   debugMsg("Reading array faults from /" + model + ".csv");
   #endif
-  File arrayFile = SPIFFS.open("/" + model + ".csv", "r");
+  File arrayFile = FILESYSTEM.open("/" + model + ".csv", "r");
   if (!arrayFile) {
     #if DEBUG_ON>0
     debugMsg(F("Array file not found!"));
@@ -320,7 +320,7 @@ void getLoadFromFile(String model) {
   #if DEBUG_ON>0
   debugMsg("Reading load faults from /" + model + ".csv");
   #endif
-  File loadFile = SPIFFS.open("/" + model + ".csv", "r");
+  File loadFile = FILESYSTEM.open("/" + model + ".csv", "r");
   if (!loadFile) {
     #if DEBUG_ON>0
     debugMsg(F("load file not found!"));

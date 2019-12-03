@@ -52,11 +52,11 @@ String getContentType(String filename); // fwd
     }
     String contentType = getContentType(path);
     String pathWithGz = path + ".gz";
-    if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)) {
-      if (SPIFFS.exists(pathWithGz)) {
+    if (FILESYSTEM.exists(pathWithGz) || FILESYSTEM.exists(path)) {
+      if (FILESYSTEM.exists(pathWithGz)) {
         path += ".gz";
       }
-      File file = SPIFFS.open(path, "r");
+      File file = FILESYSTEM.open(path, "r");
       server.streamFile(file, contentType);
       file.close();
       return true;
@@ -77,7 +77,7 @@ String getContentType(String filename); // fwd
       #if DEBUG_ON>2
         debugMsgContinue("handleFileUpload Name: "); debugMsg(filename);
       #endif
-      fsUploadFile = SPIFFS.open(filename, "w");
+      fsUploadFile = FILESYSTEM.open(filename, "w");
       filename = String();
     } else if (upload.status == UPLOAD_FILE_WRITE) {
       //DBG_OUTPUT_PORT.print("handleFileUpload Data: "); DBG_OUTPUT_PORT.println(upload.currentSize);
@@ -105,10 +105,10 @@ String getContentType(String filename); // fwd
     if (path == "/") {
       return server.send(500, "text/plain", "BAD PATH");
     }
-    if (!SPIFFS.exists(path)) {
+    if (!FILESYSTEM.exists(path)) {
       return server.send(404, "text/plain", "FileNotFound");
     }
-    SPIFFS.remove(path);
+    FILESYSTEM.remove(path);
     server.send(200, "text/plain", "");
     path = String();
   }
@@ -124,10 +124,10 @@ String getContentType(String filename); // fwd
     if (path == "/") {
       return server.send(500, "text/plain", "BAD PATH");
     }
-    if (SPIFFS.exists(path)) {
+    if (FILESYSTEM.exists(path)) {
       return server.send(500, "text/plain", "FILE EXISTS");
     }
-    File file = SPIFFS.open(path, "w");
+    File file = FILESYSTEM.open(path, "w");
     if (file) {
       file.close();
     } else {
@@ -147,7 +147,7 @@ String getContentType(String filename); // fwd
     #if DEBUG_ON>2
       debugMsg("handleFileList: " + path);
     #endif
-    Dir dir = SPIFFS.openDir(path);
+    Dir dir = FILESYSTEM.openDir(path);
     path = String();
   
     String output = "[";

@@ -1,6 +1,6 @@
 /* 
  *  This page handles rest requests, as documented in REST_API.txt
- *  (in SPIFFS).
+ *  (in FILESYSTEM).
  * 
  *  Requests and responses are in JSON.
  *  

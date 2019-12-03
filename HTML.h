@@ -8,7 +8,7 @@
  * 
  * License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  */
-String getLocalJs() {                     // point to local.js in SPIFFS here
+String getLocalJs() {                     // point to local.js in FILESYSTEM here
   String js = F("<script src=\"");
   js += F("local.js");             
   js += F("\"></script>");

@@ -24,6 +24,8 @@ Circuit board info is found in the "hardware/pcb" directory, where there are Eag
 
 ### Prerequisites
 
+Development is currently being done with Arduino IDE 1.8.10, ESP8266 Arduino platform 2.6.2, and ESP32 Arduino platform 1.0.4.
+
 Library versions are noted in the .ino file. The [ESP8266](https://github.com/esp8266/Arduino) and/or [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Most development has been done with the ESP8266 platform, and that's what's working. ESP32 is still very much a work in progress. There are a lot of differences even in the "official" APIs - they don't make compatibility simple.
 
 The "data" directory needs to be uploaded to the board ("sketch data upload"). The board will access the files using SPIFFS. The files are used to define the different controllers, and also contain some documentation.
