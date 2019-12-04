@@ -26,9 +26,9 @@ Circuit board info is found in the "hardware/pcb" directory, where there are Eag
 
 Development is currently being done with Arduino IDE 1.8.10, ESP8266 Arduino platform 2.6.2, and ESP32 Arduino platform 1.0.4.
 
-Library versions are noted in the .ino file. The [ESP8266](https://github.com/esp8266/Arduino) and/or [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Most development has been done with the ESP8266 platform, and that's what's working. ESP32 is still very much a work in progress. There are a lot of differences even in the "official" APIs - they don't make compatibility simple.
+Library requirements are noted in the .ino file. The [ESP8266](https://github.com/esp8266/Arduino) and/or [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Most development has been done with the ESP8266 platform, and that's what's working. ESP32 is still very much a work in progress. There are a lot of differences even in the "official" APIs - they don't make compatibility simple.
 
-The "data" directory needs to be uploaded to the board ("sketch data upload"). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The binary posted here uses LittleFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin).
+The "data" directory needs to be uploaded to the board from the IDE ("sketch data upload"). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The binary posted here uses LittleFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin).
 
 The files are used to define the different controllers, and also contain some documentation.
 
@@ -42,7 +42,9 @@ The web interface has some minimal security. Any page which allows configuration
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (mostly) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex.
 
-OTA updates are done from the Utility tab, "Update WLAN module firmware" link. With newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For a SPIFFS image, it's "MStar-WLAN.spiffs.bin". For LittleFS, it's "MStar-WLAN.mklittlefs.bin". If you re-compile for a different file system, you need to do the first upload via USB using the Arduino IDE, OTA doesn't work right for some reason. After switching file systems, OTA updates should work.
+OTA updates are done from the Utility tab, "Update WLAN module firmware" link. With newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For a SPIFFS image, it's "MStar-WLAN.spiffs.bin". 
+
+For LittleFS, it's "MStar-WLAN.mklittlefs.bin". __Currently LittleFS uploads must be via USB using the Arduino IDE, OTA doesn't work correctly.__ 
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 

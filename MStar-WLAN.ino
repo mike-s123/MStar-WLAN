@@ -22,9 +22,9 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191203.b"
+#define SOFTWARE_VERSION "v0.191204"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Updated ESP platform and Arduino IDE. Work on support for LittleFS.<br/>\
+#define BUILD_NOTES "Updated ESP platform and Arduino IDE. LittleFS support.<br/>\
                      Dynamic hostname."
 
 #define DEBUG_ON 3                // enable debugging output
@@ -39,8 +39,8 @@
 #include <FS.h>
 
 #include <Wire.h>
-#include <DS3231.h>   // Andrew Wickert, et al 1.0.2
-#include <ZEeprom.h>  // Pierre Valleau 1.0.0
+#include <DS3231.h>   // Andrew Wickert, et al 1.0.2, via IDE
+#include <ZEeprom.h>  // Pierre Valleau 1.0.0, for EEPROM on DS3231 board, via IDE
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
 #ifdef ARDUINO_ARCH_ESP8266
@@ -89,7 +89,7 @@
 #include <HardwareSerial.h>
 #endif
 
-#include <ArduinoJson.h>   // Benoit Blanchon 5.13.4
+#include <ArduinoJson.h>   // Benoit Blanchon 5.13.4, via IDE
 #include <WiFiClient.h>
 //#include <WiFiClientSecure.h>
 //#include <WiFiClientSecureAxTLS.h>
@@ -101,7 +101,7 @@
 //#include <WiFiServerSecureBearSSL.h>
 #include <WiFiUdp.h>
 
-#include <ModbusMaster.h> //Doc Walker 2.0.1
+#include <ModbusMaster.h> //Doc Walker 2.0.1, via IDE
 
 //---------------------------
 // definitions
@@ -465,7 +465,27 @@ void setup() {
     debugMsgContinue(F("Starting "));
     debugMsg(fs_type);
   #endif
-  FILESYSTEM.begin();
+  #ifdef FS_LITTLEFS
+    LittleFSConfig cfg;
+  #endif
+  #ifdef FS_SPIFFS
+    SPIFFSConfig cfg;
+  #endif
+  cfg.setAutoFormat(false);
+  FILESYSTEM.setConfig(cfg);
+  if ( FILESYSTEM.begin() ) {
+    #if DEBUG_ON>0
+      debugMsgContinue(FS_TYPE);
+      debugMsg(F(" opened"));
+    #endif
+    ;
+  } else {
+    #if DEBUG_ON>0
+      debugMsgContinue(FS_TYPE);
+      debugMsg(F(" failed to open"));
+    #endif
+    ;    
+  }
   
   server.on("/",               statusPageHandler);
   server.on(F("/status"),      statusPageHandler);

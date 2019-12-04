@@ -806,10 +806,6 @@ String getModel() {
     debugMsg(String(result));
   #endif
   
-//  if ( result != 0 ) {   // why doesn't this work as expected?
-//    return mod; 
-//  }
-  
   /* Model names
    * PS-PWM*, PS-MPPT*, SSDuo (SunSaver Duo), SS-MPPT*, TS-45 or TS-60 (Tristar),
    * TS-MPPT-60-600V-48, TS-MPPT-30, TS-MPPT-45, TS-MPPT-60,

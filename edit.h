@@ -166,7 +166,11 @@ String getContentType(String filename); // fwd
       output += "{\"type\":\"";
       output += (isDir) ? "dir" : "file";
       output += "\",\"name\":\"";
-      output += String(entry.name()).substring(1);
+      if (String(entry.name()).startsWith("/")) {
+        output += String(entry.name()).substring(1);
+      } else {
+        output += String(entry.name());
+      }
       output += "\"}";
       entry.close();
     }
@@ -297,7 +301,11 @@ void handleFileList() {
           output += "{\"type\":\"";
           output += (file.isDirectory()) ? "dir" : "file";
           output += "\",\"name\":\"";
-          output += String(file.name()).substring(1);
+          if (String(file.name()).startsWith("/")) {
+            output += String(file.name()).substring(1);
+          } else {
+            output += String(file.name());
+          }
           output += "\"}";
           file = root.openNextFile();
       }
