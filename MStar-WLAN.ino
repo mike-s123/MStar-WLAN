@@ -44,8 +44,8 @@
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
 #ifdef ARDUINO_ARCH_ESP8266
-  #define FS_SPIFFS
-//  #define FS_LITTLEFS
+//  #define FS_SPIFFS
+  #define FS_LITTLEFS
   #ifdef FS_SPIFFS
     #define FILESYSTEM SPIFFS
     #define FS_TYPE "SPIFFS"
@@ -978,6 +978,7 @@ void platformPageHandler()
   }
   String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST");
   response_message += getTableRow2Col(F("Sketch compiled"), datetime);
+  response_message += getTableRow2Col(F("Arduino IDE"), String(ARDUINO));
   response_message += getTableRow2Col(F("Build notes"), BUILD_NOTES);
   response_message += getTableRow2Col(F("Sketch size"), formatBytes(ESP.getSketchSize()));
   String ota = formatBytes(ESP.getFreeSketchSpace());

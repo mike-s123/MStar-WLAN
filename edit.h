@@ -56,11 +56,17 @@ String getContentType(String filename); // fwd
       if (FILESYSTEM.exists(pathWithGz)) {
         path += ".gz";
       }
+      #if DEBUG_ON>2
+        debugMsg("handleFileRead, opening: " + path);
+      #endif
       File file = FILESYSTEM.open(path, "r");
       server.streamFile(file, contentType);
       file.close();
       return true;
     }
+    #if DEBUG_ON>2
+      debugMsg("handleFileRead: " + path + " doesn't exist?");
+    #endif
     return false;
   }
   
