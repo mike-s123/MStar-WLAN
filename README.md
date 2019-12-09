@@ -62,16 +62,14 @@ Possible additions: Include support for additional controllers. Allow changing u
  
 ## Author
 
-* **Mike Sauve** - *Initial work* - [mike-s123](https://github.com/mike-s123/)
+* **Mike Sauve** - [mike-s123](https://github.com/mike-s123/)
 Programming is not my day job, so don't be harsh about style or efficiency.
 
 ## License and copyrights
 
-* Original work copyright by Mike Sauve, License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
+* Original work copyright by Mike Sauve, License [CC BY-NC](https://creativecommons.org/licenses/by-nc/4.0/legalcode)
 
-* Some HTML/CSS stuff is from [Ian Sparkes](https://bitbucket.org/isparkes/nixiefirmwarev2/src), and is also CC-BY-NC. Thanks, Ian.
-
-* Libraries used will have their own licenses. Some parts may be subject to other licenses, which will be noted.
+* See [LICENSES.MD](https://github.com/mike-s123/MStar-WLAN/blob/master/LICENSE.md) for more detail.
 
 * Hardware datasheets (in the hardware directory) are copyrighted by the manufacturers. They were all pulled off public websites. I believe it is fair use to have them here. If any complain, I'll remove them.
 
