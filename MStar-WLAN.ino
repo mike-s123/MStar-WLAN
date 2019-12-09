@@ -22,10 +22,10 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191204"
+#define SOFTWARE_VERSION "v0.191209"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Updated ESP platform and Arduino IDE. LittleFS support.<br/>\
-                     Dynamic hostname."
+#define BUILD_NOTES "LittleFS support. Reorganize FS. FS upload fixed.<br/>\
+                     Dynamic hostname. Support 1 directory level in editor."
 
 #define DEBUG_ON 3                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
@@ -938,7 +938,7 @@ void platformPageHandler()
 
 
   // Status table
-  response_message += getTableHead2Col(F("Current Status"), F("Name"), F("Value"));
+  response_message += getTableHead2Col(F("WLAN Status"), F("Name"), F("Value"));
   if ( WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress ip = WiFi.localIP();
     response_message += getTableRow2Col(F("hostname"), my_hostname);
@@ -1123,9 +1123,9 @@ void statusPageHandler () {
 
   response_message += F("<div class=\"controller\"><img src=\"");
   if ( model == "") {
-    response_message += F("Nocontroller.png");    
+    response_message += F("/ctl/Nocontroller.png");    
   } else {
-    response_message += model + ".png";
+    response_message += "/ctl/" + model + ".png";
   }
   response_message += F("\" alt=\"controller\">");
   float adc_pa = 0;
@@ -1468,7 +1468,7 @@ void utilityPageHandler()
     response_message += F("<hr><a href=\"/setTime\">Set time</a>");
   }
   response_message += F("<hr><a href=\"/documentation.htm\">Documentation</a>");
-  response_message += F("<hr><a href=\"/edit\">File edit/view/upload (quirky)</a>");
+  response_message += F("<hr><a href=\"/edit\">File edit/view/upload (ctrl-s saves file)</a>");
   response_message += F("<hr><a href=\"/allregs\">Show all registers</a>");
   response_message += F("<hr><a href=\"/allcoils\">Show all coils</a>");
   response_message += F("<hr><a href=\"/rest?json={%22addr%22:255,%22cmd%22:");

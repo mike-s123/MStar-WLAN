@@ -1,14 +1,13 @@
 Controller definitions - .csv files
 ===================================
 For each controller to be supported, a .csv file of a specific format need to be
-placed in the SPIFFS filesystem. This file defines various registers/coils/strings
-for the particular controller. Morningstar is _very_ inconsistent between controllers,
-each is unique. Also, don't trust that the Morningstar Modbus documentation for any
-controller is accurate, there are lots of errors. The filename starts with a unique 
-model name (currently, PS-PWM and PS-MPPT are used for Prostar (gen3) and Prostar MPPT). 
+placed in the filesystem under the /ctl/ directory. This file defines various registers/coils/strings for the particular controller. Morningstar is _very_ inconsistent between controllers, each is unique. Also, don't trust that the Morningstar Modbus documentation for any controller is accurate, there are lots of errors. The filename starts with a unique model name (currently, PS-PWM and PS-MPPT are used for Prostar (gen3) and Prostar MPPT). 
+
 The .csv file for a PS-MPPT is named:
 
 PS-MPPT.csv     Defines the Modbus registers
+
+In addition to the .csv file, a .png image of the controller should also be placed in the /ctl/ directory. See the existing ones for examples to modify.
 
 =============================================================================
 
@@ -39,7 +38,7 @@ Line endings may be LF (/n, Linux, MacOS) or CR/LF (/r/n, Windows).
 Register entries
 --------------------
 Example line:
-r,19,adc_va_f_shadow,Array Voltage,V,Float16,RO,[comment]
+r,19,adc_va_f_shadow,Array Voltage,V,f16,RO,[comment]
 
 r  = this defines a register
 
@@ -52,11 +51,11 @@ adc_va = variable name as given by Morningstar (HI / LO removed), except the fol
 Array Voltage = Description
 
 V = Units, one of 
-   "-",    "V",  "A", "C",     "Ah", "kWh", "W",  "d",  "h",   "s"        ...meaning...
-    noUnit, Volt, Amp, Celcius, Ah,   kWh,   Watt, days, hours, seconds
+   "-",    "V",  "A", "C",     "Ah", "kWh", "W",  "d",  "h",   "s",      "%"  ...meaning...
+    noUnit, Volt, Amp, Celcius, Ah,   kWh,   Watt, days, hours, seconds, percent
 
-Float16 = Datatype, one of
-   "none", "f16", "n10", "dn10", "int", "uint", "dint", "bitf", "dbitf", "bcd", "n673", "n1032", "n1800", "r417", "n100", "n79_16", "n989_5", "n96_667"
+f16 = Datatype, one of
+   "none", "f16", "n10", "dn10", "int", "uint", "dint", "bitf", "dbitf", "bcd", "n673", "n1032", "n1800", "r417", "n100", "n79_16", "n989_5", "n96_667", "n139_15", "n66_667", "n316_67", "n96_16"
    
 RO = Read-Only. Writeable registers are marked RW.
    

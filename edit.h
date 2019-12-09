@@ -154,6 +154,55 @@ String getContentType(String filename); // fwd
       debugMsg("handleFileList: " + path);
     #endif
     Dir dir = FILESYSTEM.openDir(path);
+//    path = String();
+  
+    String output = "[";
+    while (dir.next()) {
+      File entry = dir.openFile("r");
+      if (output != "[") {
+        output += ',';
+      }
+      if (entry.isDirectory()) {
+      output += "{\"type\":\"dir\",\"name\":\"";
+      output += entry.name();
+      output += "\"}";
+        Dir dir1 = FILESYSTEM.openDir(path + "/" + entry.name());
+        while (dir1.next()) {
+          File entry1 = dir1.openFile("r");
+          if (output != "[") {
+            output += ',';
+          }
+          output += "{\"type\":\"";
+          output += (entry1.isDirectory()) ? "dir" : "file";        
+          output += "\",\"name\":\"";      
+          output += String(entry.name()) + "/" + String(entry1.name());
+          output += "\"}";
+          entry1.close();                      
+        }
+      } else {
+        output += "{\"type\":\"file\",\"name\":\"";
+        output += String(entry.name());
+        output += "\"}";
+        entry.close();        
+      }
+    }
+    output += "]";
+    server.send(200, "text/json", output);
+  }
+
+
+/*  
+  void handleFileList() {
+    if (!server.hasArg("dir")) {
+      server.send(500, "text/plain", "BAD ARGS");
+      return;
+    }
+  
+    String path = server.arg("dir");
+    #if DEBUG_ON>2
+      debugMsg("handleFileList: " + path);
+    #endif
+    Dir dir = FILESYSTEM.openDir(path);
     path = String();
   
     String output = "[";
@@ -162,9 +211,8 @@ String getContentType(String filename); // fwd
       if (output != "[") {
         output += ',';
       }
-      bool isDir = false;
       output += "{\"type\":\"";
-      output += (isDir) ? "dir" : "file";
+      output += (dir.isDirectory()) ? "dir" : "file";
       output += "\",\"name\":\"";
       if (String(entry.name()).startsWith("/")) {
         output += String(entry.name()).substring(1);
@@ -178,6 +226,7 @@ String getContentType(String filename); // fwd
     output += "]";
     server.send(200, "text/json", output);
   }
+*/
 #endif // ARDUINO_ARCH_ESP8266
 
 

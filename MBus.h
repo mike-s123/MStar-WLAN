@@ -52,8 +52,8 @@ int mbRegMax;               // holds largest address found
 String mbRegVar[REG_ROWS];
 String mbRegDesc[REG_ROWS];
 // TODO add V/A for ER_icomp
-enum mbRegUnits {noUnit, Volt, Amp, Celcius, Ah, kWh, Watt, days, hours, seconds};
-String mbRegUnitName[] = {"-", "V", "A", "C", "Ah", "kWh", "W", "d", "h", "s"};
+enum mbRegUnits {noUnit, Volt, Amp, Celcius, Ah, kWh, Watt, days, hours, seconds, percent};
+String mbRegUnitName[] = {"-", "V", "A", "C", "Ah", "kWh", "W", "d", "h", "s", "%"};
 mbRegUnits mbRegUnit[REG_ROWS];
 bool mbRegRW[REG_ROWS];
 
@@ -61,8 +61,8 @@ int mbCoilAddr[COIL_ROWS];
 int mbCoilMax;              // holds largest address found
 String mbCoilVar[COIL_ROWS];
 String mbCoilDesc[COIL_ROWS];
-enum mbRegTypes {noType, f16, n10, dn10, sigint, usigint, dint, bitfield, dbitfield, bcd, n673, n1032, n1800, r417, n100, n7916, n9895, n96667 };
-String mbRegTypeName[] = {"none", "f16", "n10", "dn10", "int", "uint", "dint", "bitf", "dbitf", "bcd", "n673", "n1032", "n1800", "r417", "n100", "n79_16", "n989_5", "n96_667"}; 
+enum mbRegTypes {noType, f16, n10, dn10, sigint, usigint, dint, bitfield, dbitfield, bcd, n673, n1032, n1800, r417, n100, n7916, n9895, n96667, n13915, n66667, n31667, n9616 };
+String mbRegTypeName[] = {"none", "f16", "n10", "dn10", "int", "uint", "dint", "bitf", "dbitf", "bcd", "n673", "n1032", "n1800", "r417", "n100", "n79_16", "n989_5", "n96_667", "n139_15", "n66_667", "n316_67", "n96_16" }; 
 mbRegTypes mbRegType[REG_ROWS];
 
 String mbAlarmMsg[32];

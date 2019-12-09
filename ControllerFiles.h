@@ -3,9 +3,9 @@
 
 void getRegFromFile(String model) {
   #if DEBUG_ON>0
-  debugMsg("Reading registers from /" + model + ".csv");
+  debugMsg("Reading registers from /ctl/" + model + ".csv");
   #endif
-  File regFile = FILESYSTEM.open("/" + model + ".csv", "r");
+  File regFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!regFile) {
     #if DEBUG_ON>0
     debugMsg("register file not found!");
@@ -69,6 +69,8 @@ void getRegFromFile(String model) {
                   mbRegUnit[row] = hours;
                 } else if (val == "days") {
                   mbRegUnit[row] = days;
+                } else if (val == "%") {
+                  mbRegUnit[row] = percent;
                 } else {
                   mbRegUnit[row] = noUnit;
                 }
@@ -107,6 +109,14 @@ void getRegFromFile(String model) {
                   mbRegType[row] = n9895;
                 } else if (val == "n96_667") {    // 
                   mbRegType[row] = n96667;
+                } else if (val == "n139_15") {    // 
+                  mbRegType[row] = n13915;
+                } else if (val == "n66_667") {    // 
+                  mbRegType[row] = n66667;
+                } else if (val == "n316_67") {    // 
+                  mbRegType[row] = n31667;
+                } else if (val == "n96_16") {    // n·96.667·2^-16 note -16 scaling, negative sign is assumed
+                  mbRegType[row] = n9616;
                 } else {
                   mbRegType[row] = noType;
                 }
@@ -127,9 +137,9 @@ void getRegFromFile(String model) {
 
 void getCoilFromFile(String model) {
   #if DEBUG_ON>0
-  debugMsg("Reading coils from /" + model + ".csv");
+  debugMsg("Reading coils from /ctl/" + model + ".csv");
   #endif
-  File coilFile = FILESYSTEM.open("/" + model + ".csv", "r");
+  File coilFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!coilFile) {
     #if DEBUG_ON>0
     debugMsg(F("Coil file not found!"));
@@ -188,9 +198,9 @@ void getCoilFromFile(String model) {
 
 void getAlarmFromFile(String model) {
   #if DEBUG_ON>0
-  debugMsg("Reading alarms from /" + model + ".csv");
+  debugMsg("Reading alarms from /ctl/" + model + ".csv");
   #endif
-  File alarmFile = FILESYSTEM.open("/" + model + ".csv", "r");
+  File alarmFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!alarmFile) {
     #if DEBUG_ON>0
     debugMsg(F("Alarm file not found!"));
@@ -253,9 +263,9 @@ void getAlarmFromFile(String model) {
 
 void getArrayFromFile(String model) {
   #if DEBUG_ON>0
-  debugMsg("Reading array faults from /" + model + ".csv");
+  debugMsg("Reading array faults from /ctl/" + model + ".csv");
   #endif
-  File arrayFile = FILESYSTEM.open("/" + model + ".csv", "r");
+  File arrayFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!arrayFile) {
     #if DEBUG_ON>0
     debugMsg(F("Array file not found!"));
@@ -318,9 +328,9 @@ void getArrayFromFile(String model) {
 
 void getLoadFromFile(String model) {
   #if DEBUG_ON>0
-  debugMsg("Reading load faults from /" + model + ".csv");
+  debugMsg("Reading load faults from /ctl/" + model + ".csv");
   #endif
-  File loadFile = FILESYSTEM.open("/" + model + ".csv", "r");
+  File loadFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!loadFile) {
     #if DEBUG_ON>0
     debugMsg(F("load file not found!"));

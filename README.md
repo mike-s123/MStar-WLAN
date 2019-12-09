@@ -42,12 +42,9 @@ The web interface has some minimal security. Any page which allows configuration
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (mostly) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex.
 
-OTA updates are done from the Utility tab, "Update WLAN module firmware" link. With newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For a SPIFFS image, it's "MStar-WLAN.spiffs.bin". 
-
-For LittleFS, it's "MStar-WLAN.mklittlefs.bin". __Currently LittleFS uploads must be via USB using the Arduino IDE, OTA doesn't work correctly.__ 
+OTA updates are done from the Utility tab, "Update WLAN module firmware" link. With newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For LittleFS, it's "MStar-WLAN.mklittlefs.bin". 
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
-
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/charge_settings.png)
 
