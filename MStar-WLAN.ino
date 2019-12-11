@@ -16,16 +16,17 @@
  *   lwIP: v2 higher bandwidth
  *   vTables: IRAM
  *   
- *   Original work, License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
+ *   Original work, License CC BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  *   some parts subject to other licenses as noted.
  *   
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191209"
+#define SOFTWARE_VERSION "v0.191211"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "LittleFS support. Reorganize FS. FS upload fixed.<br/>\
-                     Dynamic hostname. Support 1 directory level in editor."
+                     Dynamic hostname. Support 1 directory level in editor.<br/>\
+                     Add more controller datatypes."
 
 #define DEBUG_ON 3                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords

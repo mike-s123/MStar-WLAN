@@ -163,7 +163,7 @@ String getContentType(String filename); // fwd
         output += ',';
       }
       if (entry.isDirectory()) {
-      output += "{\"type\":\"dir\",\"name\":\"";
+      output += F("{\"type\":\"dir\",\"name\":\"");
       output += entry.name();
       output += "\"}";
         Dir dir1 = FILESYSTEM.openDir(path + "/" + entry.name());
@@ -172,15 +172,15 @@ String getContentType(String filename); // fwd
           if (output != "[") {
             output += ',';
           }
-          output += "{\"type\":\"";
+          output += F("{\"type\":\"");
           output += (entry1.isDirectory()) ? "dir" : "file";        
-          output += "\",\"name\":\"";      
+          output += F("\",\"name\":\"");      
           output += String(entry.name()) + "/" + String(entry1.name());
           output += "\"}";
           entry1.close();                      
         }
       } else {
-        output += "{\"type\":\"file\",\"name\":\"";
+        output += F("{\"type\":\"file\",\"name\":\"");
         output += String(entry.name());
         output += "\"}";
         entry.close();        

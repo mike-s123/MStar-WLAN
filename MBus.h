@@ -61,8 +61,8 @@ int mbCoilAddr[COIL_ROWS];
 int mbCoilMax;              // holds largest address found
 String mbCoilVar[COIL_ROWS];
 String mbCoilDesc[COIL_ROWS];
-enum mbRegTypes {noType, f16, n10, dn10, sigint, usigint, dint, bitfield, dbitfield, bcd, n673, n1032, n1800, r417, n100, n7916, n9895, n96667, n13915, n66667, n31667, n9616 };
-String mbRegTypeName[] = {"none", "f16", "n10", "dn10", "int", "uint", "dint", "bitf", "dbitf", "bcd", "n673", "n1032", "n1800", "r417", "n100", "n79_16", "n989_5", "n96_667", "n139_15", "n66_667", "n316_67", "n96_16" }; 
+enum mbRegTypes {noType, f16, n10, dn10, sigint, usigint, dint, bitfield, dbitfield, bcd, n673, n1032, n1800, r417, n100, n7916, n9895, n96667, n13915, n66667, n31667, n9616, n1008, f32 };
+String mbRegTypeName[] = {"none", "f16", "n10", "dn10", "int", "uint", "dint", "bitf", "dbitf", "bcd", "n673", "n1032", "n1800", "r417", "n100", "n79_16", "n989_5", "n96_667", "n139_15", "n66_667", "n316_67", "n96_16", "n100_8", "f32" }; 
 mbRegTypes mbRegType[REG_ROWS];
 
 String mbAlarmMsg[32];
@@ -312,7 +312,7 @@ int MBus_get_float(int address, float &value) {
   return result;
 }
 
-int MBus_get_reg(int address, String &value) {         // returns 0 on success
+int MBus_get_reg(int address, String &value) {         // given an address, looks up type and gets value. returns 0 on success
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_reg: "+String(address));
@@ -353,10 +353,49 @@ int MBus_get_reg(int address, String &value) {         // returns 0 on success
         case bcd:     result = MBus_get_uint16(mbRegAddr[row], foo_int);
                       result ? value = F("err") : value = String(foo_int);        
                       break;
-              // TODO additional types (n673 onward)             
+        case n673:    result = MBus_get_uint16(mbRegAddr[row], foo_int); // SSDuo datatype, n/673 
+                      result ? value = F("err") : value = String(foo_int/673.0);        
+                      break;
+        case n1032:   result = MBus_get_uint16(mbRegAddr[row], foo_int); // SSDuo datatype, n/1032
+                      result ? value = F("err") : value = String(foo_int/1032.0);        
+                      break;
+        case n1800:   result = MBus_get_uint16(mbRegAddr[row], foo_int); // SSDuo datatype, n/1800
+                      result ? value = F("err") : value = String(foo_int/1800.0);        
+                      break;
+        case r417:    result = MBus_get_uint16(mbRegAddr[row], foo_int); // SSDuo datatype, % 0-417 ??? TODO:test result
+                      result ? value = F("err") : value = String(foo_int/4.17);        
+                      break;
+        case n100:    result = MBus_get_uint16(mbRegAddr[row], foo_int); // SS-MPPT datatype, n·100·2^-15
+                      result ? value = F("err") : value = String(foo_int*(100/32768));        
+                      break;
+        case n7916:   result = MBus_get_uint16(mbRegAddr[row], foo_int); // SS-MPPT datatype, n·79.16·2^-15
+                      result ? value = F("err") : value = String(foo_int*(79.16/32768));        
+                      break;
+        case n9895:   result = MBus_get_uint16(mbRegAddr[row], foo_int); // SS-MPPT datatype, n·989.5·2^-16
+                      result ? value = F("err") : value = String(foo_int*(989.5/65536));        
+                      break;
+        case n96667:  result = MBus_get_uint16(mbRegAddr[row], foo_int); // SS-MPPT datatype, n·96.667^2-15
+                      result ? value = F("err") : value = String(foo_int*(99.667/32768));        
+                      break;
+        case n13915:  result = MBus_get_uint16(mbRegAddr[row], foo_int); // TS datatype, n·139.15·2^-15
+                      result ? value = F("err") : value = String(foo_int*(139.15/32768));        
+                      break;
+        case n66667:  result = MBus_get_uint16(mbRegAddr[row], foo_int); // TS datatype, n·66.667·2^-15
+                      result ? value = F("err") : value = String(foo_int*(66.667/32768));        
+                      break;
+        case n31667:  result = MBus_get_uint16(mbRegAddr[row], foo_int); // TS datatype, n·316.67·2^-15
+                      result ? value = F("err") : value = String(foo_int*(316.67/32768));        
+                      break;
+        case n9616:   result = MBus_get_uint16(mbRegAddr[row], foo_int); // TS datatype, n·96.667·2-16
+                      result ? value = F("err") : value = String(foo_int*(96.667/65536));        
+                      break;
+        case n1008:   result = MBus_get_uint16(mbRegAddr[row], foo_int); // SS-MPPT datatype, n*100*2^-8
+                      result ? value = F("err") : value = String(foo_int*(100.0/256.0));        
+                      break;
+        // TODO f32, TS-600 datatype
         default:           ;
       }
-      delay(100); // big delay between attempts 
+      delay(i*50); // increasing delay between failed attempts 
     }  // try 3 times
     return result;
   } else {
@@ -364,7 +403,7 @@ int MBus_get_reg(int address, String &value) {         // returns 0 on success
   } 
 }
 
-int mbGetFullReg(fullReg &myReg, int address) {
+int mbGetFullReg(fullReg &myReg, int address) {  //given address, gets all we know about it
   if (noController) {
     myReg.row = 0; 
     myReg.var = "";
@@ -390,43 +429,10 @@ int mbGetFullReg(fullReg &myReg, int address) {
   myReg.unit = mbRegUnit[myReg.row];
   myReg.type = mbRegType[myReg.row];
   if ( myReg.row ) {
-    for ( int i = 0 ; i < 3 && !result ; i ++ ) {                          // try up to 3 times
-      switch (myReg.type) {
-        case f16:     result = MBus_get_float(address, foo_fl);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_fl);
-                      break;
-        case n10:     result = MBus_get_n10(address, foo_fl);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_fl);        
-                      break;
-        case dn10:    result = MBus_get_dn10(address, foo_fl);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_fl);        
-                      break;
-        case sigint:  result = MBus_get_int(address, foo_sint);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_sint);                
-                      break;
-        case usigint: result = MBus_get_uint16(address, foo_int);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_int);        
-                      break;
-        case dint:    result = MBus_get_uint32(address, foo_dint);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_dint);        
-                      break;
-        case bitfield: result = MBus_get_uint16(address, foo_int);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_int);        
-                      break;
-        case dbitfield: result = MBus_get_uint32(address, foo_dint);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_dint);        
-                      break;
-        case bcd:     result = MBus_get_uint16(address, foo_int);
-                      result ? myReg.value = F("err") : myReg.value = String(foo_int);        
-                      break;
-              // TODO additional types (n673 onward)             
-        default:           ;
-      }
-    }
+    result = MBus_get_reg(address, myReg.value);
   } 
   return result;  
 }
-
 
 int MBus_write_reg(int address, String valu) {
   if (noController) return -1;
@@ -472,7 +478,81 @@ int MBus_write_reg(int address, String valu) {
     case bitfield: break;
     case dbitfield: break;
     case bcd:     break;
-      // TODO additional types (n673 onward)             
+// datatypes below are untested    
+    case n673:  value1 = static_cast<int>(valu.toFloat() * 673); // SSDuo datatype, n/673 
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/673");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n1032: value1 = static_cast<int>(valu.toFloat() * 1032); // SSDuo datatype, n/1032
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/1032");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n1800: value1 = static_cast<int>(valu.toFloat() * 1800); // SSDuo datatype, n/1800
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/1800");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case r417:  break; // SSDuo datatype, % 0-417 ??? TODO:test result
+    case n100:  value1 = static_cast<int>(valu.toFloat() * (32768/100)); // SS-MPPT datatype, n·100·2^-15
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/100)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n7916: value1 = static_cast<int>(valu.toFloat() * (32768/79.16)); // SS-MPPT datatype, n·79.16·2^-15
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/79.16)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n9895: value1 = static_cast<int>(valu.toFloat() * (65536/989.5)); // SS-MPPT datatype, n·989.5·2^-16
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(65536/989.5)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n96667: value1 = static_cast<int>(valu.toFloat() * (32768/96.667)); // SS-MPPT datatype, n·96.667^2-15
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/96.667)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n13915: value1 = static_cast<int>(valu.toFloat() * (32768/139.15)); // TS datatype, n·139.15·2^-15
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/139.15)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n66667: value1 = static_cast<int>(valu.toFloat() * (32768/66.667)); // TS datatype, n·66.667·2^-15
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/66.667)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n31667: value1 = static_cast<int>(valu.toFloat() * (32768/316.67)); // TS datatype, n·316.67·2^-15
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/316.67)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n9616: value1 = static_cast<int>(valu.toFloat() * (65536/96.667)); // TS datatype, n·96.667·2-16
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(65536/96.667)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+    case n1008: value1 = static_cast<int>(valu.toFloat() * (256.0/100.0)); // SS-MPPT datatype, n*100*2^-8
+                #if DEBUG_ON>4
+                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(256.0/100.0)");
+                #endif
+                result = node.writeSingleRegister(address, value1);
+                break;
+      // TODO f32             
     default:           ;
   }
   #if DEBUG_ON>4

@@ -117,6 +117,10 @@ void getRegFromFile(String model) {
                   mbRegType[row] = n31667;
                 } else if (val == "n96_16") {    // n·96.667·2^-16 note -16 scaling, negative sign is assumed
                   mbRegType[row] = n9616;
+                } else if (val == "n100_8") {
+                  mbRegType[row] = n1008;
+                } else if (val == "f32") {
+                  mbRegType[row] = f32;
                 } else {
                   mbRegType[row] = noType;
                 }
