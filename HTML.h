@@ -31,6 +31,16 @@ String getHTMLHead() {
   return header;
 }
 
+String getHTMLHeadReload(int refresh) {
+  String header = F("<!DOCTYPE html><html><head>");
+  header += F("<link href=\"local.css\" rel=\"stylesheet\">");
+  header += getLocalJs();
+  header += "<meta http-equiv=\"refresh\" content=\"" + String(refresh) + "\">";
+  header += F("<title>MStar WLAN interface</title></head>");
+  header += F("<body>");
+  return header;
+}
+
 String getAjaxHead() {                                      // like getHTMLHead, except includes jquery
   String header = F("<!DOCTYPE html><html><head>");
   header += F("<script src=\"jquery.min.js\"></script>");

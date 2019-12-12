@@ -26,9 +26,9 @@
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "LittleFS support. Reorganize FS. FS upload fixed.<br/>\
                      Dynamic hostname. Support 1 directory level in editor.<br/>\
-                     Add more controller datatypes."
+                     Add more controller datatypes. Speed reading. Auto refresh."
 
-#define DEBUG_ON 3                // enable debugging output
+#define DEBUG_ON 1                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
                                   // 0 not working on ESP32 for now
 #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
@@ -589,8 +589,19 @@ void setup() {
       server.send(404, F("text/plain"), F("404: Not Found")); // otherwise, respond with a 404 (Not Found) error
   });
   
-  //TODO doesn't work on ESP32
-  server.serveStatic("/", FILESYSTEM, "/", "max-age=43200"); // tell browser to cache files for 12 hours
+  // TODO not available on ESP32
+  // static for 12 hours. Doesn't work with LittleFS for content in a directory or even /.
+//  server.serveStatic("/", FILESYSTEM, "/", "max-age=43200");
+  server.serveStatic("/PS-PWM.png", FILESYSTEM, "/PS-PWM.png", "max-age=43200");
+  server.serveStatic("/PS-MPPT.png", FILESYSTEM, "/PS-MPPT.png", "max-age=43200"); 
+  server.serveStatic("/local.css", FILESYSTEM, "/local.css", "max-age=43200");
+  server.serveStatic("/local.js", FILESYSTEM, "/local.js", "max-age=43200");
+  server.serveStatic("/charging.png", FILESYSTEM, "/charging.png", "max-age=43200");
+  server.serveStatic("/ace.js", FILESYSTEM, "/ace.js", "max-age=43200");
+  server.serveStatic("/jquery.min.js", FILESYSTEM, "/jquery.min.js", "max-age=43200");
+  server.serveStatic("/mode-html.js", FILESYSTEM, "/mode-html.js", "max-age=43200");
+  server.serveStatic("/favicon.ico", FILESYSTEM, "/favicon.ico", "max-age=43200");
+
 
   #ifdef ARDUINO_ARCH_ESP32
     #if DEBUG_ON>2
@@ -1099,8 +1110,8 @@ void statusPageHandler () {
     
   checkController();
 
-  response_message.reserve(4000);
-  response_message = getHTMLHead();
+  response_message.reserve(5000);
+  response_message = getHTMLHeadReload(30);
   response_message += getNavBar();
 
   response_message += F("<div class=\"controller\"><h3>");
@@ -1124,9 +1135,9 @@ void statusPageHandler () {
 
   response_message += F("<div class=\"controller\"><img src=\"");
   if ( model == "") {
-    response_message += F("/ctl/Nocontroller.png");    
+    response_message += F("Nocontroller.png");    
   } else {
-    response_message += "/ctl/" + model + ".png";
+    response_message += model + ".png";
   }
   response_message += F("\" alt=\"controller\">");
   float adc_pa = 0;
@@ -1194,6 +1205,7 @@ void statusPageHandler () {
   response_message += getTableRow2Col(reg.desc, reg.value + " " + mbRegUnitName[reg.unit]);
   result = mbGetFullReg(reg, 68);  // Load Ah
   response_message += getTableRow2Col(reg.desc, reg.value + " " + mbRegUnitName[reg.unit]);
+
   response_message += getTableFoot();
 
   response_message += getHTMLFoot();

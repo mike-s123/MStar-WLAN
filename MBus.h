@@ -161,9 +161,10 @@ int MBus_get_coil(int address, bool &value) {             // returns 0 on succes
   #if DEBUG_ON>3
     debugMsg("MBus_get_coil: "+String(address));
   #endif
-  uint8_t result = 0;
-  for ( int i = 0 ; i < 3 && !result ; i ++ ) {           // try up to 3 times
-    result = node.readCoils(address, 1);
+  uint8_t result = 1;
+  for ( int i = 0 ; (i < 3) && result ; i ++ ) {           // try up to 3 times
+    result = node.readCoils(address, 1);                   // succcess = 0
+    delay(i*50);
   }
   if (result == node.ku8MBSuccess)  {
     value = (node.getResponseBuffer(0))?true:false; 
@@ -317,14 +318,14 @@ int MBus_get_reg(int address, String &value) {         // given an address, look
   #if DEBUG_ON>3
     debugMsg("MBus_get_reg: "+String(address));
   #endif
-  int row, result = 0, foo_sint;
+  int row, result = 1, foo_sint;
   uint16_t foo_int;
   float foo_fl;
   uint32_t foo_dint;
   
   row = getMbRegIndex(address);
   if ( row ) {
-    for ( int i = 0 ; i < 3 && !result ; i ++ ) {                          // try up to 3 times
+    for ( int i = 0 ; (i < 3) && result ; i ++ ) {                          // try up to 3 times
       switch (mbRegType[row]) {
         case f16:     result = MBus_get_float(mbRegAddr[row], foo_fl);
                       result ? value = F("err") : value = String(foo_fl);
