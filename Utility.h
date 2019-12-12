@@ -504,6 +504,18 @@ void getRTCTime() {
   } 
 }
 
+String getRTCTimeString(int full = 1) {  // form: 1=full, 0=HMS
+  if (useRTC) {
+    String RTCTime = "";
+    getRTCTime();
+    if (full) {
+      RTCTime = String(Month)+"/"+String(Day, DEC)+"/"+String(Year, DEC)+" ";
+    }
+    RTCTime += String(Hour, DEC)+":"+String(Minute, DEC)+":"+String(Second, DEC);
+    return RTCTime;
+  }
+}
+
 // ************************************************************
 // Set the date/time in the RTC 
 // ************************************************************

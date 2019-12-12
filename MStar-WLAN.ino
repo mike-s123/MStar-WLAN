@@ -1002,9 +1002,7 @@ void platformPageHandler()
   #endif
   response_message += getTableRow2Col(F("CPU Freqency (MHz)"), String(ESP.getCpuFreqMHz()));
   if (useRTC) {
-    getRTCTime();
-    String RTCTime= String(Month)+"/"+String(Day, DEC)+"/"+String(Year, DEC)+" "+String(Hour, DEC)+":"+String(Minute, DEC)+":"+String(Second, DEC);
-    response_message += getTableRow2Col(F("RTC Time"), RTCTime);
+    response_message += getTableRow2Col(F("RTC Time"), getRTCTimeString());
     response_message += getTableRow2Col(F("RTC Temp"), String(getRTCTemp(), 2));
   }
   String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST");
