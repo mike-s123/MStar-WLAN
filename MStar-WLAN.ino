@@ -1111,7 +1111,7 @@ void statusPageHandler () {
   checkController();
 
   response_message.reserve(5000);
-  response_message = getHTMLHeadReload(30);
+  response_message = getHTMLHead(30);
   response_message += getNavBar();
 
   response_message += F("<div class=\"controller\"><h3>");

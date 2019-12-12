@@ -22,20 +22,13 @@ String wrapScript(String script) {        // in: script out: script wrapped in t
   return wrapped;
 }
 
-String getHTMLHead() {
+String getHTMLHead(int refresh=0) {
   String header = F("<!DOCTYPE html><html><head>");
   header += F("<link href=\"local.css\" rel=\"stylesheet\">");
   header += getLocalJs();
-  header += F("<title>MStar WLAN interface</title></head>");
-  header += F("<body>");
-  return header;
-}
-
-String getHTMLHeadReload(int refresh) {
-  String header = F("<!DOCTYPE html><html><head>");
-  header += F("<link href=\"local.css\" rel=\"stylesheet\">");
-  header += getLocalJs();
-  header += "<meta http-equiv=\"refresh\" content=\"" + String(refresh) + "\">";
+  if (refresh) {
+    header += "<meta http-equiv=\"refresh\" content=\"" + String(refresh) + "\">";
+  }
   header += F("<title>MStar WLAN interface</title></head>");
   header += F("<body>");
   return header;
