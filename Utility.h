@@ -14,7 +14,7 @@ void setBlueLED(boolean newState) {
 #if DEBUG_ON>0                              // needed if debugging
   void debugMsg(String msg) {
     #ifdef ARDUINO_ARCH_ESP8266
-      logger->println(msg);
+      logger.println(msg);
     #endif
     #ifdef ARDUINO_ARCH_ESP32
       Serial.println(msg);
@@ -23,7 +23,7 @@ void setBlueLED(boolean newState) {
   
   void debugMsgContinue(String msg) {
     #ifdef ARDUINO_ARCH_ESP8266
-    logger->print(msg);
+    logger.print(msg);
     #endif
     #ifdef ARDUINO_ARCH_ESP32
       Serial.print(msg);
@@ -32,7 +32,7 @@ void setBlueLED(boolean newState) {
   
   void setupDebug() {
     #ifdef ARDUINO_ARCH_ESP8266
-      logger->begin(BAUD_LOGGER);
+      logger.begin(BAUD_LOGGER);
     #endif
     #ifdef ARDUINO_ARCH_ESP32
       Serial.begin(BAUD_LOGGER);

@@ -33,6 +33,7 @@
                                   // 0 not working on ESP32 for now
 #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
                                   // because we're swapping the UART to new ones
+#define DEBUG_ESP_PORT logger
 
 #include <string>
 #include <sstream>
@@ -45,6 +46,13 @@
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
 #ifdef ARDUINO_ARCH_ESP8266
+  #include <SoftwareSerial.h>
+  ADC_MODE(ADC_VCC);
+  #if DEBUG_ON>0
+      SoftwareSerial logger(3, 1); // RX, TX
+  #else
+    SoftwareSerial* cSerial = nullptr;  
+  #endif
 //  #define FS_SPIFFS
   #define FS_LITTLEFS
   #ifdef FS_SPIFFS
@@ -73,7 +81,6 @@
      we check available space at runtime before allowing it.
   */
   #include <ESP8266HTTPUpdateServer.h>
-  #include <SoftwareSerial.h>
 //  #include <ESP8266Ping.h>
 #endif
 
@@ -245,6 +252,7 @@ bool Century=false;
 bool h12;
 bool PM;
 
+
 #ifdef ARDUINO_ARCH_ESP8266
   ESP8266WebServer server(80);
   ESP8266HTTPUpdateServer httpUpdater;
@@ -258,14 +266,6 @@ WiFiClient mbClient;
   HardwareSerial mbSerial(1);
 #endif
 
-#ifdef ARDUINO_ARCH_ESP8266
-  ADC_MODE(ADC_VCC);
-  #if DEBUG_ON>0
-    SoftwareSerial* logger = nullptr;
-  #else
-    SoftwareSerial* cSerial = nullptr;  
-  #endif
-#endif
 
 int Year = 2019;
 byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // April fool's
@@ -300,7 +300,6 @@ void setup() {
      */
     Serial.swap();  //
     #if DEBUG_ON>0
-      logger = new SoftwareSerial(3, 1);
       delay(100);
       setupDebug();
       delay(100);
