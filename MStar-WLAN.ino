@@ -22,11 +22,11 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191211"
+#define SOFTWARE_VERSION "v0.1912113"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "LittleFS support. Reorganize FS. FS upload fixed.<br/>\
-                     Dynamic hostname. Support 1 directory level in editor.<br/>\
-                     Add more controller datatypes. Speed reading. Auto refresh."
+#define BUILD_NOTES "Dynamic hostname. Support 1 directory level in editor.<br/>\
+                     Add more controller datatypes. Speed reading. Auto refresh.<br/>\
+                     No mDNS."
 
 #define DEBUG_ON 1                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
@@ -76,7 +76,7 @@
 //#include <ESP8266WebServerSecure.h>
 //#include <ESP8266WebServerSecureAxTLS.h>
 //#include <ESP8266WebServerSecureBearSSL.h>
-  #include <ESP8266mDNS.h>
+//#include <ESP8266mDNS.h>  //not working
   /* This will compile in OTA support - need at least 1 MB for OTA updates.
      we check available space at runtime before allowing it.
   */
@@ -656,23 +656,27 @@ void setup() {
   #endif
 
   mbTCP.begin();
-  
-  // Set up mDNS responder:
-  // - first argument is the domain name, in this example
-  //   the fully-qualified domain name is "esp8266.local"
-  // - second argument is the IP address to advertise
-  //   we send our IP address on the WiFi network
-  if (!MDNS.begin("MStar-WLAN", WiFi.localIP())) {
-    #if DEBUG_ON>0
-      debugMsg(F("Error setting up MDNS responder!"));
-    #endif
-    while (1) {
-      delay(1000);
+
+  #ifdef ESP8266MDNS_LEGACY_H
+    // Set up mDNS responder:
+    // - first argument is the domain name, in this example
+    //   the fully-qualified domain name is "esp8266.local"
+    // - second argument is the IP address to advertise
+    //   we send our IP address on the WiFi network
+    if (!MDNS.begin("MStar-WLAN", WiFi.localIP())) {
+      #if DEBUG_ON>0
+        debugMsg(F("Error setting up MDNS responder!"));
+      #endif
+      while (1) {
+        delay(1000);
+      }
     }
-  }
-  MDNS.addService("http", "tcp", 80);
+    MDNS.addService("http", "tcp", 80);
+    #if DEBUG_ON>0
+      debugMsg(F("mDNS responder started"));
+    #endif
+  #endif
   #if DEBUG_ON>0
-    debugMsg(F("mDNS responder started"));
     debugMsg("Getting modbus info for " + model);
   #endif
 getFile(model);
@@ -686,7 +690,9 @@ getRTCTime();
 void loop() {
   #ifdef ARDUINO_ARCH_ESP8266
     ESP.wdtFeed();
-    MDNS.update();
+    #ifdef ESP8266MDNS_LEGACY_H
+      MDNS.update();
+    #endif
   #endif
 
 //  timerWrite(timer, 0);
