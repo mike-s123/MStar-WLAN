@@ -22,7 +22,7 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.1912113"
+#define SOFTWARE_VERSION "v0.191215"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Dynamic hostname. Support 1 directory level in editor.<br/>\
                      Add more controller datatypes. Speed reading. Auto refresh.<br/>\
@@ -34,6 +34,8 @@
 #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
                                   // because we're swapping the UART to new ones
 #define DEBUG_ESP_PORT logger
+//#define DEBUG_ESP_HTTP_SERVER
+//#define DEBUG_ESP_CORE
 
 #include <string>
 #include <sstream>
@@ -53,6 +55,8 @@
   #else
     SoftwareSerial* cSerial = nullptr;  
   #endif
+
+  
 //  #define FS_SPIFFS
   #define FS_LITTLEFS
   #ifdef FS_SPIFFS
@@ -589,10 +593,16 @@ void setup() {
   });
   
   // TODO not available on ESP32
-  // static for 12 hours. Doesn't work with LittleFS for content in a directory or even /.
-//  server.serveStatic("/", FILESYSTEM, "/", "max-age=43200");
-  server.serveStatic("/PS-PWM.png", FILESYSTEM, "/PS-PWM.png", "max-age=43200");
-  server.serveStatic("/PS-MPPT.png", FILESYSTEM, "/PS-MPPT.png", "max-age=43200"); 
+  // static for 12 hours. 
+  server.serveStatic("/ctl/Nocontroller.png", FILESYSTEM, "/ctl/Nocontroller.png", "max-age=43200");
+  server.serveStatic("/ctl/PS-PWM.png", FILESYSTEM, "/ctl/PS-PWM.png", "max-age=43200");
+  server.serveStatic("/ctl/PS-MPPT.png", FILESYSTEM, "/ctl/PS-MPPT.png", "max-age=43200"); 
+  server.serveStatic("/ctl/SSDuo.png", FILESYSTEM, "/ctl/SSDuo.png", "max-age=43200"); 
+  server.serveStatic("/ctl/TS.png", FILESYSTEM, "/ctl/TS.png", "max-age=43200"); 
+  server.serveStatic("/ctl/TS-MPPT.png", FILESYSTEM, "/ctl/TS-MPPT.png", "max-age=43200"); 
+  server.serveStatic("/ctl/TS-600.png", FILESYSTEM, "/ctl/TS-600.png", "max-age=43200"); 
+  server.serveStatic("/ctl/SS-MPPT.png", FILESYSTEM, "/ctl/SS-MPPT.png", "max-age=43200"); 
+  server.serveStatic("/ctl/", FILESYSTEM, "/ctl/", "max-age=43200"); 
   server.serveStatic("/local.css", FILESYSTEM, "/local.css", "max-age=43200");
   server.serveStatic("/local.js", FILESYSTEM, "/local.js", "max-age=43200");
   server.serveStatic("/charging.png", FILESYSTEM, "/charging.png", "max-age=43200");
@@ -1014,7 +1024,7 @@ void platformPageHandler()
   String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST");
   response_message += getTableRow2Col(F("Sketch compiled"), datetime);
   response_message += getTableRow2Col(F("Arduino IDE"), String(ARDUINO));
-  response_message += getTableRow2Col(F("Build notes"), BUILD_NOTES);
+  response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
   response_message += getTableRow2Col(F("Sketch size"), formatBytes(ESP.getSketchSize()));
   String ota = formatBytes(ESP.getFreeSketchSpace());
   if ( largeFlash ) { ota += F(" (OTA update capable)"); }
@@ -1138,9 +1148,9 @@ void statusPageHandler () {
 
   response_message += F("<div class=\"controller\"><img src=\"");
   if ( model == "") {
-    response_message += F("Nocontroller.png");    
+    response_message += F("/ctl/Nocontroller.png");    
   } else {
-    response_message += model + ".png";
+    response_message += "/ctl/" + model + ".png";
   }
   response_message += F("\" alt=\"controller\">");
   float adc_pa = 0;
