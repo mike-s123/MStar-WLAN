@@ -1,3 +1,9 @@
+/*
+ * This handles status, charging and other pages for Prostar controllers (and no controller)
+ */
+
+
+
 void psStatusPageHandler () {
 /*  
  *   Returns a page of basic controller status.

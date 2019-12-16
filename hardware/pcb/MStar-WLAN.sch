@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.3.2">
+<eagle version="9.4.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -17518,106 +17518,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 </deviceset>
 </devicesets>
 </library>
-<library name="jumper">
-<description>&lt;b&gt;Jumpers&lt;/b&gt;&lt;p&gt;
-&lt;author&gt;Created by librarian@cadsoft.de&lt;/author&gt;</description>
-<packages>
-<package name="SJ_2W">
-<description>&lt;b&gt;Solder jumper&lt;/b&gt;</description>
-<wire x1="3.175" y1="-1.524" x2="-3.175" y2="-1.524" width="0.1524" layer="21"/>
-<wire x1="3.175" y1="1.524" x2="3.429" y2="1.27" width="0.1524" layer="21" curve="-90"/>
-<wire x1="-3.429" y1="1.27" x2="-3.175" y2="1.524" width="0.1524" layer="21" curve="-90"/>
-<wire x1="-3.429" y1="-1.27" x2="-3.175" y2="-1.524" width="0.1524" layer="21" curve="90"/>
-<wire x1="3.175" y1="-1.524" x2="3.429" y2="-1.27" width="0.1524" layer="21" curve="90"/>
-<wire x1="3.429" y1="-1.27" x2="3.429" y2="1.27" width="0.1524" layer="21"/>
-<wire x1="-3.429" y1="-1.27" x2="-3.429" y2="1.27" width="0.1524" layer="21"/>
-<wire x1="-3.175" y1="1.524" x2="3.175" y2="1.524" width="0.1524" layer="21"/>
-<wire x1="2.794" y1="0" x2="3.302" y2="0" width="0.1524" layer="51"/>
-<wire x1="-2.794" y1="0" x2="-3.302" y2="0" width="0.1524" layer="51"/>
-<wire x1="0" y1="0.762" x2="0" y2="1.397" width="0.1524" layer="51"/>
-<wire x1="0" y1="-1.397" x2="0" y2="-0.762" width="0.1524" layer="51"/>
-<wire x1="2.032" y1="0.127" x2="2.032" y2="-0.127" width="1.27" layer="51" curve="-180" cap="flat"/>
-<wire x1="-2.032" y1="-0.127" x2="-2.032" y2="0.127" width="1.27" layer="51" curve="-180" cap="flat"/>
-<smd name="1" x="-2.54" y="0" dx="1.27" dy="2.54" layer="1"/>
-<smd name="2" x="0" y="0" dx="1.27" dy="2.54" layer="1"/>
-<smd name="3" x="2.54" y="0" dx="1.27" dy="2.54" layer="1"/>
-<text x="-3.429" y="1.778" size="1.27" layer="25" ratio="10">&gt;NAME</text>
-<text x="-0.1001" y="0" size="0.02" layer="27">&gt;VALUE</text>
-<rectangle x1="-0.508" y1="-0.762" x2="0.508" y2="0.762" layer="51"/>
-</package>
-<package name="SJ_2">
-<description>&lt;b&gt;Solder jumper&lt;/b&gt;</description>
-<wire x1="2.159" y1="-1.016" x2="-2.159" y2="-1.016" width="0.1524" layer="21"/>
-<wire x1="2.159" y1="1.016" x2="2.413" y2="0.762" width="0.1524" layer="21" curve="-90"/>
-<wire x1="-2.413" y1="0.762" x2="-2.159" y2="1.016" width="0.1524" layer="21" curve="-90"/>
-<wire x1="-2.413" y1="-0.762" x2="-2.159" y2="-1.016" width="0.1524" layer="21" curve="90"/>
-<wire x1="2.159" y1="-1.016" x2="2.413" y2="-0.762" width="0.1524" layer="21" curve="90"/>
-<wire x1="2.413" y1="-0.762" x2="2.413" y2="0.762" width="0.1524" layer="21"/>
-<wire x1="-2.413" y1="-0.762" x2="-2.413" y2="0.762" width="0.1524" layer="21"/>
-<wire x1="-2.159" y1="1.016" x2="2.159" y2="1.016" width="0.1524" layer="21"/>
-<wire x1="1.778" y1="0" x2="2.286" y2="0" width="0.1524" layer="51"/>
-<wire x1="-1.778" y1="0" x2="-2.286" y2="0" width="0.1524" layer="51"/>
-<wire x1="0" y1="0.762" x2="0" y2="1.016" width="0.1524" layer="51"/>
-<wire x1="0" y1="-1.016" x2="0" y2="-0.762" width="0.1524" layer="51"/>
-<wire x1="1.016" y1="0.127" x2="1.016" y2="-0.127" width="1.27" layer="51" curve="-180" cap="flat"/>
-<wire x1="-1.016" y1="-0.127" x2="-1.016" y2="0.127" width="1.27" layer="51" curve="-180" cap="flat"/>
-<smd name="1" x="-1.524" y="0" dx="1.1684" dy="1.6002" layer="1"/>
-<smd name="2" x="0" y="0" dx="1.1684" dy="1.6002" layer="1"/>
-<smd name="3" x="1.524" y="0" dx="1.1684" dy="1.6002" layer="1"/>
-<text x="-2.413" y="1.27" size="1.27" layer="25" ratio="10">&gt;NAME</text>
-<text x="-0.1001" y="0" size="0.02" layer="27">&gt;VALUE</text>
-<rectangle x1="-0.508" y1="-0.762" x2="0.508" y2="0.762" layer="51"/>
-</package>
-</packages>
-<symbols>
-<symbol name="SJ_2">
-<wire x1="-0.635" y1="-1.397" x2="0.635" y2="-1.397" width="1.27" layer="94" curve="180" cap="flat"/>
-<wire x1="-0.635" y1="1.397" x2="0.635" y2="1.397" width="1.27" layer="94" curve="-180" cap="flat"/>
-<wire x1="1.27" y1="-0.635" x2="-1.27" y2="-0.635" width="0.1524" layer="94"/>
-<wire x1="-1.27" y1="-0.635" x2="-1.27" y2="0" width="0.1524" layer="94"/>
-<wire x1="-1.27" y1="0" x2="-1.27" y2="0.635" width="0.1524" layer="94"/>
-<wire x1="-1.27" y1="0.635" x2="1.27" y2="0.635" width="0.1524" layer="94"/>
-<wire x1="1.27" y1="0.635" x2="1.27" y2="-0.635" width="0.1524" layer="94"/>
-<wire x1="-2.54" y1="0" x2="-1.27" y2="0" width="0.1524" layer="94"/>
-<text x="2.54" y="0.381" size="1.778" layer="95">&gt;NAME</text>
-<text x="2.54" y="-1.905" size="1.778" layer="96">&gt;VALUE</text>
-<rectangle x1="-1.27" y1="-0.635" x2="1.27" y2="0.635" layer="94"/>
-<pin name="3" x="0" y="-5.08" visible="pad" length="short" direction="pas" rot="R90"/>
-<pin name="1" x="0" y="5.08" visible="pad" length="short" direction="pas" rot="R270"/>
-<pin name="2" x="-5.08" y="0" visible="pad" length="short" direction="pas"/>
-</symbol>
-</symbols>
-<devicesets>
-<deviceset name="SJ2W" prefix="SJ" uservalue="yes">
-<description>SMD solder &lt;b&gt;JUMPER&lt;/b&gt;</description>
-<gates>
-<gate name="G$1" symbol="SJ_2" x="0" y="0"/>
-</gates>
-<devices>
-<device name="W" package="SJ_2W">
-<connects>
-<connect gate="G$1" pin="1" pad="1"/>
-<connect gate="G$1" pin="2" pad="2"/>
-<connect gate="G$1" pin="3" pad="3"/>
-</connects>
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-<device name="" package="SJ_2">
-<connects>
-<connect gate="G$1" pin="1" pad="1"/>
-<connect gate="G$1" pin="2" pad="2"/>
-<connect gate="G$1" pin="3" pad="3"/>
-</connects>
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-</devices>
-</deviceset>
-</devicesets>
-</library>
 <library name="v-reg">
 <description>&lt;b&gt;Voltage Regulators&lt;/b&gt;&lt;p&gt;
 &lt;author&gt;Created by librarian@cadsoft.de&lt;/author&gt;</description>
@@ -17698,7 +17598,7 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 </classes>
 <parts>
 <part name="J1" library="con-rj" deviceset="RJ12" device="" value="6P6C"/>
-<part name="C1" library="rcl" deviceset="CPOL-US" device="E3.5-8" value="470u/25"/>
+<part name="C1" library="rcl" deviceset="CPOL-US" device="E5-10.5" value="2m/25"/>
 <part name="R2" library="rcl" deviceset="R-US_" device="0207/2V" value="10K"/>
 <part name="Q1" library="MyLibrary" deviceset="VP2106" device="" value="VP2106"/>
 <part name="R5" library="rcl" deviceset="R-US_" device="0207/2V" value="1K"/>
@@ -17708,7 +17608,7 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <part name="R1" library="rcl" deviceset="R-US_" device="0207/2V" value="10k"/>
 <part name="R4" library="rcl" deviceset="R-US_" device="0207/2V" value="10K"/>
 <part name="U$1" library="MyLibrary" deviceset="WEMOS-D1-MINI-PRO" device=""/>
-<part name="C2" library="rcl" deviceset="CPOL-US" device="E5-10.5" value="1m/6.3"/>
+<part name="C2" library="rcl" deviceset="CPOL-US" device="E2.5-6" value="100u/6.3"/>
 <part name="MBUS" library="adafruit" library_urn="urn:adsk.eagle:library:420" deviceset="LED" device="3MM" package3d_urn="urn:adsk.eagle:package:6240537/1"/>
 <part name="C10" library="rcl" deviceset="CPOL-US" device="E2.5-5" value="2.2u"/>
 <part name="ESP32-WROVER-B" library="MyLibrary" deviceset="ESP32-WROVER-I" device="" value=""/>
@@ -17726,8 +17626,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <part name="BOOT" library="switch-omron" deviceset="10-XX" device=""/>
 <part name="RESET" library="switch-omron" deviceset="10-XX" device=""/>
 <part name="SUPPLY3" library="supply2" deviceset="GND" device=""/>
-<part name="R9" library="rcl" deviceset="R-US_" device="0207/2V" value="10K"/>
-<part name="R8" library="rcl" deviceset="R-US_" device="0207/2V" value="10K"/>
 <part name="SUPPLY4" library="supply2" deviceset="GND" device=""/>
 <part name="R10" library="rcl" deviceset="R-US_" device="0207/2V" value="27"/>
 <part name="R11" library="rcl" deviceset="R-US_" device="0207/2V" value="27"/>
@@ -17735,9 +17633,7 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <part name="D2" library="diode" deviceset="DIODE-" device="D-5"/>
 <part name="C4" library="rcl" deviceset="C-US" device="025-024X044" value="0.1u"/>
 <part name="C9" library="rcl" deviceset="C-US" device="025-024X044" value="0.1u"/>
-<part name="D3" library="diode" deviceset="DIODE-" device="D-5"/>
 <part name="D4" library="diode" deviceset="DIODE-" device="D-5"/>
-<part name="3.3--5V" library="jumper" deviceset="SJ2W" device=""/>
 <part name="OKI-78SR-3.3" library="v-reg" deviceset="78MXXS" device=""/>
 <part name="DS3231(ZS-042)" library="MyLibrary" deviceset="RTC-DS3231-AT24C32-6" device="" value=""/>
 <part name="R12" library="rcl" deviceset="R-US_" device="0207/2V" value="10k"/>
@@ -17751,8 +17647,11 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <text x="38.1" y="60.96" size="1.778" layer="91">Kobiconn
 154-UL6661</text>
 <text x="40.64" y="134.62" size="3.81" layer="91">MStar-WLAN
-2019.5 mjs</text>
+2019.12 mjs</text>
 <text x="177.8" y="149.86" size="3.048" layer="94">WROVER only</text>
+<text x="68.58" y="114.3" size="1.778" layer="94">C1 - United Chemi-Con
+EGXF250ELL202MJ30S
+2000uF/25V</text>
 </plain>
 <instances>
 <instance part="J1" gate="G$1" x="45.72" y="78.74" smashed="yes" rot="R180">
@@ -17867,14 +17766,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <instance part="SUPPLY3" gate="GND" x="180.34" y="119.38" smashed="yes">
 <attribute name="VALUE" x="178.435" y="116.205" size="1.778" layer="96"/>
 </instance>
-<instance part="R9" gate="G$1" x="180.34" y="81.28" smashed="yes" rot="R90">
-<attribute name="NAME" x="178.8414" y="82.55" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="178.562" y="77.47" size="1.778" layer="96" rot="R90"/>
-</instance>
-<instance part="R8" gate="G$1" x="180.34" y="93.98" smashed="yes" rot="R90">
-<attribute name="NAME" x="178.8414" y="87.63" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="178.562" y="92.71" size="1.778" layer="96" rot="R90"/>
-</instance>
 <instance part="SUPPLY4" gate="GND" x="261.62" y="91.44" smashed="yes">
 <attribute name="VALUE" x="259.715" y="88.265" size="1.778" layer="96"/>
 </instance>
@@ -17902,20 +17793,12 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <attribute name="NAME" x="249.936" y="102.235" size="1.778" layer="95"/>
 <attribute name="VALUE" x="252.984" y="98.171" size="1.778" layer="96" rot="R180"/>
 </instance>
-<instance part="D3" gate="G$1" x="297.18" y="134.62" smashed="yes" rot="R270">
-<attribute name="NAME" x="301.7774" y="132.08" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="294.8686" y="132.08" size="1.778" layer="96" rot="R270"/>
-</instance>
 <instance part="D4" gate="G$1" x="297.18" y="96.52" smashed="yes" rot="R90">
 <attribute name="NAME" x="292.5826" y="99.06" size="1.778" layer="95" rot="R270"/>
 <attribute name="VALUE" x="299.4914" y="99.06" size="1.778" layer="96" rot="R90"/>
 </instance>
-<instance part="3.3--5V" gate="G$1" x="111.76" y="134.62" smashed="yes">
-<attribute name="NAME" x="116.459" y="129.54" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="114.3" y="132.715" size="1.778" layer="96"/>
-</instance>
 <instance part="OKI-78SR-3.3" gate="A" x="81.28" y="104.14" smashed="yes">
-<attribute name="NAME" x="86.36" y="109.22" size="1.778" layer="95" rot="R180"/>
+<attribute name="NAME" x="88.9" y="109.22" size="1.778" layer="95" rot="R180"/>
 <attribute name="VALUE" x="83.82" y="93.98" size="1.778" layer="96"/>
 </instance>
 <instance part="DS3231(ZS-042)" gate="G$1" x="144.78" y="121.92" smashed="yes">
@@ -17986,8 +17869,7 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <net name="VCC" class="1">
 <segment>
 <label x="127" y="104.14" size="1.778" layer="95"/>
-<wire x1="111.76" y1="104.14" x2="180.34" y2="104.14" width="0.1524" layer="91"/>
-<wire x1="180.34" y1="104.14" x2="193.04" y2="104.14" width="0.1524" layer="91"/>
+<wire x1="111.76" y1="104.14" x2="193.04" y2="104.14" width="0.1524" layer="91"/>
 <wire x1="193.04" y1="104.14" x2="231.14" y2="104.14" width="0.1524" layer="91"/>
 <pinref part="ESP32-WROVER-B" gate="G$1" pin="VDD3V3"/>
 <wire x1="231.14" y1="104.14" x2="231.14" y2="93.98" width="0.1524" layer="91"/>
@@ -17996,9 +17878,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <wire x1="193.04" y1="101.6" x2="193.04" y2="104.14" width="0.1524" layer="91"/>
 <junction x="193.04" y="104.14"/>
 <label x="248.92" y="104.14" size="1.778" layer="95"/>
-<pinref part="R8" gate="G$1" pin="2"/>
-<wire x1="180.34" y1="99.06" x2="180.34" y2="104.14" width="0.1524" layer="91"/>
-<junction x="180.34" y="104.14"/>
 <pinref part="C6" gate="G$1" pin="1"/>
 <pinref part="LDL1117S33" gate="G$1" pin="OUT"/>
 <wire x1="266.7" y1="114.3" x2="261.62" y2="114.3" width="0.1524" layer="91"/>
@@ -18017,17 +17896,23 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <junction x="111.76" y="86.36"/>
 <pinref part="C9" gate="G$1" pin="1"/>
 <junction x="254" y="104.14"/>
-<pinref part="3.3--5V" gate="G$1" pin="3"/>
 <wire x1="111.76" y1="104.14" x2="111.76" y2="116.84" width="0.1524" layer="91"/>
 <junction x="111.76" y="104.14"/>
 <pinref part="DS3231(ZS-042)" gate="G$1" pin="VCC.1"/>
-<wire x1="111.76" y1="116.84" x2="111.76" y2="129.54" width="0.1524" layer="91"/>
 <wire x1="127" y1="116.84" x2="111.76" y2="116.84" width="0.1524" layer="91"/>
-<junction x="111.76" y="116.84"/>
 <pinref part="R12" gate="G$1" pin="2"/>
 <wire x1="144.78" y1="43.18" x2="121.92" y2="43.18" width="0.1524" layer="91"/>
 <wire x1="121.92" y1="43.18" x2="121.92" y2="66.04" width="0.1524" layer="91"/>
 <junction x="121.92" y="66.04"/>
+<pinref part="C2" gate="G$1" pin="+"/>
+<wire x1="101.6" y1="104.14" x2="101.6" y2="99.06" width="0.1524" layer="91"/>
+<wire x1="96.52" y1="104.14" x2="101.6" y2="104.14" width="0.1524" layer="91"/>
+<pinref part="C3" gate="G$1" pin="1"/>
+<junction x="96.52" y="104.14"/>
+<wire x1="88.9" y1="104.14" x2="96.52" y2="104.14" width="0.1524" layer="91"/>
+<pinref part="OKI-78SR-3.3" gate="A" pin="OUT"/>
+<wire x1="101.6" y1="104.14" x2="111.76" y2="104.14" width="0.1524" layer="91"/>
+<junction x="101.6" y="104.14"/>
 </segment>
 </net>
 <net name="RXD" class="0">
@@ -18101,11 +17986,8 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <wire x1="101.6" y1="33.02" x2="101.6" y2="30.48" width="0.1524" layer="91"/>
 <wire x1="101.6" y1="30.48" x2="83.82" y2="30.48" width="0.1524" layer="91"/>
 <junction x="101.6" y="30.48"/>
-<wire x1="180.34" y1="76.2" x2="180.34" y2="30.48" width="0.1524" layer="91"/>
-<wire x1="180.34" y1="30.48" x2="83.82" y2="30.48" width="0.1524" layer="91"/>
+<wire x1="228.6" y1="30.48" x2="83.82" y2="30.48" width="0.1524" layer="91"/>
 <junction x="83.82" y="30.48"/>
-<junction x="180.34" y="30.48"/>
-<wire x1="180.34" y1="30.48" x2="228.6" y2="30.48" width="0.1524" layer="91"/>
 <wire x1="228.6" y1="30.48" x2="228.6" y2="38.1" width="0.1524" layer="91"/>
 <pinref part="ESP32-WROVER-B" gate="G$1" pin="GND"/>
 <wire x1="228.6" y1="38.1" x2="228.6" y2="40.64" width="0.1524" layer="91"/>
@@ -18133,7 +18015,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <junction x="246.38" y="30.48"/>
 <pinref part="SUPPLY1" gate="GND" pin="GND"/>
 <junction x="58.42" y="30.48"/>
-<pinref part="R9" gate="G$1" pin="1"/>
 <pinref part="C2" gate="G$1" pin="-"/>
 <wire x1="101.6" y1="86.36" x2="101.6" y2="91.44" width="0.1524" layer="91"/>
 <pinref part="C3" gate="G$1" pin="2"/>
@@ -18381,16 +18262,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <wire x1="231.14" y1="63.5" x2="226.06" y2="63.5" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$8" class="0">
-<segment>
-<pinref part="R8" gate="G$1" pin="1"/>
-<pinref part="R9" gate="G$1" pin="2"/>
-<wire x1="180.34" y1="88.9" x2="180.34" y2="86.36" width="0.1524" layer="91"/>
-<pinref part="ESP32-WROVER-B" gate="G$1" pin="SENSOR_VP"/>
-<wire x1="195.58" y1="86.36" x2="180.34" y2="86.36" width="0.1524" layer="91"/>
-<junction x="180.34" y="86.36"/>
-</segment>
-</net>
 <net name="N$9" class="0">
 <segment>
 <pinref part="R10" gate="G$1" pin="1"/>
@@ -18424,15 +18295,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <junction x="63.5" y="76.2"/>
 </segment>
 </net>
-<net name="N$16" class="1">
-<segment>
-<wire x1="297.18" y1="147.32" x2="297.18" y2="137.16" width="0.1524" layer="91"/>
-<pinref part="D3" gate="G$1" pin="A"/>
-<pinref part="3.3--5V" gate="G$1" pin="1"/>
-<wire x1="297.18" y1="147.32" x2="111.76" y2="147.32" width="0.1524" layer="91"/>
-<wire x1="111.76" y1="147.32" x2="111.76" y2="139.7" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="N$17" class="1">
 <segment>
 <pinref part="C5" gate="G$1" pin="1"/>
@@ -18443,24 +18305,6 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <wire x1="287.02" y1="114.3" x2="287.02" y2="106.68" width="0.1524" layer="91"/>
 <pinref part="D4" gate="G$1" pin="C"/>
 <wire x1="297.18" y1="99.06" x2="297.18" y2="114.3" width="0.1524" layer="91"/>
-<pinref part="D3" gate="G$1" pin="C"/>
-<wire x1="297.18" y1="132.08" x2="297.18" y2="114.3" width="0.1524" layer="91"/>
-<junction x="297.18" y="114.3"/>
-</segment>
-</net>
-<net name="N$20" class="1">
-<segment>
-<pinref part="C2" gate="G$1" pin="+"/>
-<wire x1="101.6" y1="104.14" x2="101.6" y2="99.06" width="0.1524" layer="91"/>
-<wire x1="96.52" y1="104.14" x2="101.6" y2="104.14" width="0.1524" layer="91"/>
-<pinref part="C3" gate="G$1" pin="1"/>
-<junction x="96.52" y="104.14"/>
-<wire x1="88.9" y1="104.14" x2="96.52" y2="104.14" width="0.1524" layer="91"/>
-<wire x1="101.6" y1="104.14" x2="101.6" y2="134.62" width="0.1524" layer="91"/>
-<junction x="101.6" y="104.14"/>
-<pinref part="3.3--5V" gate="G$1" pin="2"/>
-<wire x1="101.6" y1="134.62" x2="106.68" y2="134.62" width="0.1524" layer="91"/>
-<pinref part="OKI-78SR-3.3" gate="A" pin="OUT"/>
 </segment>
 </net>
 <net name="N$7" class="0">
@@ -18556,6 +18400,7 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <approved hash="104,1,127,66.04,U$1,3V3,VCC,,,"/>
 <approved hash="204,1,162.56,66.04,U$1,5V,,,,"/>
 <approved hash="104,1,226.06,93.98,ESP32-WROVER-B,VDD3V3,VCC,,,"/>
+<approved hash="202,1,195.58,86.36,ESP32-WROVER-B,SENSOR_VP,,,,"/>
 <approved hash="202,1,195.58,88.9,ESP32-WROVER-B,SENSOR_VN,,,,"/>
 <approved hash="202,1,226.06,55.88,ESP32-WROVER-B,IO34,,,,"/>
 <approved hash="202,1,226.06,58.42,ESP32-WROVER-B,IO35,,,,"/>
@@ -18574,9 +18419,7 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <approved hash="113,1,185.42,131.785,BOOT,,,,,"/>
 <approved hash="113,1,210.82,131.785,RESET,,,,,"/>
 <approved hash="113,1,61.8448,96.52,D2,,,,,"/>
-<approved hash="113,1,298.835,134.62,D3,,,,,"/>
 <approved hash="113,1,295.525,96.52,D4,,,,,"/>
-<approved hash="113,1,109.707,134.62,3.3--5V,,,,,"/>
 <approved hash="113,1,81.28,101.007,OKI-78SR-3.3,,,,,"/>
 <approved hash="113,1,161.29,43.5017,WLAN,,,,,"/>
 </errors>

@@ -20,7 +20,7 @@ The code will run on a bare D1 Mini Pro powered by USB, but obviously can't talk
 
 To do anything useful, hardware is needed to interface with a Morningstar controller. Morningstar uses a proprietary half-duplex (open collector, see /data/Schematic.png) MODBUS interface. A circuit board layout is provided which includes all the necessary interfacing circuitry, even drawing power from the Morningstar controller. It also supports an optional real time clock which may be useful for future features like extended logging.
 
-Circuit board info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with some parts info. The PCB can support either ESP core.
+Circuit board info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with some parts info. The .zip file contains CAM files ready to send to [JLCPCB](https://jlcpcb.com/quote#/) to get boards made. The PCB can support either ESP core.
 
 I have a limited number of circuit boards on hand. If you can contribute to the project contact me and I might send you one.
 
