@@ -10,7 +10,7 @@
  *   -IwIP: v2 Higher bandwidth
  *   -vtables: IRAM
  *   
- *   ESP32 - M5Stack-FIRE, Large FILESYSTEM (7 MB)
+ *   ESP32 - M5Stack-FIRE, Large FILESYSTEM (7 MB) (WROVER 16 MB w/13M FS with modified files)
  *   cpu: fastest
  *   flash: 2M+ FILESYSTEM
  *   lwIP: v2 higher bandwidth
@@ -22,10 +22,10 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191216"
+#define SOFTWARE_VERSION "v0.191217"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Add more controller datatypes. Speed reading. Auto refresh.<br/>\
-                     No mDNS. Refactor for different controller families."
+                     No mDNS. Refactor for different controller families. Work on ESP32"
 
 #define DEBUG_ON 1                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
@@ -88,16 +88,17 @@
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32
-#include <WiFi.h>
-#include <WebServer.h>
-//#include "ESPAsyncWebServer.h"
-#include <ESPmDNS.h>
-#include <Update.h>
-#include <FS.h>
-#define FILESYSTEM SPIFFS
-#define FS_TYPE "SPIFFS"
-#include <SPIFFS.h>
-#include <HardwareSerial.h>
+  #include <WiFi.h>
+  #include <WebServer.h>
+  //#include "ESPAsyncWebServer.h"
+  #include <ESPmDNS.h>
+  #include <Update.h>
+  #include <FS.h>
+  #define FS_SPIFFS
+  #define FILESYSTEM SPIFFS
+  #define FS_TYPE "SPIFFS"
+  #include <SPIFFS.h>
+  #include <HardwareSerial.h>
 #endif
 
 #include <ArduinoJson.h>   // Benoit Blanchon 5.13.4, via IDE
@@ -123,7 +124,7 @@
 #define WEB_PASSWORD "setup"
 #define UPDATE_USERNAME "admin"
 #define UPDATE_PASSWORD "update"
-#define UPDATE_PATH "/update"
+#define UPDATE_PATH "/updateme"
 #define JSON_PASSWORD "imsure"
 #define AP_SSID "MStar"
 // password, if used, must be 8-32 chars
@@ -189,7 +190,7 @@
 #endif
 #define SQW_PIN 14        // GPIO 14 (D5) on both, SQW from DS3231
 #ifdef ARDUINO_ARCH_ESP32
-  #define RX_ENABLE_PIN 23  // RxEna to IO23, pin 37
+  #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10  (was IO23)
   #define RX_PIN 27         // RxD to IO27, pin 12
   #define TX_PIN 4          // Txd to IO4, pin 26
   #define SDA_PIN 15        // GPIO was 15  I2C SDA
@@ -269,7 +270,6 @@ WiFiClient mbClient;
   HardwareSerial mbSerial(1);
 #endif
 
-
 int Year = 2019;
 byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // April fool's
 
@@ -281,8 +281,6 @@ byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // Apri
 #include "HTML.h"
 #include "RestPage.h"
 #include "PS.h"                // status, charge and other pages for Prostar models
-
-
 
 
 
@@ -395,13 +393,14 @@ void setup() {
 
   byte mac[6];
   WiFi.macAddress(mac);
-  my_hostname = HOSTNAME + String("-") + String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
-  WiFi.hostname(my_hostname);
-  #if DEBUG_ON>0
-    debugMsgContinue(F("Using hostname: "));
-    debugMsg(my_hostname);
+  #ifdef ARDUINO_ARCH_ESP8266
+    my_hostname = HOSTNAME + String("-") + String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
+    WiFi.hostname(my_hostname);
+    #if DEBUG_ON>0
+      debugMsgContinue(F("Using hostname: "));
+      debugMsg(my_hostname);
+    #endif
   #endif
-
   WiFi.persistent(true);
   // Try to connect, if we have valid credentials
   boolean wlanConnected = false;
@@ -469,14 +468,16 @@ void setup() {
     debugMsgContinue(F("Starting "));
     debugMsg(fs_type);
   #endif
-  #ifdef FS_LITTLEFS
-    LittleFSConfig cfg;
+  #ifdef ARDUINO_ARCH_ESP8266
+    #ifdef FS_LITTLEFS
+      LittleFSConfig cfg;
+    #endif
+    #ifdef FS_SPIFFS
+      SPIFFSConfig cfg;
+    #endif
+    cfg.setAutoFormat(false);
+    FILESYSTEM.setConfig(cfg);
   #endif
-  #ifdef FS_SPIFFS
-    SPIFFSConfig cfg;
-  #endif
-  cfg.setAutoFormat(false);
-  FILESYSTEM.setConfig(cfg);
   if ( FILESYSTEM.begin() ) {
     #if DEBUG_ON>0
       debugMsgContinue(FS_TYPE);
@@ -592,7 +593,6 @@ void setup() {
       server.send(404, F("text/plain"), F("404: Not Found")); // otherwise, respond with a 404 (Not Found) error
   });
   
-  // TODO not available on ESP32
   // static for 12 hours.
 //  server.serveStatic("/", FILESYSTEM, "/", "max-age=43200");
   server.serveStatic("/ctl/PS-PWM.png", FILESYSTEM, "/ctl/PS-PWM.png", "max-age=43200");
@@ -617,46 +617,37 @@ void setup() {
       debugMsg("ESP32 server.ons");
     #endif
   /*handling uploading firmware file */
-  // TODO - return client to home page after success
-    server.on("/update", HTTP_GET, []() {
-    #if DEBUG_ON>2
-      debugMsg("ESP32 server.on /update");
-    #endif
-    if (!server.authenticate(web_username, web_password)) {
+      server.on(update_path, HTTP_GET, []() {
+    if (!server.authenticate(update_username, update_password)) {
       return server.requestAuthentication();
     }
-    if (!handleFileRead("/updatePage.htm"))                  // send it if it exists
-    server.send(404, "text/plain", "404: Not Found"); // otherwise, respond with a 404 (Not Found) error
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", serverIndex);
   });
-
-  server.on("/updater", HTTP_POST, []() {
-//    if (!server.authenticate(web_username, web_password)) {
-//      return server.requestAuthentication();
-//    }
+  /*handling uploading firmware file */
+  server.on("/update", HTTP_POST, []() {
     server.sendHeader("Connection", "close");
     server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-    delay(50);
-    reboot();
+    ESP.restart();
   }, []() {
     HTTPUpload& upload = server.upload();
-    #if DEBUG_ON>0
-      if (upload.status == UPLOAD_FILE_START) {
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_WRITE) {
-        /* flashing firmware to ESP*/
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) { //true to set the size to the current progress
-          debugMsg("Update Success: " + String(upload.totalSize));
-        } else {
-          Update.printError(Serial);
-        }
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+        Update.printError(Serial);
       }
-    #endif
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      /* flashing firmware to ESP*/
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+    }
   });
   #endif // ARDUINO_ARCH_ESP32
   
@@ -888,7 +879,9 @@ void platformPageHandler()
   response_message += getTableHead2Col(F("WLAN Status"), F("Name"), F("Value"));
   if ( WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress ip = WiFi.localIP();
-    response_message += getTableRow2Col(F("hostname"), my_hostname);
+    #ifdef ARDUINO_ARCH_ESP8266
+      response_message += getTableRow2Col(F("hostname"), my_hostname);
+    #endif
     response_message += getTableRow2Col(F("WLAN IP"), formatIPAsString(ip));
     response_message += getTableRow2Col(F("WLAN MAC"), WiFi.macAddress());
     response_message += getTableRow2Col(F("WLAN SSID"), WiFi.SSID());
@@ -949,9 +942,9 @@ void platformPageHandler()
   String ota = formatBytes(ESP.getFreeSketchSpace());
   if ( largeFlash ) { ota += F(" (OTA update capable)"); }
   response_message += getTableRow2Col(F("Free sketch size"), ota);
-  response_message += getTableRow2Col(F("ESP version"), ESP.getFullVersion());
   
   #ifdef ARDUINO_ARCH_ESP8266
+    response_message += getTableRow2Col(F("ESP version"), ESP.getFullVersion());
     response_message += getTableRow2Col(F("Free heap"), formatBytes(ESP.getFreeHeap()));
     response_message += getTableRow2Col(F("Heap fragmentation"), String(ESP.getHeapFragmentation())+" %");
     response_message += getTableRow2Col(F("Stack low watermark"), formatBytes(ESP.getFreeContStack()));
@@ -1312,7 +1305,9 @@ void utilityPageHandler()
   response_message += F("<hr><a href=\"/reset\">Restart WLAN module</a>");
   response_message += F("<hr><a href=\"/resetall\">Clear config and restart WLAN module</a>");
   if ( largeFlash ) {
-    response_message += F("<hr><a href=\"/update\">Update WLAN module firmware</a>");
+    response_message += F("<hr><a href=\"");
+    response_message += UPDATE_PATH;
+    response_message += F("\">Update WLAN module firmware</a>");
   }
 
   response_message += F("</font></div>");

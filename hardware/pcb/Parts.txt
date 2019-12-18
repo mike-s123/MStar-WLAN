@@ -7,9 +7,10 @@ Resistors and caps aren't critical, other than below. 1N4148s are fine for diode
 Most parts are standard, these are specific:
 C1 - United Chemi-Con EGXF250ELL202MJ30S (2000uF/25V, 10mm dia, 30mm long)
 VR - OKI-78SR-3.3/1.5-W36-C
-8P8C connector - Kobiconn 154-UL6661
-J3 - microUSB Hirose ZX62R-B-5P(30)
+VR - STM LDL1117S33R SOT-223-4 (only with ESP32)
+6P6C connector - Kobiconn 154-UL6661
+J3 - microUSB Hirose ZX62R-B-5P(30) (only with ESP32)
 Case - Hammond RL6105
-USB/Serial - FTDI FT231XS-R
-Reset - Rohm IMH3AT110
+USB/Serial - FTDI FT231XS-R SSOP-20 (only with ESP32)
+Reset - Rohm IMH3AT110 SOT-457 (only with ESP32)
 RTC - DS3231(ZS-042 module) Note that the header is installed on the side opposite the battery, so the battery is accessible when the module is soldered in place.

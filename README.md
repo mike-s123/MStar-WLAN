@@ -1,6 +1,6 @@
 # MStar-WLAN
 
-This project includes both hardware and software for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). The core is an ESP8266 based WEMOS D1 Mini Pro board (about $4 via AliExpress and wait a few weeks) or maybe an ESP32-WROVER-B 16MB (~$5 from Mouser). ESP32 is definitely a work in progress (expressif hasn't done a good job with API consistency, and ESP32 doesn't have all the libraries the ESP8266 does). These were chosen because they have a relatively large flash (16 MiB) for storing files, which allows having documentation on-board. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API.
+This project includes both hardware and software for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). The core is an ESP8266 based WEMOS D1 Mini Pro board (about $4 via AliExpress and wait a few weeks) or maybe an ESP32-WROVER-B 16MB (~$5 from Mouser). These were chosen because they have a relatively large flash (16 MiB) for storing files, which allows having documentation on-board. Work is being done with the ESP32 to support SD cards for logging. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API.
 
 A core with less flash memory should work fine as long as the "data" directory will fit. Delete files from /data/doc and /data/ctl if needed. The additional flash memory on the recommended cores is there in order to support the config and documentation files needed to support controllers beyond those currently provided in addition to future needs ("640K ought to be enough for anyone!"). Edit /data/documentation.htm if you remove documentation files.
 
@@ -28,9 +28,9 @@ I have a limited number of circuit boards on hand. If you can contribute to the 
 
 Development is currently being done with Arduino IDE 1.8.10, ESP8266 Arduino platform 2.6.2 (latest git version), and ESP32 Arduino platform 1.0.4.
 
-Library requirements are noted in the .ino file. The [ESP8266](https://github.com/esp8266/Arduino) and/or [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Most development has been done with the ESP8266 platform, and that's what's working. ESP32 is still very much a work in progress. There are a lot of differences even in the "official" APIs - they don't make compatibility simple.
+Library requirements are noted in the .ino file. The [ESP8266](https://github.com/esp8266/Arduino) and/or [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Files may need to be removed from /data in order to upload to the available flash on an ESP32. It's also possible to modify the boards.txt and create a new (partition).csv file to allow a larger SPIFFs FS than supported by the standard boards.
 
-The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The binary posted here uses LittleFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin).
+The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The ESP8266 binary posted here uses LittleFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin).
 
 The files are used to define the different controllers, and also contain some documentation.
 
@@ -44,7 +44,7 @@ The web interface has some minimal security. Any page which allows configuration
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your DHCP server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (statistically) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex.
 
-OTA updates are done from the Utility tab, "Update WLAN module firmware" link. Of compiled with newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For LittleFS filesystem, it's "MStar-WLAN.mklittlefs.bin". 
+OTA updates are done from the Utility tab, "Update WLAN module firmware" link. If compiled with newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For LittleFS filesystem, it's "MStar-WLAN.mklittlefs.bin". 
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 
