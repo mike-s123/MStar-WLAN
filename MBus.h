@@ -574,7 +574,7 @@ int MBus_get_reg_raw(int address, uint16_t &raw) {
   return result;
 }
 
-int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {
+int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {  //TODO this returns more than requested.
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_regs_raw: "+String(count)+"x, "+String(address));
@@ -908,6 +908,7 @@ String getModel() {
     debugMsgContinue(F("getModel selected:"));
     debugMsg(mod);
   #endif
+  fullModel = productCode;
   return mod;
 }
 

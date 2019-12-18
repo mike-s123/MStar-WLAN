@@ -36,6 +36,15 @@ function writeReg ( addr, value, vari ) {
   xhr.send() ;
 }
 
+function setWLAN ( ssid, pass, vari ) {
+  var theUrl = "/cmd?setwlan=" + vari + "&ssid=" + ssid + "&pass" + pass + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("ssid"+vari).innerHTML = ssid;
+  document.getElementById("pass"+vari).innerHTML = pass;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
 function setRtcTime () {
 	/* format time as YYYYMMDDdHHMMSS */
 	var currentTime = new Date();

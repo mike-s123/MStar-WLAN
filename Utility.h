@@ -89,59 +89,60 @@ inline String secToMin(String seconds) {
   return String(seconds.toInt()/60);
 }
 
-String getSSIDFromEEPROM() {
-  String esid = "";
-  for (int i = 0; i < 32; i++)
-  {
-    byte readByte = EEPROM.read(i);
-    if (readByte == 0) {
-      break;
-    } else if ((readByte < 32) || (readByte == 0xFF)) {
-      continue;
+void getWLANsFromEEPROM() {
+  byte readByte;
+  for (int j = 0; j<=3; j++){
+    esid[j] = "";
+    int i;
+    for (i = 0; i < 32; i++) {
+      readByte = EEPROM.read(i+(j*32));
+      if (readByte == 0) {
+        break;
+      } else if ((readByte < 32) || (readByte > 126)) {
+        continue;
+      }
+      esid[j] += char(readByte);
     }
-    esid += char(readByte);
+    #if DEBUG_ON>2
+    debugMsg("Read SSID " + String(j) +":" + esid[j]);
+    #endif
   }
-  #if DEBUG_ON>2
-  debugMsg("Read SSID: " + esid);
-  #endif
-  return esid;
-}
-
-String getPasswordFromEEPROM() {
-  String epass = "";
-  for (int i = 32; i < 96; i++)
-  {
-    byte readByte = EEPROM.read(i);
-    if (readByte == 0) {
-      break;
-    } else if ((readByte < 32) || (readByte == 0xFF)) {
-      continue;
+  
+  for (int j = 0; j<=3; j++){
+    epass[j] = "";
+    for (int i = 0; i < 32; i++) {
+      readByte = EEPROM.read(128 + i + (j*32));
+      if (readByte == 0) {
+        break;
+      } else if ((readByte < 32) || (readByte > 126 )) {
+        continue;
+      }
+      epass[j] += char(readByte);
     }
-    epass += char(EEPROM.read(i));
+    #if DEBUG_ON>2
+      debugMsgContinue("Read password:");
+    #endif
+    #if DEBUG_ON>5                            // only show password debug level 6+
+      debugMsgContinue(epass[j]);
+    #endif
+    #if DEBUG_ON>2
+      debugMsg("");
+    #endif
   }
-  #if DEBUG_ON>2
-    debugMsgContinue("Read password");
-  #endif
-  #if DEBUG_ON>5                            // only show password debug level 6+
-    debugMsgContinue(": " + epass);
-  #endif
-  #if DEBUG_ON>2
-    debugMsg("");
-  #endif
-  return epass;
 }
 
 String getModelFromEEPROM() {
   String model = "";
-  for (int i = 96; i < 112; i++)
+  byte readByte;
+  for (int i = 0; i < 16; i++)
   {
-    byte readByte = EEPROM.read(i);
+    readByte = EEPROM.read(i+256);
     if (readByte == 0) {
       break;
-    } else if ((readByte < 32) || (readByte == 0xFF)) {
+    } else if ((readByte < 32) || (readByte > 126)) {
       continue;
     }
-    model += char(EEPROM.read(i));
+    model += char(readByte);
   }
   #if DEBUG_ON>2
     debugMsg("Read EEPROM model: " + model);
@@ -149,36 +150,38 @@ String getModelFromEEPROM() {
   return model;
 }
 
-void storeCredentialsInEEPROM(String qsid, String qpass) {
+
+/*
+ *  This stores WLAN credentials in the first slot [0]
+ */
+void storeCredentialsInEEPROM(String qsid, String qpass, int idx=0) {
   #if DEBUG_ON>2
   debugMsg("writing eeprom ssid " + qsid );
   #endif
-  for (int i = 0; i < 32; i++)
-  {
+  if (idx > 3) return;
+  for (int i = 0; i < 32; i++) {
     if (i < qsid.length()) {
-      EEPROM.write(i, qsid[i]);
+      EEPROM.write((32*idx)+i, qsid[i]);
       #if DEBUG_ON>4
       debugMsg("Wrote: " + String(qsid[i]));
       #endif
     } else {
-      EEPROM.write(i, 0);
+      EEPROM.write((32*idx)+i, 0);
     }
   }
   #if DEBUG_ON>2
   debugMsg("writing eeprom pass " + qpass);
   #endif
-  for (int i = 0; i < 96; i++)
-  {
+  for (int i = 0; i < 32; i++) {
     if ( i < qpass.length()) {
-      EEPROM.write(32 + i, qpass[i]);
+      EEPROM.write(128 + (32*idx) + i, qpass[i]);
       #if DEBUG_ON>5
       debugMsg("Wrote: " + String(qpass[i]));
       #endif
     } else {
-      EEPROM.write(32 + i, 0);
+      EEPROM.write(128 + (32*idx) + i, 0);
     }
   }
-
   EEPROM.commit();
 }
 
@@ -189,12 +192,12 @@ void storeModelInEEPROM(String model) {
   for (int i = 0; i < 16; i++)
   {
     if (i < model.length()) {
-      EEPROM.write(i+96, model[i]);
+      EEPROM.write(i+256, model[i]);
       #if DEBUG_ON>4
       debugMsg("Wrote: " + String(model[i]));
       #endif
     } else {
-      EEPROM.write(i+96, 0);
+      EEPROM.write(i+256, 0);
     }
   }
   EEPROM.commit();
@@ -214,11 +217,13 @@ void resetEEPROM() {
   wipeEEPROM();
   #if DEBUG_ON>0
     debugMsg(F("Resetting EEPROM."));
-  #endif  
-  storeCredentialsInEEPROM("", "");
+  #endif
+  for (int i = 0; i<=3 ; i++) {
+    storeCredentialsInEEPROM("", "", i);
+  }
   storeModelInEEPROM(F("PS-PWM"));
   String chkstr = F(EEPROM_SIG);
-  for (int i = 0; i < 4 ; i++) {
+  for (int i = 0; i<=3 ; i++) {
     EEPROM.write(i + EEPROM_SIZE -4, chkstr[i]);
     #if DEBUG_ON>4
       debugMsg("Wrote chkstr: " + chkstr[i]);
@@ -276,9 +281,9 @@ void startAP(const char* ssid, const char* password) {
 }
 
 
-boolean connectToWLAN(const char* ssid, const char* password) {
+boolean connectToWLAN(const char* ssid = "", const char* password = "") {
 /*
- *  Try to connect as a station with the given credentials. Give up after 10 seconds or 20 retries
+ *  Try to connect as a station with the given credentials. Give up after 15 seconds
  *   if we can't get in. Returns connected status.
  *   Station only, because AP_STA results in frequent disconnects (~5 minute intervals).
 */
@@ -287,18 +292,63 @@ boolean connectToWLAN(const char* ssid, const char* password) {
     WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
   #endif
   WiFi.mode(WIFI_STA);  // station only 
+
+  if (strlen(ssid)>0) {
+    if (password && strlen(password) > 0 ) {    
+        #if DEBUG_ON>3
+          debugMsgContinue(F("wifiMulti adding SSID:"));
+          debugMsg(ssid);
+        #endif
+        #if DEBUG_ON>5
+          debugMsgContinue(F("wifiMulti   with pass:"));
+          debugMsg(password);
+        #endif
+      wifiMulti.addAP(ssid, password);        //esid.c_str()?
+    } else {
+        wifiMulti.addAP(ssid);
+    }
+  }
+//  getWLANsFromEEPROM();
+  int i;
+  for (i = 0; i<=3; i++) {
+    if (esid[i] != "") {
+      if ( epass[i] != "" ) {
+        #if DEBUG_ON>3
+          debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
+          debugMsg(esid[i]);
+          debugMsgContinue(F("wifiMulti   with pass from EEPROM:"));
+          #if DEBUG_ON>5
+            debugMsgContinue(epass[i]);
+          #endif
+          debugMsg("");
+        #endif
+        wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
+      } else {
+        #if DEBUG_ON>3
+          debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
+          debugMsg(esid[i]);
+        #endif
+        wifiMulti.addAP(esid[i].c_str());
+      }
+    }
+  }
   
+/*  
+  wifiMulti.addAP("ssid_from_AP_2", "your_password_for_AP_2");
+  wifiMulti.addAP("ssid_from_AP_3", "your_password_for_AP_3");
+
   if (password && strlen(password) > 0 ) {    
     WiFi.begin(ssid, password);
   } else {
     WiFi.begin(ssid);
   }
-
+*/
+ 
   #if DEBUG_ON>0
     debugMsgContinue(F("Connecting to WLAN"));
   #endif
 
-  while (WiFi.status() != WL_CONNECTED)
+  while ( wifiMulti.run() != WL_CONNECTED )
   {
     delay(500);
     #if DEBUG_ON>0
@@ -312,7 +362,10 @@ boolean connectToWLAN(const char* ssid, const char* password) {
       return false;
     }
   }
-//  WiFi.mode(WIFI_AP_STA);  // trying station only
+
+  #if DEBUG_ON>0
+    debugMsg("");
+  #endif      
   return true;
 }
 

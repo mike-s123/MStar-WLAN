@@ -138,7 +138,8 @@ void restPageHandler() {                          //  URI /rest
       int mbCoilIndex = getCoilIndex(mbCoil);
       valu = jsonIn[F("pass")] | "none";
       if ( valu != json_password ){ jsonErr(F("no password")); return; }
-      if ( mbCoilIndex < 0 ){ jsonErr(F("bad addr")); return; }
+      bool force = (jsonIn[F("force")] == "true") | false;
+      if ( (mbCoilIndex < 0) && !force ){ jsonErr(F("bad addr")); return; }
       valu = jsonIn[F("valu")] | "none";
       if ( valu == "on" || valu == "true" ) {
         valu = F("on");

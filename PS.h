@@ -25,7 +25,7 @@ void psStatusPageHandler () {
   if (noController) {
     response_message += F("No Controller");
   } else {
-    response_message += model;
+    response_message += fullModel;
     if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
   }
   response_message += F("</h3></div>"); 
@@ -134,14 +134,14 @@ void psSetChargePageHandler() {
   checkController();
 
   String response_message;
-  response_message.reserve(5000);
+  response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
   response_message += F("<div class=\"controller\"><h3>");
   if (noController) {
     response_message += F("No Controller");
   } else {
-    response_message += model;
+    response_message += fullModel;
     if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
   }
   response_message += F("</h3></div>"); 
@@ -203,7 +203,7 @@ void psSetOtherPageHandler() {
   if (noController) {
     response_message += F("No Controller");
   } else {
-    response_message += model;
+    response_message += fullModel;
     if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
   }
   response_message += F("</h3></div>"); 
