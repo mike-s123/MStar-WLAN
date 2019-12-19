@@ -68,7 +68,6 @@ mbRegTypes mbRegType[REG_ROWS];
 String mbAlarmMsg[32];
 String mbArrayMsg[32];
 String mbLoadMsg[32];
-//String mbErrors[] = {F("Illegal Function"), F("Illegal Address"), F("Illegal Value"), F("Server Failure"), F("Ack"), F("Server Busy")};
 
 struct fullReg { int row; String var; String desc; mbRegUnits unit; mbRegTypes type; String value; };
 
@@ -101,7 +100,8 @@ void rxEnable(bool state) {                                   // high = enabled 
   #endif
 //  digitalWrite(RX_ENABLE_PIN, state);
 }
-void preTransmission() {
+
+void preTransmission() {  // callbacks for half-duplex MODBUS
   rxEnable(false);
   delay(5);               // can't repeat requests too quickly, minimum interframe 3.65 ms
 }
@@ -164,7 +164,7 @@ int MBus_get_coil(int address, bool &value) {             // returns 0 on succes
   uint8_t result = 1;
   for ( int i = 0 ; (i < 3) && result ; i ++ ) {           // try up to 3 times
     result = node.readCoils(address, 1);                   // succcess = 0
-    delay(i*50);
+    delay(i*50);                                           // delay a bit more on each attempt
   }
   if (result == node.ku8MBSuccess)  {
     value = (node.getResponseBuffer(0))?true:false; 
@@ -188,7 +188,7 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
   if ( row > 0 ) {
     result = node.writeSingleCoil(address, state);
     if ( ( address == 255 || address == 254 ) && state && result == node.ku8MBResponseTimedOut ){  
-      result = 0;  //reset controller, timeout expected
+      result = 0;  // we reset the controller, timeout expected
     }
     #if DEBUG_ON>4
       debugMsg("Result: "+String(result));
@@ -199,7 +199,7 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
   }
 }
 
-int MBus_get_int(int address, int &value) {
+int MBus_get_int(int address, int &value) {                 // get signed int
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_int: "+String(address));
@@ -216,7 +216,7 @@ int MBus_get_int(int address, int &value) {
   return result;
 }
 
-int MBus_get_uint16(int address, uint16_t &value) {
+int MBus_get_uint16(int address, uint16_t &value) {         // get unsigned int
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_uint16: "+String(address));
@@ -232,7 +232,7 @@ int MBus_get_uint16(int address, uint16_t &value) {
   return result;
 }
 
-int MBus_get_n10(int address, float &value) {
+int MBus_get_n10(int address, float &value) {             // get 10x unsigned int, return float
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_n10: "+String(address));
@@ -248,7 +248,7 @@ int MBus_get_n10(int address, float &value) {
   return result;
 }
   
-int MBus_get_uint32(int address, uint32_t &value) {
+int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long int, high first
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_uint32: "+String(address));
@@ -265,7 +265,7 @@ int MBus_get_uint32(int address, uint32_t &value) {
 }
 
   
-int MBus_get_uint32_rev(int address, uint32_t &value) {
+int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long int, low first
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_uint32: "+String(address));
@@ -281,7 +281,7 @@ int MBus_get_uint32_rev(int address, uint32_t &value) {
   return result;
 }
 
-int MBus_get_dn10(int address, float &value) {
+int MBus_get_dn10(int address, float &value) {        // get long 10x, return float
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_dn10: "+String(address));
@@ -297,7 +297,7 @@ int MBus_get_dn10(int address, float &value) {
   return result;
 }  
 
-int MBus_get_float(int address, float &value) {
+int MBus_get_float(int address, float &value) {     // get float16, return float32
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_float: "+String(address));
@@ -479,7 +479,7 @@ int MBus_write_reg(int address, String valu) {
     case bitfield: break;
     case dbitfield: break;
     case bcd:     break;
-// datatypes below are untested    
+// TODO datatypes below are untested    
     case n673:  value1 = static_cast<int>(valu.toFloat() * 673); // SSDuo datatype, n/673 
                 #if DEBUG_ON>4
                   debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/673");
@@ -562,7 +562,7 @@ int MBus_write_reg(int address, String valu) {
   return result; 
 }
 
-int MBus_get_reg_raw(int address, uint16_t &raw) {
+int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpreted
   if (noController) return -1;
   #if DEBUG_ON>3
     debugMsg("MBus_get_reg_raw: "+String(address));
@@ -639,7 +639,7 @@ int getLogItem(logItem &item, int idx) {   // idx starts at 0, returns 0 on succ
   return result;
 }
 
-int getLog() {
+int getLog() {                          // get all of log into mbLog (32K)
   int result = 0;
   for (int i=0 ; i< 256 ; i++ ) {
     result += getLogItem(mbLog[i],i);
@@ -647,7 +647,22 @@ int getLog() {
   return result;
 }
 
+    /*
+     *  MODBUS read device ID (function 43 / 14)
+     *  Modbus-master doesn't support this, so we do it here,
+     *  just enough to support what MSView wants - the
+     *  mandatory "BASIC" category elements.
+     */
+
 int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevision) {
+  /*
+   * Begin with partially pre-formed query to send.
+   * MODBUS address
+   * 0x2b 0x0e read device id.
+   * 0x01 request to get basic device identification (VendorName, ProductCode, MajorMinorRevision) (stream access)
+   * 0x00 start with object 0 (VendorName)
+   * last 2 bytes hold CRC
+   */
   unsigned char query[] = {(uint8_t)mbAddr, 0x2b, 0x0e, 0x01, 0x00, 0x00, 0x00};
   char vendor[32], product[32], revision[32], response[128];
   uint8_t count, id, id_idx, numObjs;
@@ -656,16 +671,16 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
     crc = crc16_update(crc, query[i]);
   }
   query[5] = (uint8_t)(crc & 0x00FF);
-  query[6] = (uint8_t)((crc & 0xFF00) >> 8);
+  query[6] = (uint8_t)((crc & 0xFF00) >> 8);  // add the CRC to the query
   #if DEBUG_ON>3
     debugMsg("MbusCRC = " + String(crc,HEX));
   #endif  
 
   preTransmission();
-  // flush receive buffer before transmitting request
+  
   #ifdef ARDUINO_ARCH_ESP8266
-    while (Serial.read() != -1);
-    count = Serial.write(query, 7);
+    while (Serial.read() != -1);      // flush receive buffer before transmitting request
+    count = Serial.write(query, 7);   // send the request
   #endif
   #ifdef ARDUINO_ARCH_ESP32
     while (mbSerial.read() != -1);
@@ -810,7 +825,7 @@ int mbusTCP() {
       result = node.writeSingleRegister(refNum, val);
       // good response is to just return what we got...
 
-    } else if (func == 43) { // Read device ID
+    } else if (func == 43) { // Read device ID, 
       String vendorName, productCode, majorMinorRevision;
       vendorName.reserve(64);
       productCode.reserve(64);
