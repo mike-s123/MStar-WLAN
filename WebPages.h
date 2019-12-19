@@ -154,7 +154,12 @@ void platformPageHandler()
     IPAddress softapip = WiFi.softAPIP();
     response_message += getTableRow2Col(F("AP IP"), formatIPAsString(softapip));
     response_message += getTableRow2Col(F("AP MAC"), WiFi.softAPmacAddress());
-    response_message += getTableRow2Col(F("AP SSID"), String(ap_ssid));
+    #ifdef ARDUINO_ARCH_ESP8266
+      response_message += getTableRow2Col(F("AP SSID"), WiFi.softAPSSID());                   
+    #endif
+    #ifdef ARDUINO_ARCH_ESP32
+      response_message += getTableRow2Col(F("AP SSID"), ap_ssid);          
+    #endif
     response_message += getTableRow2Col(F("AP connections"),String(WiFi.softAPgetStationNum()));
   }
 
@@ -394,7 +399,7 @@ void wlanPageHandler()
   // Check if there are any GET parameters, if there are, we are configuring
   if (server.hasArg(F("ssid")))
   {
-    WiFi.persistent(true);
+//    WiFi.persistent(true);
     #if DEBUG_ON>0
       debugMsgContinue(F("New SSID entered: \""));
       debugMsg(String(server.arg("ssid").c_str())+"\"");

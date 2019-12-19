@@ -2,13 +2,9 @@
 // ----------------------------------------- Utility functions ----------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-void toggleBlueLED() {
-  blueLedState = ! blueLedState;
-  digitalWrite(WIFI_PIN, blueLedState);
-}
 
-void setBlueLED(boolean newState) {
-  digitalWrite(WIFI_PIN, newState);
+void setWlanLED(boolean newState) {
+  digitalWrite(WLAN_PIN, newState);
 }
 
 #if DEBUG_ON>0                              // needed if debugging
@@ -159,6 +155,7 @@ void storeCredentialsInEEPROM(String qsid, String qpass, int idx=0) {
   debugMsg("writing eeprom ssid " + qsid );
   #endif
   if (idx > 3) return;
+  wlanRead = false;                   // now needs to be re-read
   for (int i = 0; i < 32; i++) {
     if (i < qsid.length()) {
       EEPROM.write((32*idx)+i, qsid[i]);
@@ -260,30 +257,28 @@ void startAP(const char* ssid, const char* password) {
 /*
  * This starts AP only, probably because we had no stored STA info.
  */
-  WiFi.mode(WIFI_AP);
   #ifdef ARDUINO_ARCH_ESP8266
     WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
   #endif
+  WiFi.mode(WIFI_AP);
   #if DEBUG_ON>0
     debugMsgContinue(F("Starting AP, SSID \""));
-    debugMsgContinue(String(ap_ssid));
+    debugMsgContinue(String(ssid));
     debugMsgContinue(F("\", pass \""));
-    debugMsgContinue(String(ap_password));
+    debugMsgContinue(String(password));
     debugMsg(F("\""));
   #endif  
-//  WiFi.softAPConfig(apIP, IPAddress(192, 168, 99, 254), IPAddress(255, 255, 255, 0));
   if (strlen(password) > 0) {
     WiFi.softAP(ssid, password, 6, false, 8);
   } else {
     WiFi.softAP(ssid);
   }
-//  WiFi.softAPConfig(apIP, IPAddress(192, 168, 99, 254), IPAddress(255, 255, 255, 0));  // for good measure
 }
 
 
 boolean connectToWLAN(const char* ssid = "", const char* password = "") {
 /*
- *  Try to connect as a station with the given credentials. Give up after 15 seconds
+ *  Try to connect as a station with the given credentials. Give up after a while.
  *   if we can't get in. Returns connected status.
  *   Station only, because AP_STA results in frequent disconnects (~5 minute intervals).
 */
@@ -291,8 +286,16 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
   #ifdef ARDUINO_ARCH_ESP8266
     WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
   #endif
-  WiFi.mode(WIFI_STA);  // station only 
 
+  #ifdef WIFI_MODE_AP_STA  // mode controlled by #define
+    WiFi.mode(WIFI_AP_STA);
+  #else
+    WiFi.mode(WIFI_STA);
+    #if DEBUG_ON>0
+      debugMsg(F("WLAN changing to station mode."));
+    #endif
+  #endif
+  
   if (strlen(ssid)>0) {
     if (password && strlen(password) > 0 ) {    
         #if DEBUG_ON>3
@@ -308,54 +311,44 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
         wifiMulti.addAP(ssid);
     }
   }
-//  getWLANsFromEEPROM();
-  int i;
-  for (i = 0; i<=3; i++) {
-    if (esid[i] != "") {
-      if ( epass[i] != "" ) {
-        #if DEBUG_ON>3
-          debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
-          debugMsg(esid[i]);
-          debugMsgContinue(F("wifiMulti   with pass from EEPROM:"));
-          #if DEBUG_ON>5
-            debugMsgContinue(epass[i]);
+
+  if (!wlanRead) {
+    int i;
+    for (i = 0; i<=3; i++) {
+      if (esid[i] != "") {
+        if ( epass[i] != "" ) {
+          #if DEBUG_ON>3
+            debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
+            debugMsg(esid[i]);
+            debugMsgContinue(F("wifiMulti   with pass from EEPROM:"));
+            #if DEBUG_ON>5
+              debugMsgContinue(epass[i]);
+            #endif
+            debugMsg("");
           #endif
-          debugMsg("");
-        #endif
-        wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
-      } else {
-        #if DEBUG_ON>3
-          debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
-          debugMsg(esid[i]);
-        #endif
-        wifiMulti.addAP(esid[i].c_str());
+          wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
+        } else {
+          #if DEBUG_ON>3
+            debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
+            debugMsg(esid[i]);
+          #endif
+          wifiMulti.addAP(esid[i].c_str());
+        }
       }
     }
+    wlanRead = true;
   }
-  
-/*  
-  wifiMulti.addAP("ssid_from_AP_2", "your_password_for_AP_2");
-  wifiMulti.addAP("ssid_from_AP_3", "your_password_for_AP_3");
-
-  if (password && strlen(password) > 0 ) {    
-    WiFi.begin(ssid, password);
-  } else {
-    WiFi.begin(ssid);
-  }
-*/
- 
   #if DEBUG_ON>0
     debugMsgContinue(F("Connecting to WLAN"));
   #endif
 
-  while ( wifiMulti.run() != WL_CONNECTED )
-  {
+  while ( wifiMulti.run() != WL_CONNECTED ) {
     delay(500);
     #if DEBUG_ON>0
       debugMsgContinue(".");
     #endif
     retries++;
-    if (retries > 30) {
+    if (retries > 24) {   // try for 12 seconds
       #if DEBUG_ON>0
         debugMsg("");
       #endif      

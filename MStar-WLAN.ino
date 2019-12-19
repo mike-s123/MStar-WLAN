@@ -22,13 +22,13 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v0.191218"
+#define SOFTWARE_VERSION "v1.191219"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Add more controller datatypes. Speed reading. Auto refresh.<br/>\
-                     No mDNS. Refactor for different controller families. Work on ESP32.<br/>\
-                     wifiMulti"
+                     No mDNS. Refactor for different controller families. ESP32 working.<br/>\
+                     wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support"
 
-#define DEBUG_ON 4                // enable debugging output
+#define DEBUG_ON 1                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
                                   // 0 not working on ESP32 for now
 #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
@@ -109,7 +109,7 @@
 //#include <WiFiClientSecureBearSSL.h>
 
 #include <WiFiServer.h>
-//#include <WiFiServerSecure.h>
+//#include <WiFiServerSecfure.h>
 //#include <WiFiServerSecureAxTLS.h>
 //#include <WiFiServerSecureBearSSL.h>
 #include <WiFiUdp.h>
@@ -127,11 +127,6 @@
 #define UPDATE_PASSWORD "update"
 #define UPDATE_PATH "/updateme"
 #define JSON_PASSWORD "imsure"
-#define AP_SSID "MStar"
-// password, if used, must be 8-32 chars
-#define AP_PSK  "morningstar"
-//#define AP_PSK  ""
-
 //#define nosec
 #ifdef nosec
   #define WEB_USERNAME ""
@@ -140,16 +135,23 @@
   #define UPDATE_PASSWORD ""
 #endif
 
+//wlan
+#define AP_SSID "MStar"
+//#define AP_SSID_UNIQ                    // define to generate a unique SSID e.g. MStar-123456
+// password, if used, must be 8-32 chars
+#define AP_PSK  "morningstar"
+//#define WIFI_MODE_AP_STA                // define to run AP while also connected as station
+
 #define HOSTNAME "MStarWLAN"
 
-#define JSON_VERSION "1.0"               // changes with api changes
-#define JSON_VERSION_MIN "1.0"           // changes when backward compatibility is broken
+#define JSON_VERSION "1.0"                // changes with api changes
+#define JSON_VERSION_MIN "1.0"            // changes when backward compatibility is broken
 
 // GPIO16 (D0) on NodeMCU, 1 on ESP-1, but won't work on ESP-1 because of serial?
 // GPIO 2 for blue led on ESP-12E, GPIO 16 (or BUILTIN_LED) for blue led on NodeMCU
 // GPIO 2 (D4) for Wemos D1 mini
-#define WIFI_PIN 2
-//#define WIFI_PIN BUILTIN_LED
+#define WLAN_PIN 2
+//#define WLAN_PIN BUILTIN_LED
 
 #define EEPROM_SIZE 512
 #define EEPROM_SIG "mjs!"
@@ -170,6 +172,7 @@
  * 5    (1) Hour
  * 6    (1) Minute
  * 7    (1) Second
+ * 8-11 (4) Last time set (Unix time)
  * 
  * 4092-4095 (4)  Valid signature (CLK_EEPROM_SIG)
  */
@@ -211,13 +214,14 @@
 // ------------------------------------------  Globals (mostly)  --------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-const char *ap_ssid = AP_SSID;
-const char *ap_password = AP_PSK;
 const char *web_username = WEB_USERNAME;
 const char *web_password = WEB_PASSWORD;
 const char *json_password = JSON_PASSWORD;
 const char *json_version = JSON_VERSION;
 const char *json_version_min = JSON_VERSION_MIN;
+const char *ap_ssid = AP_SSID;
+const char *ap_password = AP_PSK;
+std::string ap_SSID(AP_SSID);      //this is butt-ugly. see below. Someone else can do better.
 
 const char *update_path = UPDATE_PATH;
 const char *update_username = UPDATE_USERNAME;
@@ -229,17 +233,20 @@ const char *fs_type = FS_TYPE;
 String esid[4];
 String epass[4];
 boolean wlanConnected = false;
+boolean wlanRead = false;     // if we've read SSID/PSKs from EEPROM
 boolean largeFlash = false;
 boolean mbActive = false;    // whether we're using mbus
-boolean blueLedState = true;
+boolean wlanLedState = true;
 boolean noController = true;
-// used for flashing the blue LED
+// used for flashing the WLAN status LED
 int blinkOnTime = 1000;
 int blinkTopTime = 2000;
 unsigned long lastMillis = 0;
+unsigned long lastWLANtry;      // when we last tried to connected (or tried) to an AP
 int mbAddr = mbusSlave;
 String model = MODEL;
 String fullModel = MODEL;
+byte mac[6];
 String my_hostname;
 File fsUploadFile;              // a File object to temporarily store the received file
 
@@ -278,6 +285,7 @@ WiFiClient mbClient;
 int Year = 2019;
 byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // April fool's
 
+
 //order here is important
 #include "Utility.h"            // utility functions
 #include "edit.h"               // ACE editor
@@ -291,11 +299,12 @@ byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // Apri
 
 
 void setup() {
+
   #ifdef ARDUINO_ARCH_ESP8266
-    digitalWrite(SELF_RST_PIN, HIGH);
+    digitalWrite(SELF_RST_PIN, HIGH); // So board can do a hardware reset of itself
     pinMode(SELF_RST_PIN, OUTPUT);
   #endif
-  pinMode(SQW_PIN, INPUT);            // From DS3231
+  pinMode(SQW_PIN, INPUT);            // From DS3231 square wave output 1 Hz - 8.192 KHz
   digitalWrite(SQW_PIN, HIGH);        // internal pullup
   #ifdef ARDUINO_ARCH_ESP8266
     Serial.begin(9600, SERIAL_8N2);
@@ -336,7 +345,7 @@ void setup() {
 //    pinMatrixInAttach(RX_PIN, U1RXD_IN_IDX, true);
   #endif
 
-    Wire.begin(SDA_PIN, SCL_PIN);
+    Wire.begin(SDA_PIN, SCL_PIN);              // setup I2C
     if (Wire.requestFrom(DS3231_I2C, 2)) {
       useRTC = true;
     } else {
@@ -367,9 +376,9 @@ void setup() {
     clk_eeprom->begin(Wire,AT24Cxx_BASE_ADDR,AT24C32);
 
 
-  pinMode(RX_ENABLE_PIN, OUTPUT);
+  pinMode(RX_ENABLE_PIN, OUTPUT);            // used for half-duplex MODBUS
   rxEnable(false);
-  pinMode(WIFI_PIN, OUTPUT);  // LED
+  pinMode(WLAN_PIN, OUTPUT);  // LED
 
   if ( ESP.getSketchSize() + 4096 < ESP.getFreeSketchSpace() ) {
     largeFlash = true;
@@ -384,60 +393,60 @@ void setup() {
   delay(10);
   if (checkEEPROM() != EEPROM_SIG) { delay(10); }
   getWLANsFromEEPROM();
-  #if DEBUG_ON>0
-    debugMsgContinue(F("esid:"));
-    debugMsg(esid[0]);
-  #endif
-  #if DEBUG_ON>5
-    debugMsg("epass:"+epass[0]);  
-  #endif
 
 /*
  * WiFi setup
  */
 
-  byte mac[6];
   WiFi.macAddress(mac);
+  #ifdef AP_SSID_UNIQ
+    ap_SSID.append("-");
+    ap_SSID.append((String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX)).c_str());
+  #endif
+  ap_ssid = ap_SSID.c_str();
+  //ap_password = AP_PSK;
   my_hostname = HOSTNAME + String("-") + String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
+
+  WiFi.persistent(false);
   #ifdef ARDUINO_ARCH_ESP8266
     WiFi.hostname(my_hostname);
   #endif
+  
   #ifdef ARDUINO_ARCH_ESP32
   {
-    WiFi.disconnect();
     WiFi.mode(WIFI_STA);
     char __hostname[sizeof(my_hostname)+1];
     my_hostname.toCharArray(__hostname, sizeof(__hostname));
     WiFi.setHostname(__hostname);             // TODO not working
   }
   #endif
+  
   #if DEBUG_ON>0
     debugMsgContinue(F("Using hostname: "));
     debugMsg(my_hostname);
   #endif
-  WiFi.persistent(true);
-  // Try to connect, if we have valid credentials
-  boolean wlanConnected = false;
+
   #if DEBUG_ON>0
-  debugMsg(F("Trying to connect to WLAN."));
-  //debugMsg(esid); //not for multi
+    debugMsg(F("Trying to connect to WLAN."));
   #endif
+  
+  #if DEBUG_ON>0
+    debugMsgContinue(F("AP SSID:"));
+    debugMsg(String(ap_ssid));
+  #endif
+  startAP(ap_ssid, ap_password);            // this sets the SSID when in AP mode
+
   wlanConnected = connectToWLAN();    // try to connect as STA
-  if (wlanConnected == false) {
-    #if DEBUG_ON>0
-    debugMsg(F("No connection, starting AP"));
-    #endif    
-    startAP(ap_ssid, ap_password);                                 // else, bring up AP
-  }
-    WiFi.persistent(false);
 
   IPAddress apIP = WiFi.softAPIP();
   IPAddress myIP = WiFi.localIP();
+  
   #if DEBUG_ON>0
   debugMsgContinue(F("AP IP address: "));
   debugMsg(formatIPAsString(apIP));
   debugMsgContinue(F("WLAN IP address: "));
   debugMsg(formatIPAsString(myIP));
+  debugMsg("Connected to:" + String(WiFi.SSID()));
   #endif
 
   #if DEBUG_ON>0
@@ -537,6 +546,7 @@ getRTCTime();
 } // setup()
 
 void loop() {
+  
   #ifdef ARDUINO_ARCH_ESP8266
     ESP.wdtFeed();
     #ifdef ESP8266MDNS_LEGACY_H
@@ -559,25 +569,43 @@ void loop() {
   }
 
 /*
- *  The rest just blinks the LED based on current connection state.
+ *  Blink the LED based on current connection state.
  */
-  if (WiFi.softAPgetStationNum()) {            // AP client connected, flash slow
+ 
+  if (WiFi.softAPgetStationNum()) {                     // AP client connected, every 3 sec
     blinkOnTime = 5;       
     blinkTopTime = 3000;
-  } else if (WiFi.status() == WL_CONNECTED) {  // Connected as STA, flash 1/sec
+    lastWLANtry = millis();                             // we have a client, hold off on attempts to connect as a station
+  } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA, flash 1/sec
     wlanConnected = true;
     blinkOnTime = 5;
     blinkTopTime = 1000;
-  } else {                                     // no connections, almost nothing
+    lastWLANtry = millis();                             // we're already connected, don't try again
+  } else {                                              // no connections, every 10 sec
     blinkOnTime = 2;
-    blinkTopTime = 10000;
+    blinkTopTime = 10000;  
+    if ((millis() - lastWLANtry) > 300000 ) {           // try to connect as a station every 5 minutes 
+      #if DEBUG_ON>0                                    // if in AP mode and there are no connections
+        debugMsg("millis="+String(millis()));
+        debugMsg("lastWLANtry="+String(lastWLANtry));
+        debugMsg(F("Trying WLAN connection"));
+      #endif    
+      wlanConnected = connectToWLAN();
+      lastWLANtry = millis();                           // mark attempt
+      #if DEBUG_ON>0
+        debugMsg(F("No connection, starting AP"));
+      #endif    
+      startAP(ap_ssid, ap_password);                    // else, bring up AP back up.
+    }   
   }
-  if (((millis() - lastMillis) > blinkTopTime) && blueLedState) {
+
+  
+  if (((millis() - lastMillis) > blinkTopTime) && wlanLedState) {
     lastMillis = millis();
-    blueLedState = false;
-    setBlueLED(blueLedState);
-  } else if (((millis() - lastMillis) > blinkOnTime) && !blueLedState) {
-    blueLedState = true;
-    setBlueLED(blueLedState);
+    wlanLedState = false;
+    setWlanLED(wlanLedState);
+  } else if (((millis() - lastMillis) > blinkOnTime) && !wlanLedState) {
+    wlanLedState = true;
+    setWlanLED(wlanLedState);
   }
 } // loop()
