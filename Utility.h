@@ -7,6 +7,10 @@ void setWlanLED(boolean newState) {
   digitalWrite(WLAN_PIN, newState);
 }
 
+String formatIPAsString(IPAddress ip) {
+  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+}
+
 #if DEBUG_ON>0                              // needed if debugging
   void debugMsg(String msg) {
     #ifdef ARDUINO_ARCH_ESP8266
@@ -86,6 +90,7 @@ inline String secToMin(String seconds) {
 }
 
 void getWLANsFromEEPROM() {
+  if (wlanRead) return;
   byte readByte;
   for (int j = 0; j<=3; j++){
     esid[j] = "";
@@ -102,6 +107,8 @@ void getWLANsFromEEPROM() {
     #if DEBUG_ON>2
     debugMsg("Read SSID " + String(j) +":" + esid[j]);
     #endif
+    wlanRead = true;
+    wlanSet = false;
   }
   
   for (int j = 0; j<=3; j++){
@@ -152,7 +159,7 @@ String getModelFromEEPROM() {
  */
 void storeCredentialsInEEPROM(String qsid, String qpass, int idx=0) {
   #if DEBUG_ON>2
-  debugMsg("writing eeprom ssid " + qsid );
+  debugMsg("writing eeprom "+String(idx)+" ssid " + qsid );
   #endif
   if (idx > 3) return;
   wlanRead = false;                   // now needs to be re-read
@@ -167,7 +174,7 @@ void storeCredentialsInEEPROM(String qsid, String qpass, int idx=0) {
     }
   }
   #if DEBUG_ON>2
-  debugMsg("writing eeprom pass " + qpass);
+  debugMsg("writing eeprom "+String(idx)+" pass " + qpass);
   #endif
   for (int i = 0; i < 32; i++) {
     if ( i < qpass.length()) {
@@ -234,7 +241,7 @@ String checkEEPROM() {
  *  Check if valid, reset if not
  */
   #if DEBUG_ON>0
-    debugMsgContinue(F("Check EEPROM..."));
+    debugMsgContinue(F("Check ESP EEPROM..."));
   #endif    
   String chkstr = "";
   for (int i = EEPROM_SIZE - 4; i < EEPROM_SIZE; i++) {
@@ -287,16 +294,9 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
   #endif
 
-  #ifdef WIFI_MODE_AP_STA  // mode controlled by #define
-    WiFi.mode(WIFI_AP_STA);
-  #else
-    WiFi.mode(WIFI_STA);
-    #if DEBUG_ON>0
-      debugMsg(F("WLAN changing to station mode."));
-    #endif
-  #endif
-  
-  if (strlen(ssid)>0) {
+//  WiFi.persistent(true);
+  if (strlen(ssid)>0) {         // here we try to connect using the info passed to us
+    wlan_count++ ;
     if (password && strlen(password) > 0 ) {    
         #if DEBUG_ON>3
           debugMsgContinue(F("wifiMulti adding SSID:"));
@@ -310,61 +310,138 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     } else {
         wifiMulti.addAP(ssid);
     }
-  }
-
-  if (!wlanRead) {
+  } else {                        // if we weren't given info, look it up
+    getWLANsFromEEPROM();
     int i;
     for (i = 0; i<=3; i++) {
       if (esid[i] != "") {
-        if ( epass[i] != "" ) {
-          #if DEBUG_ON>3
-            debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
-            debugMsg(esid[i]);
-            debugMsgContinue(F("wifiMulti   with pass from EEPROM:"));
-            #if DEBUG_ON>5
-              debugMsgContinue(epass[i]);
+        if ( epass[i] != "" ) {   // got both ssid and pass
+//          if (!wifiMulti.existsAP(esid[i].c_str(), epass[i].c_str()) ) { // skip if already there ESP8266 only
+            if (!wlanSet) { // skip if already there
+            #if DEBUG_ON>3
+              debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
+              debugMsg(esid[i]);
+              debugMsgContinue(F("wifiMulti   with pass from EEPROM:"));
+              #if DEBUG_ON>5
+                debugMsgContinue(epass[i]);
+              #endif
+              debugMsg("");
             #endif
-            debugMsg("");
-          #endif
-          wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
-        } else {
-          #if DEBUG_ON>3
-            debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
-            debugMsg(esid[i]);
-          #endif
-          wifiMulti.addAP(esid[i].c_str());
+            wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
+            wlan_count++ ;
+          }
+        } else {  // only ssid, no pass
+//          if (!wifiMulti.existsAP(esid[i].c_str())) {                  // skip if already there ESP8266 only
+            if (!wlanSet) {                  // skip if already there
+            #if DEBUG_ON>3
+              debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
+              debugMsg(esid[i]);
+            #endif
+            wifiMulti.addAP(esid[i].c_str());
+            wlan_count++ ;
+          }
         }
       }
+    }  // done getting WLANs
+    wlanSet = true;
+  }  // else, didn't get passed WLAN info
+  
+  #ifdef WIFI_MODE_AP_STA           // mode controlled by #define
+    WiFi.mode(WIFI_AP_STA);
+    if (strlen(ap_password) > 0) {
+      WiFi.softAP(ap_ssid, ap_password, 6, false, 8);
+    } else {
+      WiFi.softAP(ap_ssid);
     }
-    wlanRead = true;
+  #else
+    WiFi.mode(WIFI_STA);
+    #if DEBUG_ON>0
+      debugMsg(F("WLAN changing to station mode."));
+    #endif
+  #endif
+  
+  if (wlan_count) {    // if we have WLANs configured for station mode, try to connect
+    #if DEBUG_ON>0
+      if (wlan_count) {
+        debugMsgContinue(F("Connecting to WLAN ("));
+        debugMsgContinue(String(wlan_count));
+        debugMsgContinue(")");
+      }  
+    #endif
+
+    #ifdef ARDUINO_ARCH_ESP32
+      WiFi.config(IPAddress(0,0,0,0), IPAddress(0,0,0,0), IPAddress(0,0,0,0));  // test, force DHCP
+    #endif
+    while ( wifiMulti.run() != WL_CONNECTED && wlan_count ) {
+      delay(500);
+      #if DEBUG_ON>0
+        debugMsgContinue(".");
+      #endif
+      retries++;
+      if (retries > 20) {   // try for 10  seconds
+        #if DEBUG_ON>0
+          debugMsg("");
+          debugMsg(F("Failed to connect"));
+        #endif      
+        return false;
+      }
+    }
+    #if DEBUG_ON>0
+      debugMsg("");
+    #endif
+  } else {  // no wlan_count
+    #if DEBUG_ON>0
+      debugMsg(F("No WLANs configured"));
+    #endif
+    return false;      
   }
-  #if DEBUG_ON>0
-    debugMsgContinue(F("Connecting to WLAN"));
+  return true;
+}
+
+boolean tryWLAN() {  // simply tries to connect to configured WLANs
+  int retries=0;
+  #ifndef WIFI_MODE_AP_STA                       // we're in AP mode, switch to try
+    #if DEBUG_ON>0
+      debugMsg(F("WLAN switching to STA"));
+    #endif
+    WiFi.mode(WIFI_STA);
   #endif
 
+  #if DEBUG_ON>0
+      debugMsgContinue(F("Trying to connect to WLAN ("));
+      debugMsgContinue(String(wlan_count));
+      debugMsgContinue(")");  
+  #endif
   while ( wifiMulti.run() != WL_CONNECTED ) {
     delay(500);
     #if DEBUG_ON>0
       debugMsgContinue(".");
     #endif
     retries++;
-    if (retries > 24) {   // try for 12 seconds
+    if (retries > 20) {   // try for 10  seconds
       #if DEBUG_ON>0
-        debugMsg("");
-      #endif      
+      debugMsg("");
+      debugMsg(F("Failed to connect"));
+      #endif
+      #ifndef WIFI_MODE_AP_STA                       // go back to AP mode so users can connect
+        #if DEBUG_ON>0
+        debugMsg(F("WLAN switching back to AP"));
+        #endif
+      startAP(ap_ssid, ap_password);
+      #endif
       return false;
     }
   }
-
   #if DEBUG_ON>0
     debugMsg("");
-  #endif      
+    IPAddress ip = WiFi.localIP();
+    debugMsgContinue(F("WLAN IP address:"));
+    debugMsg(formatIPAsString(ip));
+    debugMsg("Connected to:" + String(WiFi.SSID()));
+  #endif
   return true;
 }
 
-String formatIPAsString(IPAddress ip) {
-  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
-}
 
 class IEEEf16  // Convert between float32 (IEEE754 Single precision binary32) and float16 (IEEE754 half precision binary16)
 /*
@@ -489,19 +566,24 @@ void reboot() {
 // ************************************************************
 byte read_clk_eeprom(int address) {
   // Read a byte at address in EEPROM memory.
-  byte data = clk_eeprom->readByte(address);
+  byte data[1];
+  byte i2cStat = clk_eeprom.read(address, data, 1);
   #if DEBUG_ON>2
     debugMsgContinue(F("Reading clk eeprom, "));
-    debugMsg(String(address)+":"+String(data));
-  #endif  
-  return data;
+    debugMsg(String(address)+":"+String(data[0]));
+  #endif
+  return data[0];
 }
+
 void write_clk_eeprom(int address, byte data) {
-  clk_eeprom->writeByte(address, data);
+//  return;
   #if DEBUG_ON>2
     debugMsgContinue(F("Writing clk eeprom, "));
     debugMsg(String(address)+":"+String(data));
-  #endif  
+  #endif
+  byte writebyte[1];
+  writebyte[0] = data;
+  byte i2cStat = clk_eeprom.write(address, writebyte, 1);
   // Write cycle time (tWR). See EEPROM memory datasheet for more details.
   delay(10);
 }
@@ -567,30 +649,32 @@ String getRTCTimeString(int full = 1) {  // form: 1=full, 0=HMS
 // ************************************************************
 int getAgingOffset(); // fwd declaration
 
-void setRTC() {
+void setRTC(boolean writeee=false) {
   Clock.setClockMode(false); // false = 24h
   Clock.setYear(Year % 100);
-  write_clk_eeprom(eeYear, Year>>8);
-  write_clk_eeprom(eeYear+1, Year%256);
   Clock.setMonth(Month);
-  write_clk_eeprom(eeMonth, Month);
   Clock.setDate(Day);
-  write_clk_eeprom(eeDay, Day);  
   Clock.setDoW(Weekday);
   Clock.setHour(Hour);
-  write_clk_eeprom(eeHour, Hour);
   Clock.setMinute(Minute);
-  write_clk_eeprom(eeMinute, Minute);
   Clock.setSecond(Second);
-  write_clk_eeprom(eeSecond, Second);
   byte age = getAgingOffset();
-  write_clk_eeprom(eeAge, age);
   uint32_t unow = getUnixTime();
-  for (int i=0 ; i<4 ; i++) {
-    write_clk_eeprom(eeUnix+i, unow%256);
-    unow = unow >> 8;
-  }
-  write_clk_sig();
+  if (writeee) {
+    write_clk_eeprom(eeYear, Year>>8);
+    write_clk_eeprom(eeYear+1, Year%256);
+    write_clk_eeprom(eeMonth, Month);
+    write_clk_eeprom(eeDay, Day);  
+    write_clk_eeprom(eeHour, Hour);
+    write_clk_eeprom(eeMinute, Minute);
+    write_clk_eeprom(eeSecond, Second);
+    write_clk_eeprom(eeAge, age);
+    for (int i=0 ; i<4 ; i++) {
+      write_clk_eeprom(eeUnix+i, unow%256);
+      unow = unow >> 8;
+    }
+    write_clk_sig();
+  }  
 }
 
 bool setRtcTime(String rtcTime) {
@@ -605,7 +689,7 @@ bool setRtcTime(String rtcTime) {
   Hour = rtcTime.substring(9,11).toInt();
   Minute = rtcTime.substring(11,13).toInt();
   Second = rtcTime.substring(13).toInt();
-  setRTC();
+  setRTC(true);
 }
 
 // ************************************************************

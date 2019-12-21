@@ -673,7 +673,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   query[5] = (uint8_t)(crc & 0x00FF);
   query[6] = (uint8_t)((crc & 0xFF00) >> 8);  // add the CRC to the query
   #if DEBUG_ON>3
-    debugMsg("MbusCRC = " + String(crc,HEX));
+    debugMsg("Mbus CRC out = " + String(crc,HEX));
   #endif  
 
   preTransmission();
@@ -772,6 +772,11 @@ int mbusTCP() {
   uint8_t mbbuffer[1024];
   uint8_t result, func, mei, readID, objID; 
   uint16_t refNum, count, len, val, buffsize;
+  /*
+   * If something is actively using this, we're not
+   * going to let wifi do scanning.
+   */
+  if ( (millis() - lastWLANtry) < 5000 ) lastWLANtry += 5000;  // at least 5 seconds
   if (mbClient.available() > 0) {
     int i;
     for ( i = 0; i < 6; i++) {

@@ -392,77 +392,61 @@ void allcoilsPageHandler()
 */
 void wlanPageHandler()
 {
+  String ssid, pass;
   #if DEBUG_ON>0
     debugMsg(F("Entering /wlan_config page."));
   #endif
 
   // Check if there are any GET parameters, if there are, we are configuring
-  if (server.hasArg(F("ssid")))
-  {
+  if (server.hasArg(F("ssid"))) {
+      ssid = server.arg("ssid");
 //    WiFi.persistent(true);
     #if DEBUG_ON>0
-      debugMsgContinue(F("New SSID entered: \""));
-      debugMsg(String(server.arg("ssid").c_str())+"\"");
-    #endif
-    if (server.hasArg(F("password")))
-    {
-      #if DEBUG_ON>3
       debugMsg(F("Configuring WiFi"));
-      debugMsgContinue(F("SSID:"));
-      debugMsg(server.arg(F("ssid")));
-      debugMsgContinue(F("PASSWORD:"));
+      debugMsgContinue(F("New SSID entered:"));
+      debugMsg(ssid);
+    #endif
+    
+    if (server.hasArg(F("password")))  {
+      pass = server.arg(F("password"));
+      #if DEBUG_ON>3
+      debugMsgContinue(F("New PASSWORD entered:"));
       #endif
       #if DEBUG_ON>5
-      debugMsgContinue(server.arg(F("password")));
+      debugMsgContinue(pass);
       #endif
       #if DEBUG_ON>3
       debugMsg("");
       #endif
+    }
 
-      WiFi.begin(server.arg(F("ssid")).c_str(), server.arg(F("password")).c_str());
-    }
-    else
-    {
-      WiFi.begin(server.arg(F("ssid")).c_str());
-      #if DEBUG_ON>3
-      debugMsg(F("Connect WiFi"));
-      debugMsg(F("SSID:"));
-      debugMsg(server.arg(F("ssid")));
-      #endif
-    }
-    WiFi.persistent(false);
-
-    int i = 0;
-    while (WiFi.status() != WL_CONNECTED && i < 30) // try for 15 seconds
-    {
-      delay(500);
-      server.handleClient();                            // for web server
-      i++;
-      #if DEBUG_ON>0
-      debugMsgContinue(".");
-      #endif
-    }
-    if (WiFi.status() == WL_CONNECTED) {
-    storeCredentialsInEEPROM(server.arg(F("ssid")), server.arg(F("password")), 0);  //save in slot 0
     #if DEBUG_ON>0
-      debugMsg("");
-      debugMsg(F("WiFi connected"));
-      debugMsgContinue(F("IP address: "));
-      debugMsg(formatIPAsString(WiFi.localIP()));
-      debugMsgContinue(F("SoftAP IP address: "));
-      debugMsg(formatIPAsString(WiFi.softAPIP()));
+    debugMsgContinue("ssid length:");
+    debugMsg(String(strlen(ssid.c_str())));
+    debugMsgContinue("pass length:");
+    debugMsg(String(strlen(pass.c_str())));
     #endif
-    delay(50);
-    reboot();
+
+    
+    if (connectToWLAN(ssid.c_str(), pass.c_str())) {                // try to connect
+      storeCredentialsInEEPROM(ssid, pass, 0);                      //save in slot 0 if we did
+      #if DEBUG_ON>0
+        debugMsg("");
+        debugMsg(F("WiFi connected"));
+        debugMsgContinue(F("IP address: "));
+        debugMsg(formatIPAsString(WiFi.localIP()));
+        debugMsgContinue(F("SoftAP IP address: "));
+        debugMsg(formatIPAsString(WiFi.softAPIP()));
+      #endif
+      delay(50);
+      reboot();                                                     // and reboot to pick up the new config
     } else {
       #if DEBUG_ON>0
         debugMsg("");
         debugMsg(F("WiFi connect failed."));
       #endif
     }
-  }
-
-  getWLANsFromEEPROM();
+  } // end, got an SSID to configure
 
   String response_message;
   response_message.reserve(3000);
@@ -651,13 +635,20 @@ void resetAllPageHandler() {
   response_message += F("</b> SSID and open <b>http://192.168.4.1</b> in a web browser to reconfigure.</div></div>");
   response_message += getHTMLFoot();
   resetEEPROM();
+  /*
+   * system_restore() - Reset to default settings of the following APIs : 
+   * wifi_station_set_auto_connect, wifi_set_phy_mode, wifi_softap_set_config related, 
+   * wifi_station_set_config related, and wifi_set_opmode.
+   */
   system_restore(); // this wipes ESP saved wifi stuff
+  
   server.send(200, F("text/html"), response_message);
   for ( int i = 0; i < 1000 ; i++ ) {
     server.handleClient();
     delay(1);    // wait to deliver response
     yield();
   }
+  WiFi.disconnect();
   reboot();
 }
 

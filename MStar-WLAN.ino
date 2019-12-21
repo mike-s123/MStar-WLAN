@@ -22,13 +22,13 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191219"
+#define SOFTWARE_VERSION "v1.191220"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Add more controller datatypes. Speed reading. Auto refresh.<br/>\
-                     No mDNS. Refactor for different controller families. ESP32 working.<br/>\
-                     wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support"
+#define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br/>\
+                     wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br/>\
+                     More WLAN work"
 
-#define DEBUG_ON 1                // enable debugging output
+#define DEBUG_ON 3                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
                                   // 0 not working on ESP32 for now
 #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
@@ -44,7 +44,7 @@
 
 #include <Wire.h>
 #include <DS3231.h>   // Andrew Wickert, et al 1.0.2, via IDE
-#include <ZEeprom.h>  // Pierre Valleau 1.0.0, for EEPROM on DS3231 board, via IDE
+#include <extEEPROM.h> // Jack Christensen, 3.4.1, via IDE licensed under CC BY-SA 4.0.
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
 #ifdef ARDUINO_ARCH_ESP8266
@@ -137,9 +137,16 @@
 
 //wlan
 #define AP_SSID "MStar"
-//#define AP_SSID_UNIQ                    // define to generate a unique SSID e.g. MStar-123456
+#define AP_SSID_UNIQ                    // define to generate a unique SSID e.g. MStar-123456
 // password, if used, must be 8-32 chars
 #define AP_PSK  "morningstar"
+
+/*
+ * If we define WIFI_MODE_AP_STA, it will both be an AP and try to connect as a station.
+ * If not defined, we're a station if able to connect to a configured WLAN, otherwise
+ * we turn into an AP. When an AP, if there are WLANs configured, it will try to connect
+ * every few minutes if there is no client connected.
+ */
 //#define WIFI_MODE_AP_STA                // define to run AP while also connected as station
 
 #define HOSTNAME "MStarWLAN"
@@ -233,7 +240,10 @@ const char *fs_type = FS_TYPE;
 String esid[4];
 String epass[4];
 boolean wlanConnected = false;
+int wlan_count=0;             // holds how many WLANs configured in EEPROM
 boolean wlanRead = false;     // if we've read SSID/PSKs from EEPROM
+boolean wlanSet = false;      // if we've added them to wifiMulti
+boolean wlansAdded = false;   // if we've added WLANs to wifiMulti
 boolean largeFlash = false;
 boolean mbActive = false;    // whether we're using mbus
 boolean wlanLedState = true;
@@ -254,7 +264,8 @@ String referrer;
 IPAddress apIP(192, 168, 99, 1);
 ModbusMaster node;
 DS3231 Clock;
-ZEeprom * clk_eeprom;
+//ZEeprom * clk_eeprom;
+extEEPROM clk_eeprom(kbits_32, 1, 32, 0x57);
 #define DS3231_I2C 0x68
 #define AT24Cxx_BASE_ADDR 0x57 // ZS-042/HW-84 modules have pullups on A0-A2
 #define AGE_OFFSET -24       // aging offset for ds3231, higher is slower
@@ -346,35 +357,39 @@ void setup() {
   #endif
 
     Wire.begin(SDA_PIN, SCL_PIN);              // setup I2C
-    if (Wire.requestFrom(DS3231_I2C, 2)) {
-      useRTC = true;
-    } else {
+    if (!Wire.requestFrom(DS3231_I2C, 2)) {
       #if DEBUG_ON>0
-        debugMsg(F("No RTC found"));
+        debugMsgContinue(F("No "));
       #endif      
+    } else {
+     useRTC = true;
     }
-    if (useRTC) {
+    #if DEBUG_ON>0
+      debugMsg(F("RTC found"));
+    #endif      
+    byte i2cStat = clk_eeprom.begin(clk_eeprom.twiClock100kHz);
+      if ( i2cStat != 0 ) {
+      debugMsg(F("I2C Problem with RTC eeprom"));
+    }
+
+     if (useRTC) {
       delay(10);
       if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)
         #if DEBUG_ON>0
           debugMsg(F("Initializing RTC"));
         #endif
         Clock.enableOscillator(true, true, 0);  // Ena osc, sqw on batt, 1 Hz
-        delay(2);
-        setRTC();   // Clears OSF flag
+        delay(100);
+        setRTC(true);   // Clears OSF flag?
         delay(2);
         if (!Clock.oscillatorCheck()) {
           useRTC = false;
           #if DEBUG_ON>0
             debugMsg(F("RTC check failed"));  // probably no RTC
           #endif
-        }
+        } 
       }
     }  
-    // Initialize EEPROM library.
-    clk_eeprom= new ZEeprom();
-    clk_eeprom->begin(Wire,AT24Cxx_BASE_ADDR,AT24C32);
-
 
   pinMode(RX_ENABLE_PIN, OUTPUT);            // used for half-duplex MODBUS
   rxEnable(false);
@@ -407,7 +422,7 @@ void setup() {
   //ap_password = AP_PSK;
   my_hostname = HOSTNAME + String("-") + String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
 
-  WiFi.persistent(false);
+WiFi.persistent(true);
   #ifdef ARDUINO_ARCH_ESP8266
     WiFi.hostname(my_hostname);
   #endif
@@ -430,23 +445,25 @@ void setup() {
     debugMsg(F("Trying to connect to WLAN."));
   #endif
   
-  #if DEBUG_ON>0
-    debugMsgContinue(F("AP SSID:"));
-    debugMsg(String(ap_ssid));
-  #endif
-  startAP(ap_ssid, ap_password);            // this sets the SSID when in AP mode
-
   wlanConnected = connectToWLAN();    // try to connect as STA
-
+  lastWLANtry = millis();
+  #ifndef WIFI_MODE_AP_STA
+    if (!wlanConnected) {             // If can't connect in STA mode, switch to AP mode
+      startAP(ap_ssid, ap_password);
+    }
+  #endif
+  
   IPAddress apIP = WiFi.softAPIP();
   IPAddress myIP = WiFi.localIP();
   
   #if DEBUG_ON>0
   debugMsgContinue(F("AP IP address: "));
   debugMsg(formatIPAsString(apIP));
-  debugMsgContinue(F("WLAN IP address: "));
-  debugMsg(formatIPAsString(myIP));
-  debugMsg("Connected to:" + String(WiFi.SSID()));
+  if (wlanConnected) {
+    debugMsgContinue(F("WLAN IP address: "));
+    debugMsg(formatIPAsString(myIP));
+    debugMsg("Connected to:" + String(WiFi.SSID()));
+  }
   #endif
 
   #if DEBUG_ON>0
@@ -575,31 +592,34 @@ void loop() {
   if (WiFi.softAPgetStationNum()) {                     // AP client connected, every 3 sec
     blinkOnTime = 5;       
     blinkTopTime = 3000;
-    lastWLANtry = millis();                             // we have a client, hold off on attempts to connect as a station
-  } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA, flash 1/sec
+  } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA (or AP), flash 1/sec
     wlanConnected = true;
     blinkOnTime = 5;
     blinkTopTime = 1000;
-    lastWLANtry = millis();                             // we're already connected, don't try again
   } else {                                              // no connections, every 10 sec
     blinkOnTime = 2;
     blinkTopTime = 10000;  
-    if ((millis() - lastWLANtry) > 300000 ) {           // try to connect as a station every 5 minutes 
-      #if DEBUG_ON>0                                    // if in AP mode and there are no connections
-        debugMsg("millis="+String(millis()));
-        debugMsg("lastWLANtry="+String(lastWLANtry));
-        debugMsg(F("Trying WLAN connection"));
-      #endif    
-      wlanConnected = connectToWLAN();
-      lastWLANtry = millis();                           // mark attempt
-      #if DEBUG_ON>0
-        debugMsg(F("No connection, starting AP"));
-      #endif    
-      startAP(ap_ssid, ap_password);                    // else, bring up AP back up.
-    }   
   }
 
-  
+  /* 
+   *  If we have configured WLANs and are not connected as a station, try to connect every few minutes
+   *  Only if running as both AP and STA (doesn't take AP down, but will be non-responsive to client
+   *  while scanning). If running as STA -or- AP, don't scan if client is connected.
+   */
+  #ifdef WIFI_AP_STA  // if AP_STA mode, ok to try with client connected
+    if (( wlan_count && !WiFi.isConnected() &&(millis() - lastWLANtry) > 300000) ) {  // 5 minutes
+  #else               // if not, would disconnect client, so check
+    if (( wlan_count && !WiFi.isConnected() && !WiFi.softAPgetStationNum() &&(millis() - lastWLANtry) > 30000) ) {
+  #endif
+    
+    #if DEBUG_ON>1 
+      debugMsg("lastWLANtry="+String(lastWLANtry));
+      debugMsg(F("Trying WLAN connection"));
+    #endif
+    tryWLAN();
+    lastWLANtry = millis();   // mark attempt
+  }
+
   if (((millis() - lastMillis) > blinkTopTime) && wlanLedState) {
     lastMillis = millis();
     wlanLedState = false;
