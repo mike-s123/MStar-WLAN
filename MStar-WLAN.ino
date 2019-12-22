@@ -22,11 +22,11 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191220"
+#define SOFTWARE_VERSION "v1.191221"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br/>\
-                     wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br/>\
-                     More WLAN work"
+#define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
+                     wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
+                     More WLAN work. Started adding time support."
 
 #define DEBUG_ON 3                // enable debugging output
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
@@ -115,6 +115,7 @@
 #include <WiFiUdp.h>
 
 #include <ModbusMaster.h> //Doc Walker 2.0.1, via IDE
+#include <ezTime.h> //Rop Gonggrijp 1.8.3, via IDE
 
 //---------------------------
 // definitions
@@ -163,15 +164,26 @@
 #define EEPROM_SIZE 512
 #define EEPROM_SIG "mjs!"
 /*
- * 
+ * "EEPROM" on ESP
  * 0-127   4x32 WLAN SSID
  * 128-255 4x32 WLAN password
  * 256-272 16 Controller model
+ * 272-303 (32) ntp server
+ * 304-305 (2)  ntp poll interval (u_int 16)
+ * 306-337 (32) ntp POSIX timestring
  * 508-511 (4)  Valid signature (EEPROM_SIG)
  */
+#define eeWLANSSID 0
+#define eeWLANPASS 128
+#define eeModel 256
+#define eeNtpServer 272
+#define eeNtpPoll 304
+#define eeNtpTZ 306
+ 
 #define CLK_EEPROM_SIZE 4096
 #define CLK_EEPROM_SIG "mjs!"
 /*
+ * EEPROM on DS3231 module
  * 0    (1) Last set aging offset (so we have it if battery goes away)
  * 1-2  (2) Year
  * 3    (1) Month
@@ -183,14 +195,20 @@
  * 
  * 4092-4095 (4)  Valid signature (CLK_EEPROM_SIG)
  */
-#define eeAge 0
-#define eeYear 1
-#define eeMonth 3
-#define eeDay 4
-#define eeHour 5
-#define eeMinute 6
-#define eeSecond 7
-#define eeUnix 8
+#define eeRtcAge 0
+#define eeRtcYear 1
+#define eeRtcMonth 3
+#define eeRtcDay 4
+#define eeRtcHour 5
+#define eeRtcMinute 6
+#define eeRtcSecond 7
+#define eeRtcLastSetTime 8
+
+#define DEFAULT_NTP_TZ "EST5EDT,M3.2.0,M11.1.0"   //POSIX format
+#define DEFAULT_NTP_INTERVAL 7207                 // seconds, best if not a multiple of 60
+#define DEFAULT_NTP_SERVER "0.pool.ntp.org"
+#define MIN_NTP_INTERVAL 601                      // seconds
+#define MAX_NTP_INTERVAL 64999                    // ~18 hours
 
 #ifdef ARDUINO_ARCH_ESP8266
   #define RX_ENABLE_PIN 12  // GPIO 12 (D6) on Wemos
@@ -264,7 +282,6 @@ String referrer;
 IPAddress apIP(192, 168, 99, 1);
 ModbusMaster node;
 DS3231 Clock;
-//ZEeprom * clk_eeprom;
 extEEPROM clk_eeprom(kbits_32, 1, 32, 0x57);
 #define DS3231_I2C 0x68
 #define AT24Cxx_BASE_ADDR 0x57 // ZS-042/HW-84 modules have pullups on A0-A2
@@ -276,6 +293,12 @@ bool twentyFourHourClock = true;
 bool Century=false;
 bool h12;
 bool PM;
+String ntpServer = DEFAULT_NTP_SERVER;
+unsigned short int ntpInterval = MAX_NTP_INTERVAL;
+String ntpTZ = DEFAULT_NTP_TZ;  //posix string
+String tzName;  // used for lookup
+String tzPosix; // used for lookup
+Timezone myTZ;
 
 
 #ifdef ARDUINO_ARCH_ESP8266
@@ -310,7 +333,7 @@ byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // Apri
 
 
 void setup() {
-
+  unsigned short int ntp_temp;
   #ifdef ARDUINO_ARCH_ESP8266
     digitalWrite(SELF_RST_PIN, HIGH); // So board can do a hardware reset of itself
     pinMode(SELF_RST_PIN, OUTPUT);
@@ -447,6 +470,57 @@ WiFi.persistent(true);
   
   wlanConnected = connectToWLAN();    // try to connect as STA
   lastWLANtry = millis();
+
+
+  if (WiFi.isConnected()) { //connected as a station
+    myTZ.setDefault();                     // setup NTP service
+    tzPosix = getNtpTZFromEEPROM();
+  //  if (tzPosix != "") {
+  //   tzPosix = ntpTZ);
+  //  }
+    #if DEBUG_ON>0
+      debugMsgContinue(F("Setting NtpTZ to:"));
+      debugMsg(tzPosix);
+    #endif
+    ntpTZ = tzPosix;
+    myTZ.setPosix(tzPosix);
+    tzPosix = getNtpServerFromEEPROM(); // tzPosix is used as a temp
+     #if DEBUG_ON>0
+      debugMsgContinue(F("Setting NtpServer to:"));
+      debugMsg(tzPosix);
+    #endif
+    setServer(tzPosix);
+    ntpServer = tzPosix;
+    tzPosix = ""; // we were just using it temporarily
+    ntp_temp = getNtpPollFromEEPROM();
+     #if DEBUG_ON>0
+      debugMsgContinue(F("Setting NtpPoll to:"));
+      debugMsg(String(ntp_temp));
+    #endif
+    setInterval(ntp_temp);
+    ntpInterval = ntp_temp;
+    
+    if (timeStatus() == timeNotSet) {      // try to sync with NTP a few times
+      #if DEBUG_ON>0
+        debugMsg(F("Trying to sync NTP."));
+      #endif
+      for (int idx = 0 ; idx < 3 ; idx++) {
+        if (waitForSync(3)) {
+          idx = 4;
+        }
+      }
+    }
+    #if DEBUG_ON>0
+      if (timeStatus() == timeSet) {
+        debugMsgContinue(F("Sync'd to NTP. Time is "));
+        debugMsg(myTZ.dateTime(RFC850));
+      } else if (useRTC) {
+        debugMsgContinue(F("Didn't sync NTP. Using RTC time."));
+        setInterval(0);  // disable ntp
+        setTime(getUnixTime()); // from RTC
+      }
+    #endif
+  }
   #ifndef WIFI_MODE_AP_STA
     if (!wlanConnected) {             // If can't connect in STA mode, switch to AP mode
       startAP(ap_ssid, ap_password);

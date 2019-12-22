@@ -1,4 +1,5 @@
 
+
 function goBack() {              // return to previous page
   window.history.back();
 }
@@ -75,10 +76,33 @@ function setRtcTime () {
   location.reload(true);
 }
 
-function setAging (value, vari) {
+function setRtcTimeNTP () {
+  var theUrl = "/cmd?setrtcntp=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  xhr.onreadystatechange = function() {
+    if ( xhr.readyState == XMLHttpRequest.DONE ) {
+      resultstr.value = xhr.responseText ;
+    }
+  }
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+  location.reload(true);
+}
+
+function setNtpCfg () {
+  var ntp_svr = document.getElementById("ntp_svr").value;
+  var ntp_poll = document.getElementById("ntp_poll").value;
+  var ntp_tz = document.getElementById("ntp_tz").value;
+  var theUrl = "/cmd?setntpcfg=true&ntp_svr=" + ntp_svr + "&ntp_poll=" + ntp_poll + "&ntp_tz=" + ntp_tz + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
+function setAging (id) {
+  var value = document.getElementById(id).value;
   var theUrl = "/cmd?setagingoffset=" + value + "&version=" + Math.random() ;
   var xhr = new XMLHttpRequest() ;
-  document.getElementById(vari).innerHTML = value;
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;
 }

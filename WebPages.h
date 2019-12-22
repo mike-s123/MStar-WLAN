@@ -50,8 +50,9 @@ void cmdPageHandler() {
  *  Used by JavaScript
  */
   int addr, offset, wlan, numArgs = server.args();
-  String data, value, ssid, pass, response_message = F("OK"), rtcTime;
-  enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan };
+  unsigned short int ntp_poll = -1;
+  String data, value, ssid, pass, response_message = F("OK"), rtcTime, ntp_item, ntp_svr = "", ntp_tz = "";
+  enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, set_rtc_ntp, cfg_ntp };
   commands cmd;
   #if DEBUG_ON>2
     debugMsgContinue(F("SET args received:"));
@@ -88,8 +89,27 @@ void cmdPageHandler() {
       ssid = server.arg(i);
     } else if ( server.argName(i) == F("pass") ) {
       pass = server.arg(i);
+    } else if ( server.argName(i) == F("setrtcntp") ) {
+      cmd = set_rtc_ntp;
+    } else if ( server.argName(i) == F("setntpcfg") ) {
+      #if DEBUG_ON>1
+        debugMsg(F("/cmd, setntpcfg received"));
+      #endif  
+      cmd = cfg_ntp;
+      ntp_item = server.arg(i);
+    } else if ( server.argName(i) == F("ntp_svr") ) {
+      #if DEBUG_ON>1
+        debugMsgContinue(F("/cmd, setntpcfg received server:"));
+        debugMsg(server.arg(i));
+      #endif  
+      ntp_svr = server.arg(i);
+    } else if ( server.argName(i) == F("ntp_poll") ) {
+      ntp_poll = server.arg(i).toInt();
+    } else if ( server.argName(i) == F("ntp_tz") ) {
+      ntp_tz = server.arg(i);
     }
   }
+  
   switch (cmd) {
     case read_reg:  MBus_get_reg(addr, value);
                     response_message = value;
@@ -107,8 +127,27 @@ void cmdPageHandler() {
                     break;
     case set_aging: setAgingOffset(offset);
                     break;
-    case set_wlan:  storeCredentialsInEEPROM(ssid, pass, wlan);
-                    break;                
+    case set_wlan:  storeWLANsInEEPROM(ssid, pass, wlan);
+                    break;
+    case set_rtc_ntp: setRtcTimeNTP();
+                    break;
+    case cfg_ntp:   if (ntp_svr != "") {
+                      ntpServer = ntp_svr;
+                      setServer(ntpServer);
+                      storeNtpServerInEEPROM(ntpServer);
+                    }
+                    if (ntp_poll != -1) {
+                      ntpInterval = ntp_poll;
+                      setInterval(ntpInterval);
+                      storeNtpPollInEEPROM(ntpInterval);
+                    }
+                    if (ntp_tz != "") {
+                      ntpTZ = ntp_tz;
+                      myTZ.setPosix(ntpTZ);
+                      storeNtpTZInEEPROM(ntpTZ);
+                    }
+                    //TODO write to eeprom
+                    break;
     default:        response_message = F("err");
   }
   server.send(200, F("text/plain"), response_message);
@@ -197,13 +236,13 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Architecture"), F("ESP32"));
     response_message += getTableRow2Col(F("Chip revision"), String(ESP.getChipRevision()));
   #endif
-  response_message += getTableRow2Col(F("CPU Freqency (MHz)"), String(ESP.getCpuFreqMHz()));
+  response_message += getTableRow2Col(F("CPU Frequency (MHz)"), String(ESP.getCpuFreqMHz()));
   if (useRTC) {
-    response_message += getTableRow2Col(F("RTC Time"), getRTCTimeString());
+    response_message += getTableRow2Col(F("RTC Time"), myTZ.dateTime(getUnixTime(),RFC850));
     response_message += getTableRow2Col(F("RTC Temp"), String(getRTCTemp(), 2));
   }
   String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST");
-  response_message += getTableRow2Col(F("Sketch compiled"), datetime);
+  response_message += getTableRow2Col(F("Sketch compiled"), myTZ.dateTime(compileTime(), RFC850));  //datetime);
   response_message += getTableRow2Col(F("Arduino IDE"), String(ARDUINO));
   response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
   response_message += getTableRow2Col(F("Sketch size"), formatBytes(ESP.getSketchSize()));
@@ -429,7 +468,7 @@ void wlanPageHandler()
 
     
     if (connectToWLAN(ssid.c_str(), pass.c_str())) {                // try to connect
-      storeCredentialsInEEPROM(ssid, pass, 0);                      //save in slot 0 if we did
+      storeWLANsInEEPROM(ssid, pass, 0);                      //save in slot 0 if we did
       #if DEBUG_ON>0
         debugMsg("");
         debugMsg(F("WiFi connected"));
@@ -514,7 +553,7 @@ void wlanPageHandler()
       esidvar += String(i);
       esidvar += "\" size=\"9\" value=\"";
       esidvar += esid[i];                                                       // needs work on local.js
-      esidvar += "\" onchange=\"setwlan('";                   //storeCredentialsInEEPROM
+      esidvar += "\" onchange=\"setwlan('";                   //storeWLANsInEEPROM
       esidvar += "this.value, '";
       
       esidvar += String(i);
@@ -542,14 +581,12 @@ void utilityPageHandler()
   response_message = getHTMLHead();
   response_message += getNavBar();
 
-  response_message += F("<br/><br/><div class=\"container\" role=\"secondary\"><br/>");
+  response_message += F("<br><br><div class=\"container\" role=\"secondary\"><br>");
   response_message += F("<p><hr><h3>Utility Functions</h3>");
   response_message += F("<font size=\"4\">");
 
   response_message += F("<hr><a href=\"/wlan_config\">Wireless settings</a>");
-  if (useRTC) {
-    response_message += F("<hr><a href=\"/setTime\">Set time</a>");
-  }
+  response_message += F("<hr><a href=\"/setTime\">Time settings</a>");
   response_message += F("<hr><a href=\"/documentation.htm\">Documentation</a>");
   response_message += F("<hr><a href=\"/edit\">File edit/view/upload (ctrl-s saves file)</a>");
   response_message += F("<hr><a href=\"/allregs\">Show all registers</a>");
@@ -559,19 +596,22 @@ void utilityPageHandler()
   response_message += json_password;
   response_message += F("%22,%22back%22:%22true%22}\">Restart solar controller</a>");
 
-  response_message += F("<hr><a href=\"/rest?json={%22addr%22:254,%22cmd%22:");
-  response_message += F("%22writeSingleCoil%22,%22valu%22:%22on%22,%22pass%22:%22");
-  response_message += json_password;
-  response_message += F("%22,%22back%22:%22true%22}\">Reset solar controller to factory defaults</a>");
 
   response_message += F("<hr><a href=\"/getfile\">Check controller and reread files</a>");
   response_message += F("<hr><a href=\"/reset\">Restart WLAN module</a>");
-  response_message += F("<hr><a href=\"/resetall\">Clear config and restart WLAN module</a>");
   if ( largeFlash ) {
     response_message += F("<hr><a href=\"");
     response_message += UPDATE_PATH;
     response_message += F("\">Update WLAN module firmware</a>");
   }
+
+  response_message += F("<hr><h3>Use with caution!</h3>");
+  
+  response_message += F("<hr><a href=\"/rest?json={%22addr%22:254,%22cmd%22:");
+  response_message += F("%22writeSingleCoil%22,%22valu%22:%22on%22,%22pass%22:%22");
+  response_message += json_password;
+  response_message += F("%22,%22back%22:%22true%22}\">Reset solar controller to factory defaults</a>");
+  response_message += F("<hr><a href=\"/resetall\">Clear config and restart WLAN module</a>");
 
   response_message += F("</font></div>");
   response_message += getHTMLFoot();
@@ -681,6 +721,20 @@ void setTimePageHandler() {
   #if DEBUG_ON>0
     debugMsg(F("Entering /setTime page."));
   #endif
+    String serverArg = "";
+
+ if (server.hasArg("tzname")) // for POSIX lookup
+  {
+    serverArg = String(server.arg("tzname").c_str());
+    if ( serverArg.length() > 3 && serverArg.length() < 64 ) {
+      tzName = server.arg("tzname").c_str();
+      if (myTZ.setLocation(tzName)) {  // also sets TZ string, so we restore after
+        tzPosix = myTZ.getPosix();
+        myTZ.setPosix(ntpTZ);          // restore the existing string
+      }
+    }
+  }
+  
   checkController();
   String response_message, inputvar;
   response_message.reserve(4000);
@@ -693,26 +747,89 @@ void setTimePageHandler() {
     response_message += fullModel;
     if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
   }
+  
   response_message += F("</h3></div>"); 
 
-//  response_message += F("<center><img src=\"setTime.png\"></center>");
-  response_message += getTableHead2Col(F("Set Time"), F("Unit"), F("Value")); 
-  getRTCTime();
-  response_message += getJsButton(F("Set time and date"), "setRtcTime()");
-
-  String RTCTime= String(Month)+"/"+String(Day, DEC)+"/"+String(Year, DEC)+" "+String(Hour, DEC)+":"+String(Minute, DEC)+":"+String(Second, DEC);
-  response_message += getTableRow2Col(F("Current Time"), RTCTime);
- // response_message += getTableRow2Col(F("Aging offset"), String(getAgingOffset()));
+    //  response_message += F("<center><img src=\"setTime.png\"></center>");
+  response_message += getFormHead("Clock status");
   
-  inputvar = F("<input type=\"number\" id=\"offset\" size=\"9\" value=\"");
-  inputvar += String(getAgingOffset());
-  inputvar += F("\" onchange=\"setAging(this.value, 'offset')\">&nbsp");
-  response_message += getTableRow2Col("Aging offset (-127 to 127, higher is slower)", inputvar);
+  if (useRTC) {  
+    response_message += getTextInput(F("Current RTC time"), F("rtc_time"), myTZ.dateTime(getUnixTime(),RFC850), true);
+    response_message += F("<br><br>");
+  } 
   
-  response_message += getTableRow2Col(F("Last set"), String(geteeUnixTime()));
-  response_message += getTableRow2Col(F("Current"), String(getUnixTime()));
+  if (timeStatus() == timeSet) {  // ntp got time
+    response_message += getTextInput(F("Current NTP time"), F("ntp_time"), myTZ.dateTime(RFC850), true);
+    response_message += F("<br><br>");
+    response_message += getTextInput(F("Last NTP update"), F("ntp_update"), myTZ.dateTime(lastNtpUpdateTime(),RFC850), true);
+    response_message += F("<br><br>");
+  } else if (!useRTC) {
+    response_message += F("<br>No time source.");
+  }
+  
+  if (useRTC) {
+    response_message += getTextInput(F("RTC last set"), F("rtc_lastset"), myTZ.dateTime(getRtcLastSetTime(),RFC850), true);
+    response_message += F("<br><br>");
+    if (timeStatus() == timeSet) {  // ntp got time
+      response_message += getJsButton(F("Set RTC from ntp"), F("setRtcTimeNTP()"));
+    }
+    response_message += getJsButton(F("Set RTC from computer"), F("setRtcTime()"));
+    response_message += F("<br><br>");
+    
+    response_message += getNumberInput(F("Aging offset (-127 to 127, higher is slower)"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
+    response_message += F("<br><br>");
+    response_message += getJsButton(F("Set aging offset"), F("setAging('rtc_offset')"));
+  }
+  
+  response_message += getFormFoot();
+  response_message += getFormHead("Configure NTP");
+  if (!useRTC) {
+    if (timeStatus() == timeSet) {  // ntp valid
+      response_message += F("Current ntp time: ");
+      response_message += myTZ.dateTime(RFC850);
+      response_message += F("<br><br>");  
+    } else {
+      response_message += F("Current ntp time: n/a<br><br>");
+    }
+  } 
 
-  response_message += getTableFoot();
+//getTextInput(String heading, String input_name, String value, boolean disabled)
+//getNumberInput(String heading, String input_name, int minVal, int maxVal, int value, boolean disabled)
+
+  response_message += getTextInput(F("NTP server"), F("ntp_svr"), ntpServer, false);
+  response_message += F("<br><br>");
+  String foo = F("Poll interval<br>(");
+  foo += String(MIN_NTP_INTERVAL);
+  foo += "-";
+  foo += String(MAX_NTP_INTERVAL);
+  foo += F(" min)");
+  response_message += getNumberInput(foo, F("ntp_poll"), 601, 64999, ntpInterval, false);
+  response_message += "<br><br>";
+  response_message += getTextInput(F("POSIX timezone string"), F("ntp_tz"), ntpTZ, false);
+  response_message += F("<br><br>");
+  response_message += getJsButton(F("Update NTP settings"), F("setNtpCfg()"));
+  response_message += getFormFoot();
+ 
+  response_message += getFormHead(F("Configuration Info"));
+
+  response_message += F("You can try a POSIX lookup by entering an ");
+  response_message += F("<a href=\"https://en.wikipedia.org/wiki/List_of_tz_database_time_zones\" target=\"_blank\">");
+  response_message += F("Olson name</a> (like America/Detroit) here, and then copy/paste it to the field above. ");
+  response_message += getTextInput(F("Olson name"), F("tzname"), tzName, false);
+  response_message += F("<br><br>");
+  response_message += getTextInput(F("POSIX TZ string:"), F("tzposix"), tzPosix, true);
+  response_message += F("<br><br>");
+  response_message += getSubmitButton(F("Lookup"));
+  response_message += F("<br><hr/>");
+  response_message += F("<a href=\"http://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html\" target=\"_blank\">");
+  response_message += F("POSIX time zone string reference,</a> e.g. US Eastern is <b>EST5EDT,M3.2.0,M11.1.0</b>. ");
+  response_message += F("<br><hr/>");
+  response_message += F("The NTP poll time should <i>not</i> be set to a multiple of 60 seconds. That will help spread ");
+  response_message += F("out the load on the NTP servers. 7201 seconds is good, 7200 is not. If using an ntp.org pool ");
+  response_message += F("server, polls should happen no more often than every 1/2 hour (1800 seconds) to comply with ");
+  response_message += F("their terms of service.");
+  response_message += getFormFoot();
+
 
   response_message += getHTMLFoot();
   server.send(200, F("text/html"), response_message);

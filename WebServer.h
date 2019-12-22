@@ -100,7 +100,7 @@
 
   server.onNotFound([]() {                              // If the client requests any URI
     #if DEBUG_ON>2
-      debugMsg("server.onNotFound");
+      debugMsg("server.onNotFound:" + server.uri());
     #endif
     if (!handleFileRead(server.uri()))                  // send it if it exists
       server.send(404, F("text/plain"), F("404: Not Found")); // otherwise, respond with a 404 (Not Found) error
@@ -115,8 +115,8 @@
   server.serveStatic("/ctl/TS-MPPT.png", FILESYSTEM, "/ctl/TS-MPPT.png", "max-age=43200"); 
   server.serveStatic("/ctl/TS-600.png", FILESYSTEM, "/ctl/TS-600.png", "max-age=43200"); 
   server.serveStatic("/ctl/Nocontroller.png", FILESYSTEM, "/ctl/Nocontroller.png", "max-age=43200"); 
-  server.serveStatic("/local.css", FILESYSTEM, "/local.css", "max-age=43200");
-  server.serveStatic("/local.js", FILESYSTEM, "/local.js", "max-age=43200");
+  //server.serveStatic("/local.css", FILESYSTEM, "/local.css", "max-age=43200");
+  //server.serveStatic("/local.js", FILESYSTEM, "/local.js", "max-age=43200");
   server.serveStatic("/charging.png", FILESYSTEM, "/charging.png", "max-age=43200");
   server.serveStatic("/ace.js", FILESYSTEM, "/ace.js", "max-age=43200");
   server.serveStatic("/jquery.min.js", FILESYSTEM, "/jquery.min.js", "max-age=43200");

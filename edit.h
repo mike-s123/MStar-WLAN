@@ -59,9 +59,6 @@ String getContentType(String filename); // fwd
       #if DEBUG_ON>2
         debugMsg("handleFileRead, opening: " + path);
       #endif
-
-
-      
       File file = FILESYSTEM.open(path, "r");
       server.streamFile(file, contentType);
       file.close();

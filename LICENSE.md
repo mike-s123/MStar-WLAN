@@ -6,12 +6,14 @@ FSWebServer, Copyright (c) 2015 Hristo Gochkov. All rights reserved. [GNU LGPL](
 
 Some HTML/CSS stuff is from [Ian Sparkes](https://bitbucket.org/isparkes/nixiefirmwarev2/src), and is also CC-BY-NC. Thanks, Ian.
 
-Zeeprom, Copyright (C) 2018 Pierre Valleau. [GNU LGPL](https://github.com/zoubworldArduino/Zeeprom/blob/master/ZEeprom.cpp)
+extEEPROM by [Jack Christensen](https://github.com/PaoloP74/extEEPROM), 2014, is licensed under CC BY-SA 4.0.
 
 Arduino Json, Copyright (C) 2014-2019 Benoit BLANCHON [MIT](https://github.com/bblanchon/ArduinoJson/blob/6.x/LICENSE.md)
 
 jquery [Copyright JS Foundation and other contributors](https://js.foundation/) [MIT](https://github.com/jquery/jquery/blob/master/LICENSE.txt)
 
 ModbusMaster [Apache 2.0](https://github.com/4-20ma/ModbusMaster/blob/master/LICENSE)
+
+EZTime (c) 2018 [Rop Gonggrijp](https://github.com/ropg/ezTime) [MIT](https://github.com/ropg/ezTime/blob/master/LICENSE) license.
 
 Some parts may be subject to other licenses as noted.

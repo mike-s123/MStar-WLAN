@@ -89,6 +89,41 @@ inline String secToMin(String seconds) {
   return String(seconds.toInt()/60);
 }
 
+/*
+ *  This stores WLAN credentials in the first slot [0]
+ */
+void storeWLANsInEEPROM(String qsid, String qpass, int idx=0) {
+  #if DEBUG_ON>2
+  debugMsg("writing eeprom "+String(idx)+" ssid " + qsid );
+  #endif
+  if (idx > 3) return;
+  wlanRead = false;                   // now needs to be re-read
+  for (int i = 0; i < 32; i++) {
+    if (i < qsid.length()) {
+      EEPROM.write(eeWLANSSID + i + (32*idx), qsid[i]);
+      #if DEBUG_ON>4
+      debugMsg("Wrote: " + String(qsid[i]));
+      #endif
+    } else {
+      EEPROM.write(eeWLANSSID + i + (32*idx), 0);
+    }
+  }
+  #if DEBUG_ON>2
+  debugMsg("writing eeprom "+String(idx)+" pass " + qpass);
+  #endif
+  for (int i = 0; i < 32; i++) {
+    if ( i < qpass.length()) {
+      EEPROM.write(eeWLANPASS + (32*idx) + i, qpass[i]);
+      #if DEBUG_ON>5
+      debugMsg("Wrote: " + String(qpass[i]));
+      #endif
+    } else {
+      EEPROM.write(eeWLANPASS + (32*idx) + i, 0);
+    }
+  }
+  EEPROM.commit();
+}
+
 void getWLANsFromEEPROM() {
   if (wlanRead) return;
   byte readByte;
@@ -96,7 +131,7 @@ void getWLANsFromEEPROM() {
     esid[j] = "";
     int i;
     for (i = 0; i < 32; i++) {
-      readByte = EEPROM.read(i+(j*32));
+      readByte = EEPROM.read(eeWLANSSID + i+(j*32));
       if (readByte == 0) {
         break;
       } else if ((readByte < 32) || (readByte > 126)) {
@@ -114,7 +149,7 @@ void getWLANsFromEEPROM() {
   for (int j = 0; j<=3; j++){
     epass[j] = "";
     for (int i = 0; i < 32; i++) {
-      readByte = EEPROM.read(128 + i + (j*32));
+      readByte = EEPROM.read(eeWLANPASS + i + (j*32));
       if (readByte == 0) {
         break;
       } else if ((readByte < 32) || (readByte > 126 )) {
@@ -134,12 +169,30 @@ void getWLANsFromEEPROM() {
   }
 }
 
+void storeModelInEEPROM(String model) {
+  #if DEBUG_ON>2
+  debugMsg("writing eeprom model " + model +" ("+String(model.length())+")");
+  #endif
+  for (int i = 0; i < 16; i++)
+  {
+    if (i < model.length()) {
+      EEPROM.write(i+eeModel, model[i]);
+      #if DEBUG_ON>4
+      debugMsg("Wrote: " + String(model[i]));
+      #endif
+    } else {
+      EEPROM.write(i+eeModel, 0);
+    }
+  }
+  EEPROM.commit();
+}
+
 String getModelFromEEPROM() {
   String model = "";
   byte readByte;
   for (int i = 0; i < 16; i++)
   {
-    readByte = EEPROM.read(i+256);
+    readByte = EEPROM.read(i+eeModel);
     if (readByte == 0) {
       break;
     } else if ((readByte < 32) || (readByte > 126)) {
@@ -153,58 +206,100 @@ String getModelFromEEPROM() {
   return model;
 }
 
-
-/*
- *  This stores WLAN credentials in the first slot [0]
- */
-void storeCredentialsInEEPROM(String qsid, String qpass, int idx=0) {
+void storeNtpServerInEEPROM(String server) {
   #if DEBUG_ON>2
-  debugMsg("writing eeprom "+String(idx)+" ssid " + qsid );
+  debugMsg("eeprom writing NtpServer:" + server + " ("+String(server.length())+")");
   #endif
-  if (idx > 3) return;
-  wlanRead = false;                   // now needs to be re-read
-  for (int i = 0; i < 32; i++) {
-    if (i < qsid.length()) {
-      EEPROM.write((32*idx)+i, qsid[i]);
+  for (int i = 0; i < 32; i++)
+  {
+    if (i < server.length()) {
+      EEPROM.write(i+eeNtpServer, server[i]);
       #if DEBUG_ON>4
-      debugMsg("Wrote: " + String(qsid[i]));
+      debugMsg("Wrote:" + String(server[i]));
       #endif
     } else {
-      EEPROM.write((32*idx)+i, 0);
-    }
-  }
-  #if DEBUG_ON>2
-  debugMsg("writing eeprom "+String(idx)+" pass " + qpass);
-  #endif
-  for (int i = 0; i < 32; i++) {
-    if ( i < qpass.length()) {
-      EEPROM.write(128 + (32*idx) + i, qpass[i]);
-      #if DEBUG_ON>5
-      debugMsg("Wrote: " + String(qpass[i]));
-      #endif
-    } else {
-      EEPROM.write(128 + (32*idx) + i, 0);
+      EEPROM.write(i+eeNtpServer, 0);
     }
   }
   EEPROM.commit();
 }
 
-void storeModelInEEPROM(String model) {
-  #if DEBUG_ON>2
-  debugMsg("writing eeprom model " + model +" ("+String(model.length())+")");
-  #endif
-  for (int i = 0; i < 16; i++)
+String getNtpServerFromEEPROM() {
+  String server = "";
+  byte readByte;
+  for (int i = 0; i < 32; i++)
   {
-    if (i < model.length()) {
-      EEPROM.write(i+256, model[i]);
+    readByte = EEPROM.read(i+eeNtpServer);
+    if (readByte == 0) {
+      break;
+    } else if ((readByte < 32) || (readByte > 126)) {
+      continue;
+    }
+    server += char(readByte);
+  }
+  #if DEBUG_ON>2
+    debugMsg("eeprom read NtpServer: " + server);
+  #endif
+  return server;
+}
+
+void storeNtpTZInEEPROM(String tz) {
+  #if DEBUG_ON>2
+  debugMsg("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")");
+  #endif
+  for (int i = 0; i < 32; i++)
+  {
+    if (i < tz.length()) {
+      EEPROM.write(i+eeNtpTZ, tz[i]);
       #if DEBUG_ON>4
-      debugMsg("Wrote: " + String(model[i]));
+      debugMsg("Wrote:" + String(tz[i]));
       #endif
     } else {
-      EEPROM.write(i+256, 0);
+      EEPROM.write(i+eeNtpTZ, 0);
     }
   }
   EEPROM.commit();
+}
+
+String getNtpTZFromEEPROM() {
+  String tz = "";
+  byte readByte;
+  for (int i = 0; i < 32; i++)
+  {
+    readByte = EEPROM.read(i+eeNtpTZ);
+    if (readByte == 0) {
+      break;
+    } else if ((readByte < 32) || (readByte > 126)) {
+      continue;
+    }
+    tz += char(readByte);
+  }
+  #if DEBUG_ON>2
+    debugMsg("eeprom read NtpTZ:" + tz);
+  #endif
+  return tz;
+}
+
+void storeNtpPollInEEPROM(unsigned short int poll) {
+  #if DEBUG_ON>2
+  debugMsg("eeprom writing NtpPoll:" + String(poll) + " (2)");
+  #endif
+  EEPROM.write(eeNtpPoll, (poll >> 8));
+  EEPROM.write(eeNtpPoll+1, (poll & 0xff));
+  #if DEBUG_ON>4
+  debugMsg("Wrote:" + String(poll));
+  #endif
+  EEPROM.commit();
+}
+
+unsigned short int getNtpPollFromEEPROM() {
+  unsigned short int poll = 0;
+    poll = EEPROM.read(eeNtpPoll) << 8;
+    poll += EEPROM.read(1 + eeNtpPoll);
+  #if DEBUG_ON>2
+    debugMsg("eeprom read NtpPoll: " + String(poll));
+  #endif
+  return poll;
 }
 
 void wipeEEPROM() {
@@ -223,9 +318,13 @@ void resetEEPROM() {
     debugMsg(F("Resetting EEPROM."));
   #endif
   for (int i = 0; i<=3 ; i++) {
-    storeCredentialsInEEPROM("", "", i);
+    storeWLANsInEEPROM("", "", i);
   }
   storeModelInEEPROM(F("PS-PWM"));
+  storeNtpServerInEEPROM(F(DEFAULT_NTP_SERVER));
+  storeNtpPollInEEPROM(DEFAULT_NTP_INTERVAL);
+  storeNtpTZInEEPROM(F(DEFAULT_NTP_TZ));
+
   String chkstr = F(EEPROM_SIG);
   for (int i = 0; i<=3 ; i++) {
     EEPROM.write(i + EEPROM_SIZE -4, chkstr[i]);
@@ -588,11 +687,12 @@ void write_clk_eeprom(int address, byte data) {
   delay(10);
 }
 
-uint32_t geteeUnixTime() {
+uint32_t getRtcLastSetTime() {
+  if (!useRTC) return 0;
   uint32_t utime = 0;
   for (int i=3; i>-1; i--) {  // read high byte first so we can bit shift
     utime = utime << 8;
-    utime += read_clk_eeprom(eeUnix+i);
+    utime += read_clk_eeprom(eeRtcLastSetTime+i);
   }
   return utime;
 }
@@ -661,22 +761,53 @@ void setRTC(boolean writeee=false) {
   byte age = getAgingOffset();
   uint32_t unow = getUnixTime();
   if (writeee) {
-    write_clk_eeprom(eeYear, Year>>8);
-    write_clk_eeprom(eeYear+1, Year%256);
-    write_clk_eeprom(eeMonth, Month);
-    write_clk_eeprom(eeDay, Day);  
-    write_clk_eeprom(eeHour, Hour);
-    write_clk_eeprom(eeMinute, Minute);
-    write_clk_eeprom(eeSecond, Second);
-    write_clk_eeprom(eeAge, age);
+    write_clk_eeprom(eeRtcYear, Year>>8);
+    write_clk_eeprom(eeRtcYear+1, Year%256);
+    write_clk_eeprom(eeRtcMonth, Month);
+    write_clk_eeprom(eeRtcDay, Day);  
+    write_clk_eeprom(eeRtcHour, Hour);
+    write_clk_eeprom(eeRtcMinute, Minute);
+    write_clk_eeprom(eeRtcSecond, Second);
+    write_clk_eeprom(eeRtcAge, age);
     for (int i=0 ; i<4 ; i++) {
-      write_clk_eeprom(eeUnix+i, unow%256);
+      write_clk_eeprom(eeRtcLastSetTime+i, unow%256);
       unow = unow >> 8;
     }
     write_clk_sig();
   }  
 }
 
+bool setRtcTimeNTP() {
+  updateNTP();
+  waitForSync(3);
+  if (timeStatus() == timeSet) {
+    Clock.setYear(year() % 100);
+    Clock.setMonth(month());
+    Clock.setDate(day());
+    Clock.setDoW(weekday());
+    Clock.setHour(hour());
+    Clock.setMinute(minute());
+    while ( ms() > 5 ) {          // exit when we're within 5 ms of actual time
+      yield();
+    }
+    Clock.setSecond(second()); 
+    uint32_t unow = getUnixTime();
+    write_clk_eeprom(eeRtcYear, Year>>8);
+    write_clk_eeprom(eeRtcYear+1, Year%256);
+    write_clk_eeprom(eeRtcMonth, Month);
+    write_clk_eeprom(eeRtcDay, Day);  
+    write_clk_eeprom(eeRtcHour, Hour);
+    write_clk_eeprom(eeRtcMinute, Minute);
+    write_clk_eeprom(eeRtcSecond, Second);
+    for (int i=0 ; i<4 ; i++) {
+      write_clk_eeprom(eeRtcLastSetTime+i, unow%256);
+      unow = unow >> 8;
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
 bool setRtcTime(String rtcTime) {
   #if DEBUG_ON>0
     debugMsgContinue(F("setRtcTime to "));
@@ -725,5 +856,5 @@ void setAgingOffset(int offset)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~
     Wire.write(0x10);
     Wire.write(offset);
     Wire.endTransmission();
-    write_clk_eeprom(eeAge, offset);
+    write_clk_eeprom(eeRtcAge, offset);
 }

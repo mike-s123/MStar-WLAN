@@ -150,7 +150,7 @@ button,html input[type=button],input[type=reset],input[type=submit]{
     cursor:pointer
 }
 html input[type=number]{
-	width: 60px;
+	width: 100px;
     background-color: #e4e4e4;
 }
 input[type=number]::-webkit-inner-spin-button,
@@ -232,6 +232,9 @@ button,input,optgroup,select,textarea{
 }
 .col-xs-3{
     width:25%
+}
+.col-xs-2{
+    width:50%
 }
 .col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{
     float:left

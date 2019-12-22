@@ -23,8 +23,8 @@ String wrapScript(String script) {        // in: script out: script wrapped in t
 }
 
 String getHTMLHead(int refresh=0) {
-  String header = F("<!DOCTYPE html><html><head>");
-  header += F("<link href=\"local.css\" rel=\"stylesheet\">");
+  String header = F("<!DOCTYPE html><html lang=\"en\"><head>");
+  header += F("<link href=\"local.css?f\" rel=\"stylesheet\">");
   header += getLocalJs();
   if (refresh) {
     header += "<meta http-equiv=\"refresh\" content=\"" + String(refresh) + "\">";
