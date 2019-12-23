@@ -22,21 +22,24 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191221"
+#define SOFTWARE_VERSION "v1.191222"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
                      More WLAN work. Started adding time support."
 
-#define DEBUG_ON 3                // enable debugging output
+#define DEBUG_ON 1                // enable debugging output. 0 currently causes issues (12/22/2019)
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
                                   // 0 not working on ESP32 for now
-#define BAUD_LOGGER 115200        // for software serial logging out "old" pins
-                                  // because we're swapping the UART to new ones
-#define DEBUG_ESP_PORT logger
-//#define DEBUG_ESP_HTTP_SERVER
-//#define DEBUG_ESP_CORE
-
+//#define debugjs                   // ifdef, overrides servestatic to avoid caching of local.js
+//#define debugcss                  // ditto, for css
+#ifdef DEBUG_ON
+  #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
+                                    // because we're swapping the UART to new ones
+  #define DEBUG_ESP_PORT logger
+  //#define DEBUG_ESP_HTTP_SERVER
+  //#define DEBUG_ESP_CORE
+#endif
 #include <string>
 #include <sstream>
 #include <EEPROM.h>
@@ -53,7 +56,7 @@
   #if DEBUG_ON>0
       SoftwareSerial logger(3, 1); // RX, TX
   #else
-    SoftwareSerial* cSerial = nullptr;  
+//    SoftwareSerial* cSerial = nullptr;  
   #endif
 
   
@@ -285,7 +288,7 @@ DS3231 Clock;
 extEEPROM clk_eeprom(kbits_32, 1, 32, 0x57);
 #define DS3231_I2C 0x68
 #define AT24Cxx_BASE_ADDR 0x57 // ZS-042/HW-84 modules have pullups on A0-A2
-#define AGE_OFFSET -24       // aging offset for ds3231, higher is slower
+#define AGE_OFFSET 0       // aging offset for ds3231, higher is slower
                             // ~0.1 ppm per (~9 ms/day, 0.26 sec/month), higher is slower, 
                             // 11.6 ppm is ~ 1 sec/day
 bool useRTC = false;
@@ -357,10 +360,10 @@ void setup() {
       debugMsgContinue(F("Debug on, level "));
       debugMsg(String(DEBUG_ON));
     #else
-      cSerial = new SoftwareSerial(3, 1);
-      setupPassthru();
-      delay(100);
-      cSerial->println(F("cSerial setup"));
+//     cSerial = new SoftwareSerial(3, 1);
+//      setupPassthru();
+//      delay(100);
+//      cSerial->println(F("cSerial setup"));
     #endif
   #endif
   #ifdef ARDUINO_ARCH_ESP32
@@ -369,9 +372,11 @@ void setup() {
      *  pinMatrixOutAttach(uint8_t pin, uint8_t function, bool invertOut, bool invertEnable);
      *  pinMatrixInAttach(uint8_t pin, uint8_t signal, bool inverted);
     */
-    setupDebug();
-    debugMsgContinue(F("Debug on, level "));
-    debugMsg(String(DEBUG_ON));
+    #if DEBUG_ON>0
+      setupDebug();
+      debugMsgContinue(F("Debug on, level "));
+      debugMsg(String(DEBUG_ON));
+    #endif
     pinMode(RX_PIN, INPUT);
     delay(100);
     mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);    
@@ -388,13 +393,13 @@ void setup() {
      useRTC = true;
     }
     #if DEBUG_ON>0
-      debugMsg(F("RTC found"));
-    #endif      
-    byte i2cStat = clk_eeprom.begin(clk_eeprom.twiClock100kHz);
+      debugMsg(F("RTC found"));    
+      byte i2cStat = clk_eeprom.begin(clk_eeprom.twiClock100kHz);
       if ( i2cStat != 0 ) {
-      debugMsg(F("I2C Problem with RTC eeprom"));
-    }
-
+        debugMsg(F("I2C Problem with RTC eeprom"));
+      }
+    #endif
+      
      if (useRTC) {
       delay(10);
       if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)

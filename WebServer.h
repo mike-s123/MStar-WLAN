@@ -115,9 +115,14 @@
   server.serveStatic("/ctl/TS-MPPT.png", FILESYSTEM, "/ctl/TS-MPPT.png", "max-age=43200"); 
   server.serveStatic("/ctl/TS-600.png", FILESYSTEM, "/ctl/TS-600.png", "max-age=43200"); 
   server.serveStatic("/ctl/Nocontroller.png", FILESYSTEM, "/ctl/Nocontroller.png", "max-age=43200"); 
-  //server.serveStatic("/local.css", FILESYSTEM, "/local.css", "max-age=43200");
-  //server.serveStatic("/local.js", FILESYSTEM, "/local.js", "max-age=43200");
-  server.serveStatic("/charging.png", FILESYSTEM, "/charging.png", "max-age=43200");
+  #ifndef debugjs
+    server.serveStatic("/local.js", FILESYSTEM, "/local.js", "max-age=43200");
+  #endif 
+  #ifndef debugcss
+    server.serveStatic("/local.css", FILESYSTEM, "/local.css", "max-age=43200");
+  #endif
+  server.serveStatic("/Charging.png", FILESYSTEM, "/charging.png", "max-age=43200");
+  server.serveStatic("/setTime.png", FILESYSTEM, "/setTime.png", "max-age=43200");
   server.serveStatic("/ace.js", FILESYSTEM, "/ace.js", "max-age=43200");
   server.serveStatic("/jquery.min.js", FILESYSTEM, "/jquery.min.js", "max-age=43200");
   server.serveStatic("/mode-html.js", FILESYSTEM, "/mode-html.js", "max-age=43200");

@@ -10,7 +10,10 @@
  */
 String getLocalJs() {                     // point to local.js in FILESYSTEM here
   String js = F("<script src=\"");
-  js += F("local.js");             
+  js += F("local.js");
+  #ifdef debugjs
+    js += "?" + myTZ.dateTime(ATOM);
+  #endif            
   js += F("\"></script>");
   return js;
 }
@@ -24,7 +27,11 @@ String wrapScript(String script) {        // in: script out: script wrapped in t
 
 String getHTMLHead(int refresh=0) {
   String header = F("<!DOCTYPE html><html lang=\"en\"><head>");
-  header += F("<link href=\"local.css?f\" rel=\"stylesheet\">");
+  header += F("<link href=\"local.css");
+  #ifdef debugcss
+    header += "?" + myTZ.dateTime(ATOM);
+  #endif            
+  header += F("\" rel=\"stylesheet\">");
   header += getLocalJs();
   if (refresh) {
     header += "<meta http-equiv=\"refresh\" content=\"" + String(refresh) + "\">";

@@ -137,6 +137,8 @@ void cmdPageHandler() {
                       storeNtpServerInEEPROM(ntpServer);
                     }
                     if (ntp_poll != -1) {
+                      if (ntp_poll < 601) ntp_poll = 601;  // shorter is abusive
+                      if (ntp_poll > 65535) ntp_poll = 65535; // unsigned short int
                       ntpInterval = ntp_poll;
                       setInterval(ntpInterval);
                       storeNtpPollInEEPROM(ntpInterval);
@@ -146,7 +148,6 @@ void cmdPageHandler() {
                       myTZ.setPosix(ntpTZ);
                       storeNtpTZInEEPROM(ntpTZ);
                     }
-                    //TODO write to eeprom
                     break;
     default:        response_message = F("err");
   }
@@ -174,7 +175,7 @@ void platformPageHandler()
     response_message += F("No Controller");
   } else {
     response_message += fullModel;
-    if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
+    if (controllerNeedsReset()) response_message += promptReset();
   }
   response_message += F("</h3></div>"); 
 
@@ -285,7 +286,7 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Vcc"), vccString);
     float mbv = 0.0;
     if (model == "PS-MPPT") {
-      MBus_get_float(8, mbv);  // TODO make this universal
+      MBus_get_float(8, mbv);
     } else if (model == "PS-PWM") {
       MBus_get_float(6, mbv);
     }
@@ -527,8 +528,7 @@ void wlanPageHandler()
       #if DEBUG_ON>2
       debugMsgContinue(F("Found ssid: "));
       debugMsg(WiFi.SSID(ap_idx));
-      if ((esid[0] == ssid)) {                             //TODO fix this for multiwifi
-        debugMsg(F("IsCurrent: Y"));
+      if ((esid[0] == ssid)) {                             //TODO multiwifi, push like stack (discard oldest)
       } else {
         debugMsg(F("IsCurrent: N"));
       }
@@ -545,7 +545,7 @@ void wlanPageHandler()
     response_message += getFormFoot();
   }
 
-/*  //TODO - input for 4 SSIDs
+/*  //TODO - input for 4 SSIDs, but maybe just keep 4 most recents
   for (int i = 0 ; i < 3 ; i++ ) { 
       String esidvar[3];
       String epasvar[3];
@@ -745,12 +745,12 @@ void setTimePageHandler() {
     response_message += F("No Controller");
   } else {
     response_message += fullModel;
-    if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
+    if (controllerNeedsReset()) response_message += promptReset();
   }
   
   response_message += F("</h3></div>"); 
 
-    //  response_message += F("<center><img src=\"setTime.png\"></center>");
+  response_message += F("<center><img src=\"setTime.png\"></center>");
   response_message += getFormHead("Clock status");
   
   if (useRTC) {  
@@ -776,9 +776,9 @@ void setTimePageHandler() {
     response_message += getJsButton(F("Set RTC from computer"), F("setRtcTime()"));
     response_message += F("<br><br>");
     
-    response_message += getNumberInput(F("Aging offset (-127 to 127, higher is slower)"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
+    response_message += getNumberInput(F("RTC crystal adjust (higher is slower)"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
     response_message += F("<br><br>");
-    response_message += getJsButton(F("Set aging offset"), F("setAging('rtc_offset')"));
+    response_message += getJsButton(F("Set crystal adjustment"), F("setAging('rtc_offset')"));
   }
   
   response_message += getFormFoot();
@@ -802,7 +802,7 @@ void setTimePageHandler() {
   foo += String(MIN_NTP_INTERVAL);
   foo += "-";
   foo += String(MAX_NTP_INTERVAL);
-  foo += F(" min)");
+  foo += F(" sec)");
   response_message += getNumberInput(foo, F("ntp_poll"), 601, 64999, ntpInterval, false);
   response_message += "<br><br>";
   response_message += getTextInput(F("POSIX timezone string"), F("ntp_tz"), ntpTZ, false);

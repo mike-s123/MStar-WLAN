@@ -46,13 +46,14 @@ String formatIPAsString(IPAddress ip) {
  * Try to pass serial from USB side (softserial because we swapped UART pins)
  * through to the controller, half duplex Modbus.
  */
-    cSerial->begin(9600);
+//    cSerial->begin(9600);
   }
   
   void rxEnable(bool state); // forward declaration
   
   void serialPassthrough() {  // this connects Serial (controller) to cSerial (USB)
-    static long int txdTimer;
+//work in progress...
+/*    static long int txdTimer;
     
     while ( (cSerial->available() > 0) ) {
       rxEnable(false);
@@ -69,7 +70,9 @@ String formatIPAsString(IPAddress ip) {
     if ( (millis() - txdTimer) >= 1 ) {   // little over 1 character time
       rxEnable(true); 
     }
-    return;  
+*/
+
+return;  
   }
 #endif                                            // end serial passthrough
 
@@ -857,4 +860,13 @@ void setAgingOffset(int offset)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~
     Wire.write(offset);
     Wire.endTransmission();
     write_clk_eeprom(eeRtcAge, offset);
+}
+
+String getJsButton(String buttonText, String onClick); // fwd declaration
+
+String promptReset() {
+  String response_message;
+  response_message = "<br><h5>Settings changed, controller needs restart.</h5>";
+  response_message += getJsButton("Restart Controller", "restart_ctl()");
+  return response_message;
 }

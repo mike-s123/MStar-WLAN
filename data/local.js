@@ -33,6 +33,7 @@ function writeReg ( addr, value, vari ) {
 */  
   document.getElementById(vari).innerHTML = value;
   document.getElementById("warning").innerHTML = "(changed, controller needs reset)";
+  location.reload(); 
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;
 }
@@ -105,4 +106,12 @@ function setAging (id) {
   var xhr = new XMLHttpRequest() ;
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;
+}
+
+function restart_ctl () {
+	var theUrl = "/rest?json={\"addr\":255,\"cmd\":\"writeSingleCoil\",\"valu\":\"on\",\"pass\":\"imsure\"}" ;
+	var xhr = new XMLHttpRequest() ;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+  setTimeout(location.reload(),5000);  //reload after 5 seconds
 }

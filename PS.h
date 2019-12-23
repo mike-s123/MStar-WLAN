@@ -26,7 +26,7 @@ void psStatusPageHandler () {
     response_message += F("No Controller");
   } else {
     response_message += fullModel;
-    if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
+    if (controllerNeedsReset()) response_message += promptReset();
   }
   response_message += F("</h3></div>"); 
 
@@ -142,7 +142,7 @@ void psSetChargePageHandler() {
     response_message += F("No Controller");
   } else {
     response_message += fullModel;
-    if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
+    if (controllerNeedsReset()) response_message += promptReset();
   }
   response_message += F("</h3></div>"); 
 
@@ -204,7 +204,7 @@ void psSetOtherPageHandler() {
     response_message += F("No Controller");
   } else {
     response_message += fullModel;
-    if (controllerNeedsReset()) response_message += F(" (Controller needs restart)");
+    if (controllerNeedsReset()) response_message += promptReset();
   }
   response_message += F("</h3></div>"); 
 
