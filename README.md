@@ -8,7 +8,7 @@ It is coded using the [Arduino IDE](https://www.arduino.cc/en/Main/Software), wh
 
 The printed circuit board was done in [Eagle](https://www.autodesk.com/products/eagle/overview).
 
-Development has been done with testing against the Prostar MPPT and Prostar Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have .csv files (see data/csv_file_desc.txt) and image files (e.g. /data/ctl/PS-MPPT.png) added. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support might require more than just creating the .csv files.
+Development has been done with testing against the Prostar MPPT and Prostar Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have .csv files (see data/csv_file_desc.txt) and image files (e.g. /data/ctl/PS-MPPT.png) added. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support ~~~might~~~ will require more than just creating the .csv files.
 
 MODBUS-TCP works with Morningstar's MSView, allowing it to be used to monitor and configure a controller wirelessly. To do that, in MSView, do "Devices/Manual connection", select your controller type, select Connection Type Remote, and enter the IP address or DNS name of the MStar-WLAN. OK. Then right click on the controller in the left column and "connect." MSView first downloads any logs, so may take a minute before much else happens.
 
@@ -70,12 +70,12 @@ More info may be found under the data directory.
 
 ## Important future directions
 
-Possible additions: Include support for additional controllers. Allow changing user/pass for config and update. Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). Logging/graphing (anyone good at jquery?). Support for simultaneous connection to multiple controllers. Regularly poll controller in background and cache the data, to speed up web page views. Async web server. Provide "one click" charging settings for different batteries. Backup/restore settings. Support connection to multiple, alternate SSIDs. MQTT. SNMP.
+Possible additions: Include support for additional controllers. Allow changing user/pass for config and update. Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). Logging/graphing (anyone good at jquery?). Support for simultaneous connection to multiple controllers. Regularly poll controller in background and cache the data, to speed up web page views. Async web server. Provide "one click" charging settings for different batteries. Backup/restore settings. ~~~Support connection to multiple, alternate SSIDs~~~ (done). MQTT. SNMP.
  
 ## Author
 
 * **Mike Sauve** - [mike-s123](https://github.com/mike-s123/)
-Programming is not my day job, so don't be harsh about style or efficiency. Function over form.
+Programming is not my day job, so don't be harsh about style or efficiency. Function over form. It's working for me, I hope it works for you.
 
 ## License and copyrights
 

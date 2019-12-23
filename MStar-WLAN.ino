@@ -22,7 +22,7 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191222"
+#define SOFTWARE_VERSION "v1.191223"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\

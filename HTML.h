@@ -52,10 +52,19 @@ String getAjaxHead() {                                      // like getHTMLHead,
 }
 
 String getNavBar() {
+  String ctl;
+    if (noController) {
+    ctl = F("No Controller");
+  } else {
+    ctl = fullModel;
+  }
   String navbar = F("<nav class=\"navbar navbar-inverse navbar-fixed-top\">");
-  navbar += F("<div class=\"container-fluid\"><div class=\"navbar-header\"><button type=\"button\" class=\"navbar-toggle collapsed\" data-toggle=\"collapse\" data-target=\"#navbar\" aria-expanded=\"false\" aria-controls=\"navbar\">");
-  navbar += F("<span class=\"sr-only\">Toggle navigation</span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span></button>");
-  navbar += F("<a class=\"navbar-brand\" href=\"#\">MStar-WLAN</a></div><div id=\"navbar\" class=\"navbar-collapse collapse\"><ul class=\"nav navbar-nav navbar-right\">");
+  navbar += F("<div class=\"container-fluid\"><div class=\"navbar-header\">");
+  navbar += F("<a class=\"navbar-brand\" href=\"/\">MStar-WLAN</a></div>");
+  navbar += F("<div class=\"navbar-brand\">");
+  navbar += ctl;
+  navbar += F("</div>");
+  navbar += F("<div id=\"navbar\" class=\"navbar-collapse collapse\"><ul class=\"nav navbar-nav navbar-right\">");
   navbar += F("<li><a href=\"/status\">Status</a></li>");
   navbar += F("<li><a href=\"/setcharge\">Charge Settings</a></li>");
   navbar += F("<li><a href=\"/setother\">Other Settings</a></li>");

@@ -107,26 +107,30 @@
   });
   
   // static for 12 hours.
-  server.serveStatic("/ctl/PS-PWM.png", FILESYSTEM, "/ctl/PS-PWM.png", "max-age=43200");
-  server.serveStatic("/ctl/PS-MPPT.png", FILESYSTEM, "/ctl/PS-MPPT.png", "max-age=43200"); 
-  server.serveStatic("/ctl/SSDuo.png", FILESYSTEM, "/ctl/SSDuo.png", "max-age=43200"); 
-  server.serveStatic("/ctl/SS-MPPT.png", FILESYSTEM, "/ctl/SS-MPPT.png", "max-age=43200"); 
-  server.serveStatic("/ctl/TS.png", FILESYSTEM, "/ctl/TS.png", "max-age=43200"); 
-  server.serveStatic("/ctl/TS-MPPT.png", FILESYSTEM, "/ctl/TS-MPPT.png", "max-age=43200"); 
-  server.serveStatic("/ctl/TS-600.png", FILESYSTEM, "/ctl/TS-600.png", "max-age=43200"); 
-  server.serveStatic("/ctl/Nocontroller.png", FILESYSTEM, "/ctl/Nocontroller.png", "max-age=43200"); 
+  server.serveStatic("/ctl/PS-PWM.png",       FILESYSTEM, "/ctl/PS-PWM.png",        "max-age=43200");
+  server.serveStatic("/ctl/PS-MPPT.png",      FILESYSTEM, "/ctl/PS-MPPT.png",       "max-age=43200"); 
+  server.serveStatic("/ctl/SSDuo.png",        FILESYSTEM, "/ctl/SSDuo.png",         "max-age=43200"); 
+  server.serveStatic("/ctl/SS-MPPT.png",      FILESYSTEM, "/ctl/SS-MPPT.png",       "max-age=43200"); 
+  server.serveStatic("/ctl/TS.png",           FILESYSTEM, "/ctl/TS.png",            "max-age=43200"); 
+  server.serveStatic("/ctl/TS-MPPT.png",      FILESYSTEM, "/ctl/TS-MPPT.png",       "max-age=43200"); 
+  server.serveStatic("/ctl/TS-600.png",       FILESYSTEM, "/ctl/TS-600.png",        "max-age=43200"); 
+  server.serveStatic("/ctl/Nocontroller.png", FILESYSTEM, "/ctl/Nocontroller.png",  "max-age=43200"); 
   #ifndef debugjs
-    server.serveStatic("/local.js", FILESYSTEM, "/local.js", "max-age=43200");
+    server.serveStatic("/local.js",             FILESYSTEM, "/local.js",              "max-age=43200");
   #endif 
   #ifndef debugcss
-    server.serveStatic("/local.css", FILESYSTEM, "/local.css", "max-age=43200");
+    server.serveStatic("/local.css",            FILESYSTEM, "/local.css",             "max-age=43200");
   #endif
-  server.serveStatic("/Charging.png", FILESYSTEM, "/charging.png", "max-age=43200");
-  server.serveStatic("/setTime.png", FILESYSTEM, "/setTime.png", "max-age=43200");
-  server.serveStatic("/ace.js", FILESYSTEM, "/ace.js", "max-age=43200");
-  server.serveStatic("/jquery.min.js", FILESYSTEM, "/jquery.min.js", "max-age=43200");
-  server.serveStatic("/mode-html.js", FILESYSTEM, "/mode-html.js", "max-age=43200");
-  server.serveStatic("/favicon.ico", FILESYSTEM, "/favicon.ico", "max-age=43200");
+  server.serveStatic("/img/charging.png",     FILESYSTEM, "/img/charging.png",      "max-age=43200");
+  server.serveStatic("/img/otherset.png",     FILESYSTEM, "/img/otherset.png",      "max-age=43200");
+  server.serveStatic("/img/wrover.png",       FILESYSTEM, "/img/wrover.png",        "max-age=43200");
+  server.serveStatic("/img/wemos.png",        FILESYSTEM, "/img/wemos.png",         "max-age=43200");
+  server.serveStatic("/img/utility.png",      FILESYSTEM, "/img/utility.png",       "max-age=43200");
+  server.serveStatic("/img/setTime.png",      FILESYSTEM, "/img/setTime.png",       "max-age=43200");
+  server.serveStatic("/ace.js",               FILESYSTEM, "/ace.js",                "max-age=43200");
+  server.serveStatic("/jquery.min.js",        FILESYSTEM, "/jquery.min.js",         "max-age=43200");
+  server.serveStatic("/mode-html.js",         FILESYSTEM, "/mode-html.js",          "max-age=43200");
+  server.serveStatic("/favicon.ico",          FILESYSTEM, "/favicon.ico",           "max-age=43200");
 
 
   #ifdef ARDUINO_ARCH_ESP32

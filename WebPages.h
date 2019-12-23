@@ -170,16 +170,19 @@ void platformPageHandler()
   response_message = getHTMLHead();
   response_message += getNavBar();
 
-  response_message += F("<div class=\"controller\"><h3>");
-  if (noController) {
-    response_message += F("No Controller");
-  } else {
-    response_message += fullModel;
-    if (controllerNeedsReset()) response_message += promptReset();
+  if (controllerNeedsReset()) {
+    response_message += F("<div class=\"controller\"><h3>");
+    response_message += promptReset();
+    response_message += F("</h3></div>"); 
   }
-  response_message += F("</h3></div>"); 
 
-
+  #ifdef ARDUINO_ARCH_ESP8266
+    response_message += F("<center><img src=\"/img/wemos.png\"></center>");
+  #endif
+  #ifdef ARDUINO_ARCH_ESP32
+    response_message += F("<center><img src=\"/img/wrover.png\"></center>");
+  #endif
+  
   // Status table
   response_message += getTableHead2Col(F("WLAN Status"), F("Name"), F("Value"));
   if ( WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
@@ -581,6 +584,8 @@ void utilityPageHandler()
   response_message = getHTMLHead();
   response_message += getNavBar();
 
+  response_message += F("<center><img src=\"/img/utility.png\"></center>");
+
   response_message += F("<br><br><div class=\"container\" role=\"secondary\"><br>");
   response_message += F("<p><hr><h3>Utility Functions</h3>");
   response_message += F("<font size=\"4\">");
@@ -740,17 +745,13 @@ void setTimePageHandler() {
   response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-  response_message += F("<div class=\"controller\"><h3>");
-  if (noController) {
-    response_message += F("No Controller");
-  } else {
-    response_message += fullModel;
-    if (controllerNeedsReset()) response_message += promptReset();
+  if (controllerNeedsReset()) {
+    response_message += F("<div class=\"controller\"><h3>");
+    response_message += promptReset();
+    response_message += F("</h3></div>"); 
   }
-  
-  response_message += F("</h3></div>"); 
 
-  response_message += F("<center><img src=\"setTime.png\"></center>");
+  response_message += F("<center><img src=\"/img/setTime.png\"></center>");
   response_message += getFormHead("Clock status");
   
   if (useRTC) {  
@@ -761,7 +762,7 @@ void setTimePageHandler() {
   if (timeStatus() == timeSet) {  // ntp got time
     response_message += getTextInput(F("Current NTP time"), F("ntp_time"), myTZ.dateTime(RFC850), true);
     response_message += F("<br><br>");
-    response_message += getTextInput(F("Last NTP update"), F("ntp_update"), myTZ.dateTime(lastNtpUpdateTime(),RFC850), true);
+    response_message += getTextInput(F("Last NTP update"), F("ntp_update"), myTZ.dateTime(lastNtpUpdateTime(), UTC_TIME, RFC850), true);
     response_message += F("<br><br>");
   } else if (!useRTC) {
     response_message += F("<br>No time source.");
@@ -783,15 +784,6 @@ void setTimePageHandler() {
   
   response_message += getFormFoot();
   response_message += getFormHead("Configure NTP");
-  if (!useRTC) {
-    if (timeStatus() == timeSet) {  // ntp valid
-      response_message += F("Current ntp time: ");
-      response_message += myTZ.dateTime(RFC850);
-      response_message += F("<br><br>");  
-    } else {
-      response_message += F("Current ntp time: n/a<br><br>");
-    }
-  } 
 
 //getTextInput(String heading, String input_name, String value, boolean disabled)
 //getNumberInput(String heading, String input_name, int minVal, int maxVal, int value, boolean disabled)

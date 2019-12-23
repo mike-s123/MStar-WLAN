@@ -21,15 +21,11 @@ void psStatusPageHandler () {
   response_message = getHTMLHead(30);
   response_message += getNavBar();
 
-  response_message += F("<div class=\"controller\"><h3>");
-  if (noController) {
-    response_message += F("No Controller");
-  } else {
-    response_message += fullModel;
-    if (controllerNeedsReset()) response_message += promptReset();
+  if (controllerNeedsReset()) {
+    response_message += F("<div class=\"controller\"><h3>");
+    response_message += promptReset();
+    response_message += F("</h3></div>"); 
   }
-  response_message += F("</h3></div>"); 
-
 // 56,57 alarms
 // 47 load fault
 // 34 array fault
@@ -137,18 +133,15 @@ void psSetChargePageHandler() {
   response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-  response_message += F("<div class=\"controller\"><h3>");
-  if (noController) {
-    response_message += F("No Controller");
-  } else {
-    response_message += fullModel;
-    if (controllerNeedsReset()) response_message += promptReset();
+  if (controllerNeedsReset()) {
+    response_message += F("<div class=\"controller\"><h3>");
+    response_message += promptReset();
+    response_message += F("</h3></div>"); 
   }
-  response_message += F("</h3></div>"); 
 
   
-  response_message += F("<center><img src=\"Charging.png\"></center>");  
-  String heading = F("Charge Settings");
+  response_message += F("<center><img src=\"/img/charging.png\"></center>");  
+  String heading = F("Charge Settings <font size=\"4\">(changes have immediate effect)</font>");
   heading += "<h2 id=\"warning\"></h2>";
 
   response_message += getTableHead2Col(heading, F("Description"), F("Value")); 
@@ -199,17 +192,14 @@ void psSetOtherPageHandler() {
   response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-  response_message += F("<div class=\"controller\"><h3>");
-  if (noController) {
-    response_message += F("No Controller");
-  } else {
-    response_message += fullModel;
-    if (controllerNeedsReset()) response_message += promptReset();
+  if (controllerNeedsReset()) {
+    response_message += F("<div class=\"controller\"><h3>");
+    response_message += promptReset();
+    response_message += F("</h3></div>"); 
   }
-  response_message += F("</h3></div>"); 
 
-//  response_message += F("<center><img src=\"Other.png\"></center>");
-  String heading = F("Other Settings");
+  response_message += F("<center><img src=\"/img/otherset.png\"></center>");
+  String heading = F("Other Settings <font size=\"4\">(changes have immediate effect)</font>");
   heading += "<h2 id=\"warning\"></h2>";
 
   response_message += getTableHead2Col(heading, F("Description"), F("Value")); 
