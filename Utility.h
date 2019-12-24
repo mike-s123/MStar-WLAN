@@ -865,8 +865,13 @@ void setAgingOffset(int offset)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~
 String getJsButton(String buttonText, String onClick); // fwd declaration
 
 String promptReset() {
-  String response_message;
-  response_message = "<br><h5>Settings changed, controller needs restart.</h5>";
-  response_message += getJsButton("Restart Controller", "restart_ctl()");
+  String response_message = "";
+  bool controllerNeedsReset (); // fwd declaration
+  if (controllerNeedsReset()) {
+    response_message = F("<div class=\"controller\">");
+    response_message += F("<br><h3>Settings changed, controller needs restart.</h3>");
+    response_message += getJsButton(F("Restart Controller"), F("restart_ctl()"));
+    response_message = F("</div>");
+    }
   return response_message;
 }

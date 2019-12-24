@@ -8,7 +8,7 @@ It is coded using the [Arduino IDE](https://www.arduino.cc/en/Main/Software), wh
 
 The printed circuit board was done in [Eagle](https://www.autodesk.com/products/eagle/overview).
 
-Development has been done with testing against the Prostar MPPT and Prostar Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have .csv files (see data/csv_file_desc.txt) and image files (e.g. /data/ctl/PS-MPPT.png) added. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support ~~~might~~~ will require more than just creating the .csv files.
+Development has been done with testing against the Prostar MPPT and Prostar Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have .csv files (see data/csv_file_desc.txt) and image files (e.g. /data/ctl/PS-MPPT.png) added. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support <s>might</s> will require more than just creating the .csv files.
 
 MODBUS-TCP works with Morningstar's MSView, allowing it to be used to monitor and configure a controller wirelessly. To do that, in MSView, do "Devices/Manual connection", select your controller type, select Connection Type Remote, and enter the IP address or DNS name of the MStar-WLAN. OK. Then right click on the controller in the left column and "connect." MSView first downloads any logs, so may take a minute before much else happens.
 
@@ -18,9 +18,9 @@ MODBUS-TCP works with Morningstar's MSView, allowing it to be used to monitor an
 
 The code will run on a bare D1 Mini Pro powered by USB, but obviously can't talk to a controller so the status and config pages won't do much. But you can check it out without much effort.
 
-To do anything useful, hardware is needed to interface with a Morningstar controller. Morningstar uses a proprietary half-duplex (open collector, see /data/Schematic.png) MODBUS interface. A circuit board layout is provided which includes all the necessary interfacing circuitry, even drawing power from the Morningstar controller. It also supports an optional real time clock which may be useful for future features like extended logging.
+To do anything useful, hardware is needed to interface with a Morningstar controller. Morningstar uses a proprietary half-duplex (open collector, see /data/img/Schematic.png) MODBUS interface. A circuit board layout is provided which includes all the necessary interfacing circuitry, even drawing power from the Morningstar controller. It also supports an optional real time clock which may be useful for future features like extended logging.
 
-Circuit board info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with some parts info. The .zip file contains CAM files ready to send to [JLCPCB](https://jlcpcb.com/quote#/) to get boards made. The PCB can support either ESP core.
+Circuit board info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with some parts info. The .zip file contains CAM files ready to send to [JLCPCB](https://jlcpcb.com/quote#/) to get boards made. Currently, 5 boards will cost your less than $10, if you will wait about a month to get them. The PCB can support either ESP core. Using a WEMOS is easier, as it uses only through-hole components. ESP32/wrover requires soldering fine pitch SMDs.
 
 I have a limited number of circuit boards on hand. If you can contribute to the project contact me and I might send you one.
 
@@ -30,9 +30,9 @@ Development is currently being done with Arduino IDE 1.8.10, ESP8266 Arduino pla
 
 Library requirements are noted in the .ino file. The [ESP8266](https://github.com/esp8266/Arduino) and/or [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Files may need to be removed from /data in order to upload to the available flash on an ESP32. It's also possible to modify the boards.txt and create a new (partition).csv file to allow a larger SPIFFs FS than supported by the standard boards.
 
-The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The ESP8266 binary posted here uses LittleFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin).
+The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update - but ESP8266 only, for now). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The ESP8266 binary posted here uses LittleFS, and the ESP32 one, SPIFFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin). If you want to work with ESP32, contact me - the project uses a custom partition table, so the image here can't be uploaded with the stock IDE.
 
-The files are used to define the different controllers, and also contain some documentation.
+The .csv files are used to define the different controllers, and also contain some documentation.
 
 ## Operation
 
@@ -42,19 +42,19 @@ The MStar-WLAN will initially come up as a wireless access point with SSID "MSta
 
 The web interface has some minimal security. Any page which allows configuration changes is protected with username "admin", password "setup". To do an Over-The-Air (OTA) firmware update, the username is "admin", password "update".
 
-Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your DHCP server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (statistically) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex.
+Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your DHCP server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (statistically) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex (not with ESP32).
 
-OTA updates are done from the Utility tab, "Update WLAN module firmware" link. If compiled with newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For LittleFS filesystem, it's "MStar-WLAN.mklittlefs.bin". 
+OTA updates are done from the Utility tab, "Update WLAN module firmware" link. If compiled with newer ESP8266 Arduino platforms, OTA updates of the flash (/data) image are also possible. For firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". For LittleFS filesystem, it's "MStar-WLAN.mklittlefs.bin". Currently, LittleFS is only for an ESP8266 build, and SPIFFS only for ESP32 because the partition sizes are different.
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 
-![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/charge_settings.png)
+![image of charge settings page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/charge_settings.png)
 
 ## Support
 
-There is none, although you can certainly ask. You'll get a better response if you can well document a bug. This was a personal project, I'm freely offering it to others for non-commercial use. Feel free to contribute back if you can. Things which need attention or might be an important future direction are commented with "TODO".
+There is none, although you can certainly ask. You'll get a better response if you can well document a bug. This was a personal project, I'm freely offering it to others for non-commercial use. Feel free to contribute back if you can (don't do github pull requests, that would just be another thing for me to figure out how to make work). Things which need attention or might be an important future direction are commented with "TODO".
 
-## General answers (pick one)
+## General answers to any question (pick one)
 
 Yes.
 
@@ -70,7 +70,7 @@ More info may be found under the data directory.
 
 ## Important future directions
 
-Possible additions: Include support for additional controllers. Allow changing user/pass for config and update. Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). Logging/graphing (anyone good at jquery?). Support for simultaneous connection to multiple controllers. Regularly poll controller in background and cache the data, to speed up web page views. Async web server. Provide "one click" charging settings for different batteries. Backup/restore settings. ~~~Support connection to multiple, alternate SSIDs~~~ (done). MQTT. SNMP.
+Possible additions: Include support for additional controllers. Allow changing user/pass for config and update. Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). Logging/graphing (anyone good at jquery?). Support for simultaneous connection to multiple controllers. Regularly poll controller in background and cache the data, to speed up web page views. Async web server. Chunked responses. Provide "one click" charging settings for different batteries. Backup/restore settings. <s>Support connection to multiple, alternate SSIDs</s> (done). MQTT. SNMP.
  
 ## Author
 

@@ -36,7 +36,9 @@ String getHTMLHead(int refresh=0) {
   if (refresh) {
     header += "<meta http-equiv=\"refresh\" content=\"" + String(refresh) + "\">";
   }
-  header += F("<title>MStar WLAN interface</title></head>");
+  header += F("<title>");
+  header += my_hostname;
+  header += F("</title></head>");
   header += F("<body>");
   return header;
 }
@@ -71,6 +73,7 @@ String getNavBar() {
   navbar += F("<li><a href=\"/platform\">Platform</a></li>");
   navbar += F("<li><a href=\"/utility\">Utility</a></li>");
   navbar += F("</ul></div></div></nav>");
+  navbar += promptReset();
   return navbar;
 }
 

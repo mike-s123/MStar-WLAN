@@ -22,7 +22,7 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191223"
+#define SOFTWARE_VERSION "v1.191224"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
@@ -521,11 +521,16 @@ WiFi.persistent(true);
         debugMsg(myTZ.dateTime(RFC850));
       } else if (useRTC) {
         debugMsgContinue(F("Didn't sync NTP. Using RTC time."));
-        setInterval(0);  // disable ntp
-        setTime(getUnixTime()); // from RTC
       }
     #endif
   }
+  
+  if ((timeStatus() != timeSet) && useRTC) { // no ntp, but rtc avail
+    setInterval(0);  // disable ntp
+    setTime(getUnixTime()); // from RTC
+  }
+  
+  
   #ifndef WIFI_MODE_AP_STA
     if (!wlanConnected) {             // If can't connect in STA mode, switch to AP mode
       startAP(ap_ssid, ap_password);
@@ -651,7 +656,8 @@ void loop() {
   #endif
 
 //  timerWrite(timer, 0);
-  
+
+  events(); // for EZTime
   server.handleClient();
   #if DEBUG_ON==0
     serialPassthrough();
@@ -686,7 +692,7 @@ void loop() {
    *  while scanning). If running as STA -or- AP, don't scan if client is connected.
    */
   #ifdef WIFI_AP_STA  // if AP_STA mode, ok to try with client connected
-    if (( wlan_count && !WiFi.isConnected() &&(millis() - lastWLANtry) > 300000) ) {  // 5 minutes
+    if (( wlan_count && !WiFi.isConnected() && (millis() - lastWLANtry) > 300000) ) {  // 5 minutes
   #else               // if not, would disconnect client, so check
     if (( wlan_count && !WiFi.isConnected() && !WiFi.softAPgetStationNum() &&(millis() - lastWLANtry) > 30000) ) {
   #endif
@@ -697,6 +703,16 @@ void loop() {
     #endif
     tryWLAN();
     lastWLANtry = millis();   // mark attempt
+
+    if (WiFi.isConnected()) {    
+      waitForSync(3); // try ntp
+      if ((timeStatus() != timeSet) && useRTC) { // no ntp, but rtc avail
+        setInterval(0);  // disable ntp
+        setTime(getUnixTime()); // from RTC
+      } else {
+        setInterval(ntpInterval);
+      }
+    }
   }
 
   if (((millis() - lastMillis) > blinkTopTime) && wlanLedState) {

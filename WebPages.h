@@ -170,12 +170,6 @@ void platformPageHandler()
   response_message = getHTMLHead();
   response_message += getNavBar();
 
-  if (controllerNeedsReset()) {
-    response_message += F("<div class=\"controller\"><h3>");
-    response_message += promptReset();
-    response_message += F("</h3></div>"); 
-  }
-
   #ifdef ARDUINO_ARCH_ESP8266
     response_message += F("<center><img src=\"/img/wemos.png\"></center>");
   #endif
@@ -246,7 +240,7 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("RTC Temp"), String(getRTCTemp(), 2));
   }
   String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST");
-  response_message += getTableRow2Col(F("Sketch compiled"), myTZ.dateTime(compileTime(), RFC850));  //datetime);
+  response_message += getTableRow2Col(F("Compiled on"), myTZ.dateTime(compileTime(), RFC850));  //datetime);
   response_message += getTableRow2Col(F("Arduino IDE"), String(ARDUINO));
   response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
   response_message += getTableRow2Col(F("Sketch size"), formatBytes(ESP.getSketchSize()));
@@ -745,11 +739,6 @@ void setTimePageHandler() {
   response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-  if (controllerNeedsReset()) {
-    response_message += F("<div class=\"controller\"><h3>");
-    response_message += promptReset();
-    response_message += F("</h3></div>"); 
-  }
 
   response_message += F("<center><img src=\"/img/setTime.png\"></center>");
   response_message += getFormHead("Clock status");
