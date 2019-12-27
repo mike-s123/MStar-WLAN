@@ -22,13 +22,14 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191224"
+#define SOFTWARE_VERSION "v1.191225"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
-                     More WLAN work. Started adding time support."
+                     More WLAN work. Started adding time support. Auto adjust<br>\
+                     RTC speed."
 
-#define DEBUG_ON 1                // enable debugging output. 0 currently causes issues (12/22/2019)
+#define DEBUG_ON 3                // enable debugging output. 0 currently causes issues (12/22/2019)
                                   // 0 off, 1 least detail, 5 most detail, 6 includes passwords
                                   // 0 not working on ESP32 for now
 //#define debugjs                   // ifdef, overrides servestatic to avoid caching of local.js
@@ -44,10 +45,8 @@
 #include <sstream>
 #include <EEPROM.h>
 #include <FS.h>
-
 #include <Wire.h>
-#include <DS3231.h>   // Andrew Wickert, et al 1.0.2, via IDE
-#include <extEEPROM.h> // Jack Christensen, 3.4.1, via IDE licensed under CC BY-SA 4.0.
+
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
 #ifdef ARDUINO_ARCH_ESP8266
@@ -59,7 +58,6 @@
 //    SoftwareSerial* cSerial = nullptr;  
   #endif
 
-  
 //  #define FS_SPIFFS
   #define FS_LITTLEFS
   #ifdef FS_SPIFFS
@@ -118,8 +116,8 @@
 #include <WiFiUdp.h>
 
 #include <ModbusMaster.h> //Doc Walker 2.0.1, via IDE
-#include <ezTime.h> //Rop Gonggrijp 1.8.3, via IDE
 
+#include "TimeStuff.h"
 //---------------------------
 // definitions
 //---------------------------
@@ -182,36 +180,6 @@
 #define eeNtpServer 272
 #define eeNtpPoll 304
 #define eeNtpTZ 306
- 
-#define CLK_EEPROM_SIZE 4096
-#define CLK_EEPROM_SIG "mjs!"
-/*
- * EEPROM on DS3231 module
- * 0    (1) Last set aging offset (so we have it if battery goes away)
- * 1-2  (2) Year
- * 3    (1) Month
- * 4    (1) Day
- * 5    (1) Hour
- * 6    (1) Minute
- * 7    (1) Second
- * 8-11 (4) Last time set (Unix time)
- * 
- * 4092-4095 (4)  Valid signature (CLK_EEPROM_SIG)
- */
-#define eeRtcAge 0
-#define eeRtcYear 1
-#define eeRtcMonth 3
-#define eeRtcDay 4
-#define eeRtcHour 5
-#define eeRtcMinute 6
-#define eeRtcSecond 7
-#define eeRtcLastSetTime 8
-
-#define DEFAULT_NTP_TZ "EST5EDT,M3.2.0,M11.1.0"   //POSIX format
-#define DEFAULT_NTP_INTERVAL 7207                 // seconds, best if not a multiple of 60
-#define DEFAULT_NTP_SERVER "0.pool.ntp.org"
-#define MIN_NTP_INTERVAL 601                      // seconds
-#define MAX_NTP_INTERVAL 64999                    // ~18 hours
 
 #ifdef ARDUINO_ARCH_ESP8266
   #define RX_ENABLE_PIN 12  // GPIO 12 (D6) on Wemos
@@ -219,7 +187,6 @@
   #define SCL_PIN 5         // GPIO 5 (D1) I2C SCL
   #define SELF_RST_PIN 16   // GPIO 16 (D0) self-reset
 #endif
-#define SQW_PIN 14        // GPIO 14 (D5) on both, SQW from DS3231
 #ifdef ARDUINO_ARCH_ESP32
   #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10  (was IO23)
   #define RX_PIN 27         // RxD to IO27, pin 12
@@ -236,7 +203,6 @@
 // modbus items
 #define REG_ROWS 126
 #define COIL_ROWS 20
-
 
 // ----------------------------------------------------------------------------------------------------
 // ------------------------------------------  Globals (mostly)  --------------------------------------
@@ -284,33 +250,14 @@ File fsUploadFile;              // a File object to temporarily store the receiv
 String referrer; 
 IPAddress apIP(192, 168, 99, 1);
 ModbusMaster node;
-DS3231 Clock;
-extEEPROM clk_eeprom(kbits_32, 1, 32, 0x57);
-#define DS3231_I2C 0x68
-#define AT24Cxx_BASE_ADDR 0x57 // ZS-042/HW-84 modules have pullups on A0-A2
-#define AGE_OFFSET 0       // aging offset for ds3231, higher is slower
-                            // ~0.1 ppm per (~9 ms/day, 0.26 sec/month), higher is slower, 
-                            // 11.6 ppm is ~ 1 sec/day
-bool useRTC = false;
-bool twentyFourHourClock = true;
-bool Century=false;
-bool h12;
-bool PM;
-String ntpServer = DEFAULT_NTP_SERVER;
-unsigned short int ntpInterval = MAX_NTP_INTERVAL;
-String ntpTZ = DEFAULT_NTP_TZ;  //posix string
-String tzName;  // used for lookup
-String tzPosix; // used for lookup
-Timezone myTZ;
-
 
 #ifdef ARDUINO_ARCH_ESP8266
   ESP8266WiFiMulti wifiMulti;
   ESP8266WebServer server(80);
   ESP8266HTTPUpdateServer httpUpdater;
 #endif
-WiFiServer mbTCP(502);
-WiFiClient mbClient;
+WiFiServer modbusTCP(502);
+WiFiClient modbusClient;
   
 #ifdef ARDUINO_ARCH_ESP32
   WiFiMulti wifiMulti;
@@ -318,10 +265,6 @@ WiFiClient mbClient;
   WebServer server(80);
   HardwareSerial mbSerial(1);
 #endif
-
-int Year = 2019;
-byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // April fool's
-
 
 //order here is important
 #include "Utility.h"            // utility functions
@@ -332,96 +275,16 @@ byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // Apri
 #include "RestPage.h"           // REST API
 #include "PS.h"                 // status, charge and other pages for Prostar models
 #include "WebPages.h"           // stuff to serve content
-
-
+#include "Setups.h"
 
 void setup() {
-  unsigned short int ntp_temp;
   #ifdef ARDUINO_ARCH_ESP8266
     digitalWrite(SELF_RST_PIN, HIGH); // So board can do a hardware reset of itself
     pinMode(SELF_RST_PIN, OUTPUT);
   #endif
-  pinMode(SQW_PIN, INPUT);            // From DS3231 square wave output 1 Hz - 8.192 KHz
-  digitalWrite(SQW_PIN, HIGH);        // internal pullup
-  #ifdef ARDUINO_ARCH_ESP8266
-    Serial.begin(9600, SERIAL_8N2);
-    U0C0 = BIT(UCRXI) | BIT(UCTXI) | BIT(UCBN) | BIT(UCBN + 1) | BIT(UCSBN) | BIT(UCSBN + 1); // Inverse RX & TX, 8N2
-    /*
-     * Here we swap to the alternate UART pins, so they're now GPIO15(D8,TX) and GPIO13(D7,RX)
-     * This is so we can use the more reliable hardware UART to talk to MODBUS
-     * We'll then use softwareserial to send debug messages out the old UART
-     * pins (which go to the USB/serial chip).
-     */
-    Serial.swap();  //
-    #if DEBUG_ON>0
-      delay(100);
-      setupDebug();
-      delay(100);
-      debugMsgContinue(F("Debug on, level "));
-      debugMsg(String(DEBUG_ON));
-    #else
-//     cSerial = new SoftwareSerial(3, 1);
-//      setupPassthru();
-//      delay(100);
-//      cSerial->println(F("cSerial setup"));
-    #endif
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    /* remap UART1 
-     *  
-     *  pinMatrixOutAttach(uint8_t pin, uint8_t function, bool invertOut, bool invertEnable);
-     *  pinMatrixInAttach(uint8_t pin, uint8_t signal, bool inverted);
-    */
-    #if DEBUG_ON>0
-      setupDebug();
-      debugMsgContinue(F("Debug on, level "));
-      debugMsg(String(DEBUG_ON));
-    #endif
-    pinMode(RX_PIN, INPUT);
-    delay(100);
-    mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);    
-//    pinMatrixOutAttach(TX_PIN, U1TXD_OUT_IDX, true, false);
-//    pinMatrixInAttach(RX_PIN, U1RXD_IN_IDX, true);
-  #endif
 
-    Wire.begin(SDA_PIN, SCL_PIN);              // setup I2C
-    if (!Wire.requestFrom(DS3231_I2C, 2)) {
-      #if DEBUG_ON>0
-        debugMsgContinue(F("No "));
-      #endif      
-    } else {
-     useRTC = true;
-    }
-    #if DEBUG_ON>0
-      debugMsg(F("RTC found"));    
-      byte i2cStat = clk_eeprom.begin(clk_eeprom.twiClock100kHz);
-      if ( i2cStat != 0 ) {
-        debugMsg(F("I2C Problem with RTC eeprom"));
-      }
-    #endif
-      
-     if (useRTC) {
-      delay(10);
-      if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)
-        #if DEBUG_ON>0
-          debugMsg(F("Initializing RTC"));
-        #endif
-        Clock.enableOscillator(true, true, 0);  // Ena osc, sqw on batt, 1 Hz
-        delay(100);
-        setRTC(true);   // Clears OSF flag?
-        delay(2);
-        if (!Clock.oscillatorCheck()) {
-          useRTC = false;
-          #if DEBUG_ON>0
-            debugMsg(F("RTC check failed"));  // probably no RTC
-          #endif
-        } 
-      }
-    }  
-
-  pinMode(RX_ENABLE_PIN, OUTPUT);            // used for half-duplex MODBUS
-  rxEnable(false);
-  pinMode(WLAN_PIN, OUTPUT);  // LED
+  setupRtcSQW();
+  setupComms();
 
   if ( ESP.getSketchSize() + 4096 < ESP.getFreeSketchSpace() ) {
     largeFlash = true;
@@ -436,100 +299,8 @@ void setup() {
   delay(10);
   if (checkEEPROM() != EEPROM_SIG) { delay(10); }
   getWLANsFromEEPROM();
-
-/*
- * WiFi setup
- */
-
-  WiFi.macAddress(mac);
-  #ifdef AP_SSID_UNIQ
-    ap_SSID.append("-");
-    ap_SSID.append((String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX)).c_str());
-  #endif
-  ap_ssid = ap_SSID.c_str();
-  //ap_password = AP_PSK;
-  my_hostname = HOSTNAME + String("-") + String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
-
-WiFi.persistent(true);
-  #ifdef ARDUINO_ARCH_ESP8266
-    WiFi.hostname(my_hostname);
-  #endif
-  
-  #ifdef ARDUINO_ARCH_ESP32
-  {
-    WiFi.mode(WIFI_STA);
-    char __hostname[sizeof(my_hostname)+1];
-    my_hostname.toCharArray(__hostname, sizeof(__hostname));
-    WiFi.setHostname(__hostname);             // TODO not working
-  }
-  #endif
-  
-  #if DEBUG_ON>0
-    debugMsgContinue(F("Using hostname: "));
-    debugMsg(my_hostname);
-  #endif
-
-  #if DEBUG_ON>0
-    debugMsg(F("Trying to connect to WLAN."));
-  #endif
-  
-  wlanConnected = connectToWLAN();    // try to connect as STA
-  lastWLANtry = millis();
-
-
-  if (WiFi.isConnected()) { //connected as a station
-    myTZ.setDefault();                     // setup NTP service
-    tzPosix = getNtpTZFromEEPROM();
-  //  if (tzPosix != "") {
-  //   tzPosix = ntpTZ);
-  //  }
-    #if DEBUG_ON>0
-      debugMsgContinue(F("Setting NtpTZ to:"));
-      debugMsg(tzPosix);
-    #endif
-    ntpTZ = tzPosix;
-    myTZ.setPosix(tzPosix);
-    tzPosix = getNtpServerFromEEPROM(); // tzPosix is used as a temp
-     #if DEBUG_ON>0
-      debugMsgContinue(F("Setting NtpServer to:"));
-      debugMsg(tzPosix);
-    #endif
-    setServer(tzPosix);
-    ntpServer = tzPosix;
-    tzPosix = ""; // we were just using it temporarily
-    ntp_temp = getNtpPollFromEEPROM();
-     #if DEBUG_ON>0
-      debugMsgContinue(F("Setting NtpPoll to:"));
-      debugMsg(String(ntp_temp));
-    #endif
-    setInterval(ntp_temp);
-    ntpInterval = ntp_temp;
-    
-    if (timeStatus() == timeNotSet) {      // try to sync with NTP a few times
-      #if DEBUG_ON>0
-        debugMsg(F("Trying to sync NTP."));
-      #endif
-      for (int idx = 0 ; idx < 3 ; idx++) {
-        if (waitForSync(3)) {
-          idx = 4;
-        }
-      }
-    }
-    #if DEBUG_ON>0
-      if (timeStatus() == timeSet) {
-        debugMsgContinue(F("Sync'd to NTP. Time is "));
-        debugMsg(myTZ.dateTime(RFC850));
-      } else if (useRTC) {
-        debugMsgContinue(F("Didn't sync NTP. Using RTC time."));
-      }
-    #endif
-  }
-  
-  if ((timeStatus() != timeSet) && useRTC) { // no ntp, but rtc avail
-    setInterval(0);  // disable ntp
-    setTime(getUnixTime()); // from RTC
-  }
-  
+  setupWLAN();
+  setupClocks();
   
   #ifndef WIFI_MODE_AP_STA
     if (!wlanConnected) {             // If can't connect in STA mode, switch to AP mode
@@ -550,71 +321,11 @@ WiFi.persistent(true);
   }
   #endif
 
-  #if DEBUG_ON>0
-    debugMsg(F("Starting Modbus"));
-  #endif
-  #ifdef ARDUINO_ARCH_ESP8266
-    node.begin(mbAddr, Serial);
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    node.begin(mbAddr, mbSerial);
-  #endif
-  // Callbacks allow us to do half duplex without receiving our own transmissions
-  // needed for Morningstar 6P6C connections, which are half-duplex
-  node.preTransmission(preTransmission);
-  node.postTransmission(postTransmission);
-  delay(10);
+  setupModbus();
+  setupFS();
+  #include "WebServer.h"              // starts up web server
 
-  model = getModel();
-  if (model=="") { 
-    noController = true;
-    model = getModelFromEEPROM();
-      if (model == "") {
-    model = "PS-MPPT";
-  }
-  #if DEBUG_ON>0
-    debugMsgContinue(F("Got model from EEPROM:"));
-    debugMsg(model);
-  #endif
-  } else {
-    #if DEBUG_ON>0
-      debugMsgContinue(F("Got model from mbus:"));
-      debugMsg(model);
-    #endif
-    noController = false;
-  }
-
-  #if DEBUG_ON>0
-    debugMsgContinue(F("Starting "));
-    debugMsg(fs_type);
-  #endif
-  #ifdef ARDUINO_ARCH_ESP8266
-    #ifdef FS_LITTLEFS
-      LittleFSConfig cfg;
-    #endif
-    #ifdef FS_SPIFFS
-      SPIFFSConfig cfg;
-    #endif
-    cfg.setAutoFormat(false);
-    FILESYSTEM.setConfig(cfg);
-  #endif
-  if ( FILESYSTEM.begin() ) {
-    #if DEBUG_ON>0
-      debugMsgContinue(FS_TYPE);
-      debugMsg(F(" opened"));
-    #endif
-    ;
-  } else {
-    #if DEBUG_ON>0
-      debugMsgContinue(FS_TYPE);
-      debugMsg(F(" failed to open"));
-    #endif
-    ;    
-  }
-
-  #include "WebServer.h"              // start up web server
-
-  mbTCP.begin();
+  modbusTCP.begin();
 
   #ifdef ESP8266MDNS_LEGACY_H
     // Set up mDNS responder:
@@ -635,12 +346,13 @@ WiFi.persistent(true);
       debugMsg(F("mDNS responder started"));
     #endif
   #endif
+  
   #if DEBUG_ON>0
     debugMsg("Getting modbus info for " + model);
   #endif
 getFile(model);
+
 getRTCTime();
-// setAgingOffset(AGE_OFFSET);
   #if DEBUG_ON>0
     debugMsg(F("Leaving setup()"));
   #endif
@@ -655,8 +367,6 @@ void loop() {
     #endif
   #endif
 
-//  timerWrite(timer, 0);
-
   events(); // for EZTime
   server.handleClient();
   #if DEBUG_ON==0
@@ -664,8 +374,8 @@ void loop() {
   #endif
 
 // This handles connections to TCP/502 for Modbus TCP from MSView
-  if (!mbClient.connected()) {
-    mbClient = mbTCP.available();
+  if (!modbusClient.connected()) {
+    modbusClient = modbusTCP.available();
   } else {
     mbusTCP();
   }

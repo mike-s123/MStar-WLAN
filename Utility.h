@@ -204,7 +204,7 @@ String getModelFromEEPROM() {
     model += char(readByte);
   }
   #if DEBUG_ON>2
-    debugMsg("Read EEPROM model: " + model);
+    debugMsg("EEPROM read model: " + model);
   #endif
   return model;
 }
@@ -324,10 +324,9 @@ void resetEEPROM() {
     storeWLANsInEEPROM("", "", i);
   }
   storeModelInEEPROM(F("PS-PWM"));
-  storeNtpServerInEEPROM(F(DEFAULT_NTP_SERVER));
-  storeNtpPollInEEPROM(DEFAULT_NTP_INTERVAL);
-  storeNtpTZInEEPROM(F(DEFAULT_NTP_TZ));
-
+  storeNtpServerInEEPROM(F(NTP_DEFAULT_SERVER));
+  storeNtpPollInEEPROM(NTP_DEFAULT_INTERVAL);
+  storeNtpTZInEEPROM(F(NTP_DEFAULT_TZ));
   String chkstr = F(EEPROM_SIG);
   for (int i = 0; i<=3 ; i++) {
     EEPROM.write(i + EEPROM_SIZE -4, chkstr[i]);
@@ -465,7 +464,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
   if (wlan_count) {    // if we have WLANs configured for station mode, try to connect
     #if DEBUG_ON>0
       if (wlan_count) {
-        debugMsgContinue(F("Connecting to WLAN ("));
+        debugMsgContinue(F("WLAN connecting ("));
         debugMsgContinue(String(wlan_count));
         debugMsgContinue(")");
       }  
@@ -489,7 +488,10 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
       }
     }
     #if DEBUG_ON>0
-      debugMsg("");
+      if (WiFi.isConnected()) {
+        debugMsg("");
+        debugMsg(F("WLAN connected"));
+      }
     #endif
   } else {  // no wlan_count
     #if DEBUG_ON>0
@@ -662,205 +664,6 @@ void reboot() {
     return reasonString;
   }
 #endif
-
-// ************************************************************
-// Read/write the eeprom on the RTC module
-// ************************************************************
-byte read_clk_eeprom(int address) {
-  // Read a byte at address in EEPROM memory.
-  byte data[1];
-  byte i2cStat = clk_eeprom.read(address, data, 1);
-  #if DEBUG_ON>2
-    debugMsgContinue(F("Reading clk eeprom, "));
-    debugMsg(String(address)+":"+String(data[0]));
-  #endif
-  return data[0];
-}
-
-void write_clk_eeprom(int address, byte data) {
-//  return;
-  #if DEBUG_ON>2
-    debugMsgContinue(F("Writing clk eeprom, "));
-    debugMsg(String(address)+":"+String(data));
-  #endif
-  byte writebyte[1];
-  writebyte[0] = data;
-  byte i2cStat = clk_eeprom.write(address, writebyte, 1);
-  // Write cycle time (tWR). See EEPROM memory datasheet for more details.
-  delay(10);
-}
-
-uint32_t getRtcLastSetTime() {
-  if (!useRTC) return 0;
-  uint32_t utime = 0;
-  for (int i=3; i>-1; i--) {  // read high byte first so we can bit shift
-    utime = utime << 8;
-    utime += read_clk_eeprom(eeRtcLastSetTime+i);
-  }
-  return utime;
-}
-
-uint32_t getUnixTime() {
-  RTClib RTC;
-  DateTime now = RTC.now();
-  uint32_t unow = now.unixtime();
-  return unow;
-}
-
-void write_clk_sig() {
-  String chkstr = F(CLK_EEPROM_SIG);
-  for (int i = 0; i < 4 ; i++) {
-    write_clk_eeprom(i + CLK_EEPROM_SIZE -4, chkstr[i]);
-  }
-  #if DEBUG_ON>2
-    debugMsg("Wrote clk_chkstr: " + chkstr);
-  #endif
-}
-
-// ************************************************************
-// Get the time from the RTC
-// ************************************************************
-void getRTCTime() {
-  if (useRTC) {
-    Year = Clock.getYear() + 2000;
-    Month = Clock.getMonth(Century);
-    Day = Clock.getDate();
-    Weekday = Clock.getDoW();
-    Hour = Clock.getHour(twentyFourHourClock, PM);
-    Minute = Clock.getMinute();
-    Second = Clock.getSecond();
-    // Make sure the clock keeps running even on battery
-    if (!Clock.oscillatorCheck())
-      Clock.enableOscillator(true, true, 0);
-  } 
-}
-
-String getRTCTimeString(int full = 1) {  // form: 1=full, 0=HMS
-  if (useRTC) {
-    String RTCTime = "";
-    getRTCTime();
-    if (full) {
-      RTCTime = String(Month)+"/"+String(Day, DEC)+"/"+String(Year, DEC)+" ";
-    }
-    RTCTime += String(Hour, DEC)+":"+String(Minute, DEC)+":"+String(Second, DEC);
-    return RTCTime;
-  }
-}
-
-// ************************************************************
-// Set the date/time in the RTC 
-// ************************************************************
-int getAgingOffset(); // fwd declaration
-
-void setRTC(boolean writeee=false) {
-  Clock.setClockMode(false); // false = 24h
-  Clock.setYear(Year % 100);
-  Clock.setMonth(Month);
-  Clock.setDate(Day);
-  Clock.setDoW(Weekday);
-  Clock.setHour(Hour);
-  Clock.setMinute(Minute);
-  Clock.setSecond(Second);
-  byte age = getAgingOffset();
-  uint32_t unow = getUnixTime();
-  if (writeee) {
-    write_clk_eeprom(eeRtcYear, Year>>8);
-    write_clk_eeprom(eeRtcYear+1, Year%256);
-    write_clk_eeprom(eeRtcMonth, Month);
-    write_clk_eeprom(eeRtcDay, Day);  
-    write_clk_eeprom(eeRtcHour, Hour);
-    write_clk_eeprom(eeRtcMinute, Minute);
-    write_clk_eeprom(eeRtcSecond, Second);
-    write_clk_eeprom(eeRtcAge, age);
-    for (int i=0 ; i<4 ; i++) {
-      write_clk_eeprom(eeRtcLastSetTime+i, unow%256);
-      unow = unow >> 8;
-    }
-    write_clk_sig();
-  }  
-}
-
-bool setRtcTimeNTP() {
-  updateNTP();
-  waitForSync(3);
-  if (timeStatus() == timeSet) {
-    Clock.setYear(year() % 100);
-    Clock.setMonth(month());
-    Clock.setDate(day());
-    Clock.setDoW(weekday());
-    Clock.setHour(hour());
-    Clock.setMinute(minute());
-    while ( ms() > 5 ) {          // exit when we're within 5 ms of actual time
-      yield();
-    }
-    Clock.setSecond(second()); 
-    uint32_t unow = getUnixTime();
-    write_clk_eeprom(eeRtcYear, Year>>8);
-    write_clk_eeprom(eeRtcYear+1, Year%256);
-    write_clk_eeprom(eeRtcMonth, Month);
-    write_clk_eeprom(eeRtcDay, Day);  
-    write_clk_eeprom(eeRtcHour, Hour);
-    write_clk_eeprom(eeRtcMinute, Minute);
-    write_clk_eeprom(eeRtcSecond, Second);
-    for (int i=0 ; i<4 ; i++) {
-      write_clk_eeprom(eeRtcLastSetTime+i, unow%256);
-      unow = unow >> 8;
-    }
-    return true;
-  } else {
-    return false;
-  }
-}
-bool setRtcTime(String rtcTime) {
-  #if DEBUG_ON>0
-    debugMsgContinue(F("setRtcTime to "));
-    debugMsg(rtcTime);
-  #endif
-  Year = rtcTime.substring(0,4).toInt();
-  Month = rtcTime.substring(4,6).toInt();
-  Day = rtcTime.substring(6,8).toInt();
-  Weekday = rtcTime.substring(8,9).toInt();
-  Hour = rtcTime.substring(9,11).toInt();
-  Minute = rtcTime.substring(11,13).toInt();
-  Second = rtcTime.substring(13).toInt();
-  setRTC(true);
-}
-
-// ************************************************************
-// Get the temperature from the RTC
-// ************************************************************
-float getRTCTemp() {
-  if (useRTC) {
-    return Clock.getTemperature();
-  } else {
-    return 0.0;
-  }
-}
-
-int getAgingOffset() {
-  int b = 0, r = 0;
-  Wire.beginTransmission(DS3231_I2C);
-  Wire.write(0x10);
-  Wire.endTransmission();
-  Wire.requestFrom(DS3231_I2C,1);
-  while (Wire.available()) { b = Wire.read(); }
-  double temp = 0;
-  if (b>127) { r =  b - 256; } 
-  else       { r =  b; }
-  return r;
-}
-
-void setAgingOffset(int offset)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~ 1 sec/day
-{  
-  if (offset < -127 || offset > 127) return;  // out of range
-  
-    if (offset < 0) offset += 256;    // set sign bit
-    Wire.beginTransmission(DS3231_I2C);
-    Wire.write(0x10);
-    Wire.write(offset);
-    Wire.endTransmission();
-    write_clk_eeprom(eeRtcAge, offset);
-}
 
 String getJsButton(String buttonText, String onClick); // fwd declaration
 

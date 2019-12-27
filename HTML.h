@@ -72,7 +72,7 @@ String getNavBar() {
   navbar += F("<li><a href=\"/setother\">Other Settings</a></li>");
   navbar += F("<li><a href=\"/platform\">Platform</a></li>");
   navbar += F("<li><a href=\"/utility\">Utility</a></li>");
-  navbar += F("</ul></div></div></nav>");
+  navbar += F("</ul></div></div></nav></br>");
   navbar += promptReset();
   return navbar;
 }

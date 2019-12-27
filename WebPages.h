@@ -638,7 +638,7 @@ void getfilePageHandler() {
     model = "PS-MPPT";
   }
   #if DEBUG_ON>0
-    debugMsgContinue(F("Got model from EEPROM:"));
+    debugMsgContinue(F("EEPROM got model:"));
     debugMsg(model);
   #endif
   } else {
@@ -760,15 +760,22 @@ void setTimePageHandler() {
   if (useRTC) {
     response_message += getTextInput(F("RTC last set"), F("rtc_lastset"), myTZ.dateTime(getRtcLastSetTime(),RFC850), true);
     response_message += F("<br><br>");
-    if (timeStatus() == timeSet) {  // ntp got time
-      response_message += getJsButton(F("Set RTC from ntp"), F("setRtcTimeNTP()"));
+    if (timeStatus() == timeSet) {                // ntp has current time
+      response_message += F("<br><br>");
+      response_message += getJsButton(F("Set RTC from NTP"), F("setRtcTimeNTP()"));
     }
     response_message += getJsButton(F("Set RTC from computer"), F("setRtcTime()"));
     response_message += F("<br><br>");
-    
-    response_message += getNumberInput(F("RTC crystal adjust (higher is slower)"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
+
+    response_message += F("The RTC crystal will be trimmed automatically over time if connected to the Internet and using NTP.<br>");
+    response_message += F("If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year.<br>");
+    response_message += F("The offset is how far apart the RTC is from NTP. When it reaches 125 ms, an automatic trim<br>");
+    response_message += F("adjustment will be made.<br>");
+    response_message += getTextInput(F("RTC ms offset"), F("rtc_diff_filtered"), String(rtc_diff_filtered - 500), true);
     response_message += F("<br><br>");
-    response_message += getJsButton(F("Set crystal adjustment"), F("setAging('rtc_offset')"));
+    response_message += getNumberInput(F("RTC crystal trim. (higher is slower)"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
+    response_message += F("<br><br>");
+    response_message += getJsButton(F("Set crystal trim"), F("setAging('rtc_offset')"));
   }
   
   response_message += getFormFoot();
@@ -780,9 +787,9 @@ void setTimePageHandler() {
   response_message += getTextInput(F("NTP server"), F("ntp_svr"), ntpServer, false);
   response_message += F("<br><br>");
   String foo = F("Poll interval<br>(");
-  foo += String(MIN_NTP_INTERVAL);
+  foo += String(NTP_MIN_INTERVAL);
   foo += "-";
-  foo += String(MAX_NTP_INTERVAL);
+  foo += String(NTP_MAX_INTERVAL);
   foo += F(" sec)");
   response_message += getNumberInput(foo, F("ntp_poll"), 601, 64999, ntpInterval, false);
   response_message += "<br><br>";

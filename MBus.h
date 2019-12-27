@@ -777,19 +777,19 @@ int mbusTCP() {
    * going to let wifi do scanning.
    */
   if ( (millis() - lastWLANtry) < 5000 ) lastWLANtry += 5000;  // at least 5 seconds
-  if (mbClient.available() > 0) {
+  if (modbusClient.available() > 0) {
     int i;
     for ( i = 0; i < 6; i++) {
-      mbbuffer[i] = mbClient.read();
+      mbbuffer[i] = modbusClient.read();
     }
     len = mbbuffer[4]*256 + mbbuffer[5];
     for ( i = 0 ; i < len ; i++ ) {
-      mbbuffer[i+6] = mbClient.read();
+      mbbuffer[i+6] = modbusClient.read();
     }
     func = mbbuffer[7];
     buffsize = 6 + len;
     #if DEBUG_ON>3
-      debugMsgContinue(F("mbTCP received"));
+      debugMsgContinue(F("modbusTCP received"));
       for (i=0;i<6+len;i++){
         debugMsgContinue("."+String(mbbuffer[i],HEX));
       }
@@ -883,13 +883,13 @@ int mbusTCP() {
     }
     if (!result) {
       #if DEBUG_ON>3
-        debugMsgContinue(F("mbTCP sending"));
+        debugMsgContinue(F("modbusTCP sending"));
         for (i=0;i<buffsize;i++){
           debugMsgContinue("."+String(mbbuffer[i],HEX));
         }
         debugMsg("");
       #endif  
-      mbClient.write((const uint8_t *)mbbuffer, buffsize);
+      modbusClient.write((const uint8_t *)mbbuffer, buffsize);
     } else {
       ; // TODO send error response
     }
@@ -897,11 +897,13 @@ int mbusTCP() {
 }
 
 String getModel() {
-  String vendorName, productCode, majorMinorRevision, mod = "", result;
+  String vendorName = "", productCode = "", majorMinorRevision = "", mod = "";
+  int result;
   vendorName.reserve(64);
   productCode.reserve(64);
   majorMinorRevision.reserve(64);
   result = readDeviceID(vendorName, productCode, majorMinorRevision);
+  if (result == -1 || productCode.length() > 20) productCode = "";
   #if DEBUG_ON>4
     debugMsgContinue(F("getModel, readDeviceID returned:"));
     debugMsg(String(result));
