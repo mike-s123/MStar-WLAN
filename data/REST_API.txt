@@ -9,7 +9,7 @@ Variables:
 "addr"		Required. Register or coil address, zero based, decimal/hex/octal
 "cmd"		Required. Command, one of 
 			"readInputRegister" 	Read a single register. Err if register not defined.
-			"readInputRegisters"	Read up to 10 registers with optional "count" modifier.
+			"readInputRegisters"	Read up to "count" registers.
 			"readHoldingRegisters"	Same as "readInputRegisters"
 			"readCoils"				Read coils with optional "count" modifier.
 			"readDiscreteInputs"	Same as "readCoils"
@@ -18,9 +18,10 @@ Variables:
 			"readRegRaw"			Read minimally interpreted data from registers, 
 										works with undefined registers.
 			"getLogItem"			Read log entry. "addr" 0-255.
-"count"		Optional, default = 1, max = 10. Number of registers/coils to read. 
-				Will start at "addr", and return next "count" defined items, 
-				skipping undefined ones. May return fewer if "count" items are unavailable.
+"count"		Optional, default = 1, max = 10 for ESP8266, 256 for ESP32 (getLogItem, 2 and 32,
+				respectively. Number of items to read. Will start at "addr", and return next
+				"count" defined items, skipping undefined ones. May return fewer if "count"
+				items are unavailable.
 "pass"		Password, required for any writes. Defined in code - "imsure"
 "valu"		Required for writes. Value to write to register/coil. "on", "true", "off", 
 				or "false" for coils. String for registers, code will convert to appropriate

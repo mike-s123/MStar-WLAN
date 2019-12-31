@@ -33,14 +33,24 @@ void restPageHandler() {                          //  URI /rest
     JsonObject& jsonIn = jsonInBuffer.parseObject(server.arg(F("json")).c_str());
     String cmd = jsonIn[F("cmd")];
     String pass = jsonIn[F("pass")];
-    StaticJsonBuffer<2200> jsonOutBuffer;    // on the edge, anymore than ~2400 and wdt resets
+    #ifdef ARDUINO_ARCH_ESP8266
+      StaticJsonBuffer<2200> jsonOutBuffer;    // on the edge, anymore than ~2400 and wdt resets
+    #endif
+    #ifdef ARDUINO_ARCH_ESP32
+      DynamicJsonBuffer jsonOutBuffer(96000);    // bigger is better 96000
+    #endif
     JsonObject& jsonOut = jsonOutBuffer.createObject();
     if ( cmd == F("readHoldingRegisters") || cmd == F("readInputRegisters") || cmd == F("readInputRegister") ) {
       String address = jsonIn[F("addr")] | "-1";
       int mbReg = getDecInt(address);              // this covers all bases
       int count = jsonIn[F("count")] | 1;
       if ( cmd == "readInputRegister" ) { count = 1; };
-      if ( count > 10 ) { jsonErr(F("count > 10"), F("request entity too large") , 413); return; }
+      #ifdef ARDUINO_ARCH_ESP8266
+        if ( count > 10 ) { jsonErr(F("count > 10"), F("request entity too large") , 413); return; }
+      #endif
+      #ifdef ARDUINO_ARCH_ESP32
+        if ( count > 256 ) { jsonErr(F("count > 256"), F("request entity too large") , 413); return; }
+      #endif
       if ( getMbRegIndex(mbReg) < 0 ){ jsonErr(F("bad addr")); return; }
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version;
@@ -166,8 +176,8 @@ void restPageHandler() {                          //  URI /rest
       JsonArray &regArray = jsonOut.createNestedArray(F("registers"));
       String valu;
       uint16_t raw;
-      // TODO count
-      for (int i=0 ; i <10 ; i++) {
+      int count  = jsonIn[F("count")] | 1;
+      for (int i = 0 ; i < count ; i++) {
         JsonObject& regO      = regArray.createNestedObject();
         JsonObject& registers = regO.createNestedObject(F("register"));
         result = MBus_get_reg_raw(mbReg+i, raw);
@@ -183,89 +193,102 @@ void restPageHandler() {                          //  URI /rest
       long int lint;
       logItem item;
       int result;
+      int count  = jsonIn[F("count")] | 1;
+      #ifdef ARDUINO_ARCH_ESP8266
+        if ( count > 2 ) { jsonErr(F("count > 2"), F("request entity too large") , 413); return; }
+      #endif
+      #ifdef ARDUINO_ARCH_ESP32
+        if ( count > 32 ) { jsonErr(F("count > 256"), F("request entity too large") , 413); return; }
+      #endif
       if ( idx < 0 || idx > 255 ) { jsonErr(F("bad addr")); return; };
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version;
       jsonOut[F("api_min")] = json_version_min;
       JsonArray &regArray = jsonOut.createNestedArray(F("log_items"));
-            
-      JsonObject& regO      = regArray.createNestedObject();
-      JsonObject& registers = regO.createNestedObject(F("log_item"));
-      if ( getLogItem(item, idx) ) { jsonErr(F("modbus error"), F("gateway timeout"), 504); return; }
-      registers[F("addr")]              = idx;
-      registers[F("hourmeter")]         = String(item.hourmeter);
-      registers[F("alarm_daily")]       = "0x"+String(item.alarm_daily, HEX);
-      if ( item.alarm_daily != 0 ) {   
-        JsonObject& alarm      = registers.createNestedObject(F("alarms"));
-        long int alarmbit = 1;
-        int alarmNum = 1;
-        for ( int i = 0 ;  i<32 ; i++ ) {
-          if ( item.alarm_daily & alarmbit ) {
-            #if DEBUG_ON>3
-              debugMsg("alarmbit="+String(alarmbit,HEX));
-              debugMsg("mbAlarmMsg-:" + String(i) + ":" + mbAlarmMsg[i]);
-            #endif
-            if ( mbAlarmMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults          
-              alarm[String(alarmNum)] = mbAlarmMsg[i];
-              alarmNum++;
+      for (int i = 0 ; i < count && i < 256; i++) {
+        JsonObject& regO      = regArray.createNestedObject();
+        JsonObject& registers = regO.createNestedObject(F("log_item"));
+        if ( getLogItem(item, idx+i) ) { jsonErr(F("modbus error"), F("gateway timeout"), 504); return; }
+        registers[F("addr")]              = idx+i;
+        registers[F("hourmeter")]         = String(item.hourmeter);
+        registers[F("alarm_daily")]       = "0x"+String(item.alarm_daily, HEX);
+        if ( item.alarm_daily != 0 ) {   
+          JsonObject& alarm      = registers.createNestedObject(F("alarms"));
+          long int alarmbit = 1;
+          int alarmNum = 1;
+          for ( int i = 0 ;  i<32 ; i++ ) {
+            if ( item.alarm_daily & alarmbit ) {
+              #if DEBUG_ON>3
+                debugMsg("alarmbit="+String(alarmbit,HEX));
+                debugMsg("mbAlarmMsg-:" + String(i) + ":" + mbAlarmMsg[i]);
+              #endif
+              if ( mbAlarmMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults          
+                alarm[String(alarmNum)] = mbAlarmMsg[i];
+                alarmNum++;
+              }
             }
+            alarmbit = alarmbit << 1;
           }
-          alarmbit = alarmbit << 1;
-        }
-      }
-      registers[F("load_fault_daily")]  = "0x"+String(item.load_fault_daily, HEX);
-      if ( item.load_fault_daily != 0 ) {  
-        JsonObject& load      = registers.createNestedObject(F("load_faults"));
-        long int alarmbit = 1;
-        int alarmNum = 1;
-        for ( int i = 0 ;  i<32 ; i++ ) {
-          if ( item.load_fault_daily & alarmbit ) {
-            #if DEBUG_ON>3
-              debugMsg("i="+String(i));
-              debugMsg("loadalarmbit="+String(alarmbit,HEX));
-            #endif
-            if ( mbLoadMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults
-              load[String(alarmNum)] = mbLoadMsg[i];
-              alarmNum++;
-            }  
-          }
-          alarmbit = alarmbit << 1;
-        }
-      }
-      registers[F("array_fault_daily")] = "0x"+String(item.array_fault_daily, HEX);
-      if ( item.array_fault_daily != 0 ) {  
-        JsonObject& array      = registers.createNestedObject(F("array_faults"));
-        long int alarmbit = 1;
-        int alarmNum = 1;
-        for ( int i = 0 ;  i<32 ; i++ ) {
-          if ( item.array_fault_daily & alarmbit ) {
-            #if DEBUG_ON>3
-              debugMsg("i="+String(i));
-              debugMsg("array alarmbit="+String(alarmbit,HEX));
-            #endif
-            if ( mbArrayMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults   
-              array[String(alarmNum)] = mbArrayMsg[i];
-              alarmNum++;
+        }  
+        registers[F("load_fault_daily")]  = "0x"+String(item.load_fault_daily, HEX);
+        if ( item.load_fault_daily != 0 ) {  
+          JsonObject& load      = registers.createNestedObject(F("load_faults"));
+          long int alarmbit = 1;
+          int alarmNum = 1;
+          for ( int i = 0 ;  i<32 ; i++ ) {
+            if ( item.load_fault_daily & alarmbit ) {
+              #if DEBUG_ON>3
+                debugMsg("i="+String(i));
+                debugMsg("loadalarmbit="+String(alarmbit,HEX));
+              #endif
+              if ( mbLoadMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults
+                load[String(alarmNum)] = mbLoadMsg[i];
+                alarmNum++;
+              }  
             }
+            alarmbit = alarmbit << 1;
           }
-          alarmbit = alarmbit << 1;
         }
+        registers[F("array_fault_daily")] = "0x"+String(item.array_fault_daily, HEX);
+        if ( item.array_fault_daily != 0 ) {  
+          JsonObject& array      = registers.createNestedObject(F("array_faults"));
+          long int alarmbit = 1;
+          int alarmNum = 1;
+          for ( int i = 0 ;  i<32 ; i++ ) {
+            if ( item.array_fault_daily & alarmbit ) {
+              #if DEBUG_ON>3
+                debugMsg("i="+String(i));
+                debugMsg("array alarmbit="+String(alarmbit,HEX));
+              #endif
+              if ( mbArrayMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults   
+                array[String(alarmNum)] = mbArrayMsg[i];
+                alarmNum++;
+              }
+            }
+            alarmbit = alarmbit << 1;
+          }
+        }
+        registers[F("Vb_min_daily")]      = String(IEEEf16::f32(item.Vb_min_daily),8);      
+        registers[F("Vb_max_daily")]      = String(IEEEf16::f32(item.Vb_max_daily),8);      
+        registers[F("Ahc_daily")]         = String(IEEEf16::f32(item.Ahc_daily),8);      
+        registers[F("Ahl_daily")]         = String(IEEEf16::f32(item.Ahl_daily),8);      
+        registers[F("Va_max_daily")]      = String(IEEEf16::f32(item.Va_max_daily),8);      
+        registers[F("time_ab_daily")]     = String(item.time_ab_daily);
+        registers[F("time_eq_daily")]     = String(item.time_eq_daily);
+        registers[F("time_fl_daily")]     = String(item.time_fl_daily);
+        
+        ok = true;
       }
-      registers[F("Vb_min_daily")]      = String(IEEEf16::f32(item.Vb_min_daily),8);      
-      registers[F("Vb_max_daily")]      = String(IEEEf16::f32(item.Vb_max_daily),8);      
-      registers[F("Ahc_daily")]         = String(IEEEf16::f32(item.Ahc_daily),8);      
-      registers[F("Ahl_daily")]         = String(IEEEf16::f32(item.Ahl_daily),8);      
-      registers[F("Va_max_daily")]      = String(IEEEf16::f32(item.Va_max_daily),8);      
-      registers[F("time_ab_daily")]     = String(item.time_ab_daily);
-      registers[F("time_eq_daily")]     = String(item.time_eq_daily);
-      registers[F("time_fl_daily")]     = String(item.time_fl_daily);
-      
-      ok = true;
     }
-    
+
     if (ok) {  
       String response_message;
-      response_message.reserve(3000);
+      #ifdef ARDUINO_ARCH_ESP8266
+        response_message.reserve(3000);
+      #endif
+      #ifdef ARDUINO_ARCH_ESP32
+        response_message.reserve(98000); //98000 
+      #endif
       response_message = jsonIn[F("back")] | "false";
       if ( response_message != "true" ) {
         response_message = "";

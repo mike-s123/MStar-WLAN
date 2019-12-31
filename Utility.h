@@ -117,7 +117,7 @@ void storeWLANsInEEPROM(String qsid, String qpass, int idx=0) {
   for (int i = 0; i < 32; i++) {
     if ( i < qpass.length()) {
       EEPROM.write(eeWLANPASS + (32*idx) + i, qpass[i]);
-      #if DEBUG_ON>5
+      #if DEBUG_ON>8
       debugMsg("Wrote: " + String(qpass[i]));
       #endif
     } else {
@@ -163,7 +163,7 @@ void getWLANsFromEEPROM() {
     #if DEBUG_ON>2
       debugMsgContinue("Read password:");
     #endif
-    #if DEBUG_ON>5                            // only show password debug level 6+
+    #if DEBUG_ON>8                            // only show password debug level 6+
       debugMsgContinue(epass[j]);
     #endif
     #if DEBUG_ON>2
@@ -403,7 +403,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
           debugMsgContinue(F("wifiMulti adding SSID:"));
           debugMsg(ssid);
         #endif
-        #if DEBUG_ON>5
+        #if DEBUG_ON>8
           debugMsgContinue(F("wifiMulti   with pass:"));
           debugMsg(password);
         #endif
@@ -423,7 +423,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
               debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
               debugMsg(esid[i]);
               debugMsgContinue(F("wifiMulti   with pass from EEPROM:"));
-              #if DEBUG_ON>5
+              #if DEBUG_ON>8
                 debugMsgContinue(epass[i]);
               #endif
               debugMsg("");

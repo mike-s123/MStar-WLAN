@@ -449,7 +449,7 @@ void wlanPageHandler()
       #if DEBUG_ON>3
       debugMsgContinue(F("New PASSWORD entered:"));
       #endif
-      #if DEBUG_ON>5
+      #if DEBUG_ON>8
       debugMsgContinue(pass);
       #endif
       #if DEBUG_ON>3
@@ -767,14 +767,25 @@ void setTimePageHandler() {
     response_message += getJsButton(F("Set RTC from computer"), F("setRtcTime()"));
     response_message += F("<br><br>");
 
-    response_message += F("The RTC crystal will be trimmed automatically over time if connected to the Internet and using NTP.<br>");
-    response_message += F("If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year.<br>");
-    response_message += F("The offset is how far apart the RTC is from NTP. When it reaches 125 ms, an automatic trim<br>");
-    response_message += F("adjustment will be made.<br>");
-    response_message += getTextInput(F("RTC ms offset"), F("rtc_diff_filtered"), String(rtc_diff_filtered - 500), true);
+    response_message += F("The RTC crystal will be trimmed automatically over time if connected to the Internet and using NTP.<br>\
+                          If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year (0.1 ppm).<br>\
+                          The offset is where RTC time is compared to NTP, negative means it's fast (ahead of NTP).<br>\
+                          When it's more than &plusmn;100 ms and stable, an automatic trim adjustment will be made.<br>\
+                          Since last set, the RTC is running about ");
+    float my_ppm = getRTCppm();
+    if (my_ppm < 0) {
+      response_message += String(abs(my_ppm),3);
+      response_message += F(" ppm slow compared to NTP.<br><br>");
+    } else if (my_ppm > 0) {
+      response_message += String(abs(my_ppm),3);
+      response_message += F(" ppm fast compared to NTP.<br><br>");
+    } else {
+      response_message += F("the same as NTP.<br><br>");
+    }
+    response_message += getTextInput(F("RTC ms offset"), F("rtc_diff_filtered"), String(rtc_diff_filtered), true);
     response_message += F("<br><br>");
-    response_message += getNumberInput(F("RTC crystal trim. (higher is slower)"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
-    response_message += F("<br><br>");
+    response_message += getNumberInput(F("RTC crystal trim"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
+    response_message += F("<br><div>(&plusmn;127 - lower makes RTC faster and the offset above decrease)</div><br>");
     response_message += getJsButton(F("Set crystal trim"), F("setAging('rtc_offset')"));
   }
   

@@ -34,7 +34,7 @@ void getRegFromFile(String model) {
       } while ( received != '\n' && !eof );
       if ( !eof ) {
         if ( line.startsWith("r,",0) ) {      // only do register lines         
-          #if DEBUG_ON>3
+          #if DEBUG_ON>4
           debugMsg("row=" + String(row) );
           debugMsg("line=" + line);
           #endif
@@ -172,7 +172,7 @@ void getCoilFromFile(String model) {
       } while ( received != '\n' && !eof );
       if ( !eof ) {
         if ( line.startsWith("c,",0)   ) {      // only coil lines         
-          #if DEBUG_ON>3
+          #if DEBUG_ON>4
           debugMsg("line=" + line);
           #endif
           int pos = 2;                                   // skip the "c," 
@@ -236,7 +236,7 @@ void getAlarmFromFile(String model) {
 
       if ( !eof ) {
         if ( line.startsWith("m,",0)  ) {      // alarm lines start with "m,"        
-          #if DEBUG_ON>3
+          #if DEBUG_ON>4
             debugMsg("alarm line=" + line);
           #endif
           int pos = 2;                                   // process line
@@ -249,7 +249,7 @@ void getAlarmFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbAlarmMsg[myBit] = val;
-                      #if DEBUG_ON>3
+                      #if DEBUG_ON>4
                         debugMsg("set mbAlarmMsg-" + String(myBit) + ":" + mbAlarmMsg[myBit]);
                       #endif
                 break;
@@ -301,7 +301,7 @@ void getArrayFromFile(String model) {
 
       if ( !eof ) {
         if ( line.startsWith("y,",0)  ) {      // array lines begin with "y,"         
-          #if DEBUG_ON>3
+          #if DEBUG_ON>4
             debugMsg("array line=" + line);
           #endif
           int pos = 2;                                   // process line
@@ -314,7 +314,7 @@ void getArrayFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbArrayMsg[myBit] = val;
-                      #if DEBUG_ON>3
+                      #if DEBUG_ON>4
                         debugMsg("set mbArrayMsg-" + String(myBit) + ":" + mbArrayMsg[myBit]);
                       #endif
                 break;
@@ -366,7 +366,7 @@ void getLoadFromFile(String model) {
 
       if ( !eof ) {
         if ( line.startsWith("l,",0)  ) {      // load lines start with "l,"         
-          #if DEBUG_ON>3
+          #if DEBUG_ON>4
             debugMsg("load line=" + line);
           #endif
           int pos = 2;                                   // process line
@@ -379,7 +379,7 @@ void getLoadFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbLoadMsg[myBit] = val;
-                      #if DEBUG_ON>3
+                      #if DEBUG_ON>4
                         debugMsg("set mbLoadMsg-" + String(myBit) + ":" + mbLoadMsg[myBit]);
                       #endif
                 break;

@@ -22,15 +22,15 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191225"
+#define SOFTWARE_VERSION "v1.191227"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
                      More WLAN work. Started adding time support. Auto adjust<br>\
                      RTC speed."
 
-#define DEBUG_ON 3                // enable debugging output. 0 currently causes issues (12/22/2019)
-                                  // 0 off, 1 least detail, 5 most detail, 6 includes passwords
+#define DEBUG_ON 4                // enable debugging output. 0 currently causes issues (12/22/2019)
+                                  // 0 off, 1 least detail, 5 most detail, 9 includes passwords
                                   // 0 not working on ESP32 for now
 //#define debugjs                   // ifdef, overrides servestatic to avoid caching of local.js
 //#define debugcss                  // ditto, for css
@@ -367,6 +367,10 @@ void loop() {
     #endif
   #endif
 
+  if (rtc_IRQ = true) {
+    rtc_secs = getUnixTime();
+    rtc_IRQ = false;
+  }
   events(); // for EZTime
   server.handleClient();
   #if DEBUG_ON==0

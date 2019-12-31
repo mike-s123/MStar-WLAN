@@ -4,9 +4,11 @@
 #include <EwmaT.h> // 1.0.2 via IDE, jonnieZG, https://github.com/jonnieZG/EWMA, MIT license
 #include <ezTime.h> //Rop Gonggrijp 1.8.3, via IDE
 
+//#define RTCtestNtpSet 2  // deliberately sets RTC wrong for testing. 1=slow 997 ms, 2=fast 997 ms
+
 void debugMsgContinue(String msg); // fwd declaration 
 void debugMsg(String msg) ;
-int getAgingOffset(); // fwd declaration
+signed char getAgingOffset(); // fwd declaration
 String getNtpTZFromEEPROM();
 String getNtpServerFromEEPROM();
 unsigned short int getNtpPollFromEEPROM();
@@ -35,6 +37,7 @@ unsigned short int getNtpPollFromEEPROM();
 #define RtcEepromMinute 6
 #define RtcEepromSecond 7
 #define RtcEepromLastSetTime 8
+#define RTC_DRIFT_FACTOR 1.3                      // multiply drift offset correction by this
 
 #define NTP_DEFAULT_TZ "EST5EDT,M3.2.0,M11.1.0"   //POSIX format
 #define NTP_DEFAULT_INTERVAL 7207                 // seconds, best if not a multiple of 60
@@ -58,9 +61,12 @@ bool h12;
 bool PM;
 int Year = 2019;
 byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // April fool's
-volatile long int rtc_500ms = 500;
-EwmaT <long int> rtc_diff_ewmat(3, 10, 500); // 3/10:weight for new additions, 0:starting value
-int rtc_diff_filtered = 500; // filtered value
+volatile long int rtc_ms = 0;
+// below underflows with negatives, so all uses add 1000000.
+EwmaT <long int> rtc_diff_ewmat(6, 10, 1000000); // 6/10:weight for new additions, 1000000:starting value
+long int rtc_diff_filtered = 0; // filtered value
+int rtc_IRQ = false;  // faster to set an int than a bool?
+unsigned long int rtc_secs;
 String ntpServer = NTP_DEFAULT_SERVER;
 unsigned short int ntpInterval = NTP_MAX_INTERVAL;
 String ntpTZ = NTP_DEFAULT_TZ;  //posix string
@@ -188,7 +194,9 @@ void setRTC(boolean writeee=false) {
   Clock.setHour(Hour);
   Clock.setMinute(Minute);
   Clock.setSecond(Second);  // The OSF is cleared by function setSecond();.
-  byte age = getAgingOffset();
+  signed char age = getAgingOffset();
+  rtc_diff_ewmat.reset(); //reset averaging filter
+  rtc_diff_filtered = 0;
   if (writeee) {
     write_rtc_eeprom(RtcEepromYear, Year>>8);
     write_rtc_eeprom(RtcEepromYear+1, Year%256);
@@ -207,9 +215,16 @@ bool setRtcTimeNTP() {
   updateNTP();
   waitForSync(3);
   if (timeStatus() == timeSet) {
-    while ( ms() < 6 ) yield();        // this waits for a seconds rollover
-    while ( ms() > 5 ) yield();        // then updates the RTC as fast as possible
-    Clock.setSecond(second());
+    #if RTCtestNtpSet == 1               // set 997 ms slow
+      while ( ms() != 997) yield();       // for testing, deliberately set rtc wrong
+    #elif RTCtestNtpSet == 2             // set 997 ms fast
+      while ( ms() != 3) yield();         // for testing, deliberately set rtc wrong
+      Clock.setSecond(second()+1);       // for testing, note: may wrap with minutes
+    #else
+      while ( ms() < 6 ) yield();        // this waits for a seconds rollover
+      while ( ms() > 5 ) yield();        // then updates the RTC as fast as possible
+      Clock.setSecond(second());
+    #endif
     Clock.setMinute(minute());
     Clock.setHour(hour());
     Clock.setDoW(weekday());
@@ -217,6 +232,8 @@ bool setRtcTimeNTP() {
     Clock.setMonth(month());
     Clock.setYear(year() % 100);
     setRtcLastSetTime(now());
+    rtc_diff_ewmat.reset(); //reset averaging filter
+    rtc_diff_filtered = 0;
     return true;
   } else {
     return false;
@@ -249,29 +266,30 @@ float getRTCTemp() {
   }
 }
 
-int getAgingOffset() {
-  int b = 0, r = 0;
+signed char getAgingOffset() {
+  signed char age = 0;
   Wire.beginTransmission(RTC_I2C_ADDR);
   Wire.write(0x10);
   Wire.endTransmission();
   Wire.requestFrom(RTC_I2C_ADDR,1);
-  while (Wire.available()) { b = Wire.read(); }
-  double temp = 0;
-  if (b>127) { r =  b - 256; } 
-  else       { r =  b; }
-  return r;
+  while (Wire.available()) { age = Wire.read(); }
+  return age;
 }
 
-void setAgingOffset(int offset)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~ 1 sec/day
+void setAgingOffset(signed char offset)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~ 1 sec/day
 {  
-  if (offset < -127 || offset > 127) return;  // out of range  
-    if (offset < 0) offset += 256;    // set sign bit
     Wire.beginTransmission(RTC_I2C_ADDR);
     Wire.write(0x10);
     Wire.write(offset);
     Wire.endTransmission();
     write_rtc_eeprom(RtcEepromAge, offset);
     rtc_diff_ewmat.reset(); //reset averaging filter
+    rtc_diff_filtered = 0;
+    /*
+     * New values, including changes to the AGE register, are loaded only when a change in the temperature 
+     * value occurs, or when a user-initiated temperature conversion is completed.
+     */
+    getRTCTemp();
 }
 
 void resetRtcEeprom() {
@@ -305,7 +323,12 @@ String checkRtcEeprom() {
   return chkstr;
 }
 
-void checkClocks(int rtc_diff_filtered) {  
+float getRTCppm() {
+  unsigned long int howlong; 
+  howlong = now() - getRtcLastSetTime();          // number of seconds since we last set RTC time
+  return -(rtc_diff_ewmat.output()-1000000) * 1000.0 / howlong;   // drift in ppm
+}
+void checkClocks(long int rtc_diff_filtered) {  
   #if DEBUG_ON>0
     debugMsg(F("checkClocks"));
   #endif
@@ -315,25 +338,25 @@ void checkClocks(int rtc_diff_filtered) {
         setInterval(0);            // disable ntp
         setTime(getUnixTime());    // from RTC to eztime
     } else {
-      long int howlong;
+      unsigned long int howlong;
       float drift;
-      int new_offset, diff;
-      diff = rtc_diff_filtered - 500;
-      if (abs(diff) > 125) {                     // only adjust if we're off by more than 125 ms
-        if (now() - lastNtpUpdateTime() > 120) { // seconds, first make sure local drift isn't the issue
+      int new_offset; 
+      if (abs(rtc_diff_filtered) >= 100) {                // only adjust if we're off by 100+ ms 
+        if (now() - lastNtpUpdateTime() > 120) {          // seconds, first make sure local drift isn't the issue
           updateNTP(); 
-          return;                                // we'll be back in a minute if it's still off
+          return;                                         // we'll be back in a minute if it's still off
         }
-        howlong = now() - getRtcLastSetTime();   // number of seconds since we last set
-        drift = diff * 10000.0 / howlong;        // drift in 0.1 ppm, which matches the DS3231 offset precision
-        new_offset = getAgingOffset() - drift;
-        #if DEBUG_ON>2
+        howlong = now() - getRtcLastSetTime();              // number of seconds since we last set RTC time
+        drift = -rtc_diff_filtered * 10000.0 / howlong;   // drift in 0.1 ppm, close to the DS3231 offset precision, - means RTC is slow
+        new_offset = getAgingOffset() + (drift * RTC_DRIFT_FACTOR);
+        #if DEBUG_ON>3
+          debugMsgContinue(F("howlong:"));
+          debugMsg(String(howlong));
           debugMsgContinue(F("rtc_diff_filtered:"));
           debugMsg(String(rtc_diff_filtered));
-          debugMsgContinue(F("diff:"));
-          debugMsg(String(diff));
           debugMsgContinue(F("drift:"));
-          debugMsg(String(drift));          
+          debugMsgContinue(String(drift/10.0)); 
+          debugMsg(F(" ppm"));         
         #endif
         if (new_offset != getAgingOffset()) {
           if (new_offset < -127) new_offset = -127;
@@ -353,32 +376,74 @@ void checkClocks(int rtc_diff_filtered) {
   }
 }
 
+/*
+ * IRQ, RTC marks millis() at 1/2 second (rtc_ms) and sets flag (rtc_IRQ)
+ * main loop sees flag, records getUnixTime() (rtc_secs) within 1/2 second.
+ */
 void ICACHE_RAM_ATTR rtcIRQ() { // handles interrupts from RTC, can't do much here
-  rtc_500ms = millis();  // tracks difference between ntp and rtc
+  rtc_ms = millis();  // tracks difference between ntp and rtc
+  rtc_IRQ = true;
   ;
 }
 
+/*
+ * Time diff processing happens at the beginning of each ntp second.
+ * result is real_rtc_diff_ms, which is where an RTC second is positioned
+ * against an ntp second. A negative value indicates it occured before the
+ * ntp second.
+ * 
+ * rtc_ms is when the RTC sent an interrupt at the start of its last second, 
+ * in millis(). If oncePerMinute gets delayed before running, that will be
+ * reflected in ms(). So, we subtract that from current millis() to adjust. It 
+ * should be very small - 0 or 1. So, the last rtc second happened at:
+ * 
+ * ms_diff = -(millis() - ms() - rtc_ms);
+ * 
+ * If ms_diff is decreasing, RTC is running faster than NTP (getting more ahead). 
+ * If exactly sync'd rtc_secs = now() and ms_diff = 0.
+ * 
+ * Then, we have to look at whole seconds. If now()>rtc_secs, the rtc has gotten
+ * even more behind (late). 
+ *  
+ * real_rtc_diff_ms = ((now()-(rtc_secs)) * 1000) + ms_diff;
+ * 
+ */
 void oncePerMinute() { // not necessarily _on_ the minute
-  long int real_rtc_diff, my_ms = ms(), diff;
+  long int ms_diff;
+  long int real_rtc_diff_ms; 
   setEvent(oncePerMinute,now()+60);
   #if DEBUG_ON>1
     debugMsg(F("oncePerMinute"));
   #endif
-  diff = millis() - ms();             // some large number
-  real_rtc_diff = rtc_500ms - diff + 1000;  // find when rtc irq fired, in ms() terms, it's about a half-second before now
-  if (real_rtc_diff < 0 || real_rtc_diff > 999) {
-    #if DEBUG_ON>1
-      debugMsgContinue(F("real_rtc_diff out of bounds:"));
-      debugMsg(String(real_rtc_diff));
+  ms_diff = -(millis() - ms() - rtc_ms);
+  #if DEBUG_ON>3
+    debugMsg("millis():"+String(millis()));
+    debugMsg("ms():"+String(ms()));
+    debugMsg("rtc_ms:"+String(rtc_ms));
+    debugMsg("ms_diff:"+String(ms_diff));
+  #endif
+
+  if (ms_diff <= -998 || ms_diff >= -1) { //funky behavior (IRQ race?) at extremes, avoid
+    #if DEBUG_ON>3
+      debugMsgContinue(F("ms_diff out of bounds:"));
+      debugMsg(String(ms_diff));
     #endif
     return;
   }
-  //TODO make sure NTP/RTC are within a second
-  rtc_diff_filtered = rtc_diff_ewmat.filter(real_rtc_diff); // moving average-like filter
-  checkClocks(rtc_diff_filtered);
+  if (rtc_IRQ) rtc_secs = getUnixTime(); // haven't gone through main loop, we'll do it here.
+  real_rtc_diff_ms = ((now()-(rtc_secs)) * 1000) + ms_diff;
+    #if DEBUG_ON>3
+    debugMsg("rtc_secs:"+String(rtc_secs));
+    debugMsg("now():"+String(now()));
+    debugMsg("ms_diff:"+String(ms_diff));
+    debugMsg("real_rtc_diff_ms:"+String(real_rtc_diff_ms));
+  #endif
+  // moving average-like filter, 1000000 (1000 second) offset because it underflows on negative numbers
+  rtc_diff_filtered = rtc_diff_ewmat.filter(real_rtc_diff_ms+1000000)-1000000; 
   #if DEBUG_ON>1
-    debugMsg("RTC diff real/filt:" + String(real_rtc_diff) + "/" + String(rtc_diff_filtered));
+    debugMsg("RTC diff real/filt:" + String(real_rtc_diff_ms) + "/" + String(rtc_diff_filtered));
   #endif        
+  if (timeStatus() == timeSet && real_rtc_diff_ms == rtc_diff_filtered) checkClocks(rtc_diff_filtered); // only if NTP is running
 }
 
 void oncePerHour() { // not necessarily _on_ the hour
@@ -389,13 +454,14 @@ void oncePerHour() { // not necessarily _on_ the hour
 }
 
 void setupClocks() {
-    unsigned short int ntp_temp;
-    if (WiFi.isConnected()) { //connected as a station
+  unsigned short int ntp_temp;
+  bool needOffset = false;
+  if (WiFi.isConnected()) { //connected as a station
     myTZ.setDefault();                     // setup NTP service
     tzPosix = getNtpTZFromEEPROM();
-  //  if (tzPosix != "") {
-  //   tzPosix = ntpTZ);
-  //  }
+    //  if (tzPosix != "") {
+    //   tzPosix = ntpTZ);
+    //  }
     #if DEBUG_ON>0
       debugMsgContinue(F("Setting NtpTZ to:"));
       debugMsg(tzPosix);
@@ -439,30 +505,31 @@ void setupClocks() {
     }
   }
 
-    if (!Wire.requestFrom(RTC_I2C_ADDR, 2)) {
-      #if DEBUG_ON>0
-        debugMsgContinue(F("No "));
-      #endif      
-    } else {
-     useRTC = true;
+  if (!Wire.requestFrom(RTC_I2C_ADDR, 2)) {
+    #if DEBUG_ON>0
+      debugMsgContinue(F("No "));
+    #endif      
+  } else {
+   useRTC = true;
+  }
+  #if DEBUG_ON>0
+    debugMsg(F("RTC found"));
+  #endif   
+    byte i2cStat = rtc_eeprom.begin(rtc_eeprom.twiClock100kHz);
+  #if DEBUG_ON>0
+    if ( i2cStat != 0 ) {
+      debugMsg(F("I2C Problem with RTC eeprom"));
     }
-    #if DEBUG_ON>0
-      debugMsg(F("RTC found"));
-    #endif   
-      byte i2cStat = rtc_eeprom.begin(rtc_eeprom.twiClock100kHz);
-    #if DEBUG_ON>0
-      if ( i2cStat != 0 ) {
-        debugMsg(F("I2C Problem with RTC eeprom"));
-      }
-    #endif
-      
-   if (useRTC) {
+  #endif
+    
+  if (useRTC) {
     delay(10);
     if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)
       #if DEBUG_ON>0
         debugMsg(F("RTC starting"));
       #endif
       setRTC(true);   // Clears OSF flag
+      needOffset = true; // probably need to reload offset, too
       delay(2);
       if (!Clock.oscillatorCheck()) {
         useRTC = false;  // didn't start up
@@ -473,6 +540,7 @@ void setupClocks() {
     } 
     // found RTC, and it passed checks
     checkRtcEeprom();
+    if (needOffset) setAgingOffset(getAgingOffset());
   }  
   
   if (useRTC) {
@@ -484,7 +552,7 @@ void setupClocks() {
         debugMsg(F("RTC configuring interrupts"));
       #endif
       Clock.enableOscillator(true, false, 0);  // Ena osc, not on batt, 1 Hz
-      attachInterrupt(digitalPinToInterrupt(SQW_PIN), rtcIRQ, RISING);  // runs rtcIRQ once a second, rising edge (on half second)
+      attachInterrupt(digitalPinToInterrupt(SQW_PIN), rtcIRQ, FALLING);  // runs rtcIRQ once a second, rising edge (on half second)
     }
   }
 }
