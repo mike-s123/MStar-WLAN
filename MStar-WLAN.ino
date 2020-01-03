@@ -1,7 +1,7 @@
 /*
  * MStar-WLAN 2019 mjs
  * 
- * ESP8266 (working) or ESP32 (work in progress)
+ * ESP8266 (working) or ESP32
  *   ESP8266 - Lolin D1 Mini Pro
  *   -Upload: 921600
  *   -CPU: 160MHz
@@ -10,7 +10,7 @@
  *   -IwIP: v2 Higher bandwidth
  *   -vtables: IRAM
  *   
- *   ESP32 - M5Stack-FIRE, Large FILESYSTEM (7 MB) (WROVER 16 MB w/13M FS with modified files)
+ *   ESP32 - WROVER-B, custom partitions (WROVER 16 MB w/13M FS with modified files)
  *   cpu: fastest
  *   flash: 2M+ FILESYSTEM
  *   lwIP: v2 higher bandwidth
@@ -22,14 +22,14 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.191227"
+#define SOFTWARE_VERSION "v1.200102"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
                      More WLAN work. Started adding time support. Auto adjust<br>\
-                     RTC speed."
+                     RTC speed. Prep for SD card support (ESP32)"
 
-#define DEBUG_ON 4                // enable debugging output. 0 currently causes issues (12/22/2019)
+#define DEBUG_ON 4                // enable debugging output. 0 currently causes issues (TODO 12/22/2019)
                                   // 0 off, 1 least detail, 5 most detail, 9 includes passwords
                                   // 0 not working on ESP32 for now
 //#define debugjs                   // ifdef, overrides servestatic to avoid caching of local.js
@@ -100,6 +100,8 @@
   #define FILESYSTEM SPIFFS
   #define FS_TYPE "SPIFFS"
   #include <SPIFFS.h>
+  #include <SD.h>
+  #include <SPI.h>
   #include <HardwareSerial.h>
 #endif
 
@@ -110,11 +112,10 @@
 //#include <WiFiClientSecureBearSSL.h>
 
 #include <WiFiServer.h>
-//#include <WiFiServerSecfure.h>
+//#include <WiFiServerSecure.h>
 //#include <WiFiServerSecureAxTLS.h>
 //#include <WiFiServerSecureBearSSL.h>
 #include <WiFiUdp.h>
-
 #include <ModbusMaster.h> //Doc Walker 2.0.1, via IDE
 
 #include "TimeStuff.h"
@@ -156,19 +157,18 @@
 #define JSON_VERSION "1.0"                // changes with api changes
 #define JSON_VERSION_MIN "1.0"            // changes when backward compatibility is broken
 
-// GPIO16 (D0) on NodeMCU, 1 on ESP-1, but won't work on ESP-1 because of serial?
-// GPIO 2 for blue led on ESP-12E, GPIO 16 (or BUILTIN_LED) for blue led on NodeMCU
+// GPIO 2 for blue led on ESP-12E, GPIO 16 (or LED_BUILTIN, aka D0) for blue led on NodeMCU
 // GPIO 2 (D4) for Wemos D1 mini
+// GPIO 2 for WROVER-B board
 #define WLAN_PIN 2
-//#define WLAN_PIN BUILTIN_LED
 
-#define EEPROM_SIZE 512
+#define EEPROM_SIZE 512  // ESP "eeprom"
 #define EEPROM_SIG "mjs!"
 /*
  * "EEPROM" on ESP
- * 0-127   4x32 WLAN SSID
- * 128-255 4x32 WLAN password
- * 256-272 16 Controller model
+ * 0-127   (4x32) WLAN SSID
+ * 128-255 (4x32) WLAN password
+ * 256-272 (16) Controller model
  * 272-303 (32) ntp server
  * 304-305 (2)  ntp poll interval (u_int 16)
  * 306-337 (32) ntp POSIX timestring
@@ -186,15 +186,22 @@
   #define SDA_PIN 4         // GPIO 4 (D2) I2C SDA
   #define SCL_PIN 5         // GPIO 5 (D1) I2C SCL
   #define SELF_RST_PIN 16   // GPIO 16 (D0) self-reset
+//  #define I2C_SDA_RESET     // No pin available on 8266
 #endif
 #ifdef ARDUINO_ARCH_ESP32
-  #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10  (was IO23)
+  #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10
   #define RX_PIN 27         // RxD to IO27, pin 12
   #define TX_PIN 4          // Txd to IO4, pin 26
-  #define SDA_PIN 15        // GPIO was 15  I2C SDA
-  #define SCL_PIN 13        // GPIO was 13  I2C SCL
+  #define SDA_PIN 15        // GPIO 15  I2C SDA
+  #define SCL_PIN 13        // GPIO 13  I2C SCL
+  #define SPI_SCLK 18       // these are default pins for VSPI
+  #define SPI_MISO 19       // just here for documentation
+  #define SPI_MOSI 23
+  #define SPI_CS 5
+  #define SD_DETECT 26  // SD card inserted
+  #define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
 #endif
-// MBus slave id
+// MBus slave id of controller
 #define mbusSlave 1
 
 // controller type
@@ -264,6 +271,7 @@ WiFiClient modbusClient;
 //  AsyncWebServer server(80);
   WebServer server(80);
   HardwareSerial mbSerial(1);
+  bool SD_card = false;
 #endif
 
 //order here is important
@@ -278,6 +286,10 @@ WiFiClient modbusClient;
 #include "Setups.h"
 
 void setup() {
+  #ifdef ARDUINO_ARCH_ESP32
+    pinMode(I2C_SDA_RESET ,INPUT);
+  #endif
+  
   #ifdef ARDUINO_ARCH_ESP8266
     digitalWrite(SELF_RST_PIN, HIGH); // So board can do a hardware reset of itself
     pinMode(SELF_RST_PIN, OUTPUT);
@@ -367,10 +379,6 @@ void loop() {
     #endif
   #endif
 
-  if (rtc_IRQ = true) {
-    rtc_secs = getUnixTime();
-    rtc_IRQ = false;
-  }
   events(); // for EZTime
   server.handleClient();
   #if DEBUG_ON==0

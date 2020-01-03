@@ -40,7 +40,28 @@ void setupComms() {
 //    pinMatrixOutAttach(TX_PIN, U1TXD_OUT_IDX, true, false);
 //    pinMatrixInAttach(RX_PIN, U1RXD_IN_IDX, true);
   #endif
-  Wire.begin(SDA_PIN, SCL_PIN);              // setup I2C
+
+  int rtn = I2C_ClearBus(); // clear the I2C bus first before calling Wire.begin()
+  if (rtn != 0) {
+    #if DEBUG_ON>0
+      debugMsg(F("I2C bus error. Could not clear"));
+      if (rtn == 1) {
+        debugMsg(F("SCL clock line held low"));
+      } else if (rtn == 2) {
+        debugMsg(F("SCL clock line held low by slave clock stretch"));
+      } else if (rtn == 3) {
+        debugMsg(F("SDA data line held low"));
+      }
+    #endif
+  } else { // bus clear
+    #if DEBUG_ON>0
+      debugMsg(F("I2C bus clear, Wire.begin()"));
+    #endif
+    // re-enable Wire
+    // now can start Wire Arduino master
+    Wire.begin(SDA_PIN, SCL_PIN);              // setup I2C
+  }
+
   pinMode(RX_ENABLE_PIN, OUTPUT);            // used for half-duplex MODBUS
   rxEnable(false);
   pinMode(WLAN_PIN, OUTPUT);  // LED
@@ -123,6 +144,31 @@ void setupModbus() {
   }
 }
 
+#ifdef ARDUINO_ARCH_ESP32
+  bool checkSDCard() {
+    pinMode(SD_DETECT, INPUT_PULLUP);  // TODO future hardware
+    SD_card = SD.begin();
+    #if DEBUG_ON > 0
+      if(!SD_card){
+        debugMsg("SD card mount failed");
+      } else {
+        switch (SD.cardType()) { 
+          case CARD_NONE:   debugMsg(F("No SD card attached"));
+                            break;
+          case CARD_MMC:    debugMsg(F("MMC card attached"));
+                            break;
+          case CARD_SD:     debugMsg(F("SD card attached"));
+                            break;
+          case CARD_SDHC:   debugMsg(F("SDHC card attached"));
+                            break;
+          default:          debugMsg(F("SD card unknown"));
+                            break;
+        }
+      }
+    #endif //debug
+  }
+#endif //esp32
+
 void setupFS() {
   #if DEBUG_ON>0
     debugMsgContinue(fs_type);
@@ -151,4 +197,7 @@ void setupFS() {
     #endif
     ;    
   }
+  #ifdef ARDUINO_ARCH_ESP32
+    checkSDCard();
+  #endif  //esp32
 }

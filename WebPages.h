@@ -281,13 +281,6 @@ void platformPageHandler()
 
     response_message += getTableRow2Col(F("Last reset reason"), String(ESP.getResetReason()));
     response_message += getTableRow2Col(F("Vcc"), vccString);
-    float mbv = 0.0;
-    if (model == "PS-MPPT") {
-      MBus_get_float(8, mbv);
-    } else if (model == "PS-PWM") {
-      MBus_get_float(6, mbv);
-    }
-    response_message += getTableRow2Col(F("Meterbus Voltage"), String(mbv) + " V");
   #endif
 
   #ifdef ARDUINO_ARCH_ESP32
@@ -296,7 +289,11 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Internal free heap"), String(ESP.getFreeHeap()));
     response_message += getTableRow2Col(F("Internal min free heap"), String(ESP.getMinFreeHeap()));
     response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
-    response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));  
+    response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
+    if (SD_card) {
+      response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
+      response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
+    }
     response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
     response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
     response_message += getTableRow2Col(F("SPIRAM min free heap"), String(ESP.getMinFreePsram()));
@@ -304,16 +301,18 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Flash chip speed"), String(ESP.getFlashChipSpeed()));
     response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
     response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
-    if (model.startsWith(F("PS-"))) {  // TODO make this universal
-      float mbv;
-      if (model == "PS-MPPT") {
-        MBus_get_float(8, mbv);
-      } else if (model == "PS-PWM") {
-        MBus_get_float(6, mbv);
-      }
-      response_message += getTableRow2Col(F("Meterbus Voltage"), String(mbv) + " V");
-    }
   #endif
+  
+  if (model.startsWith(F("PS-"))) {  // TODO make this universal
+    float mbv = 0;
+    if (model == "PS-MPPT") {
+      MBus_get_float(8, mbv);
+    } else if (model == "PS-PWM") {
+      MBus_get_float(6, mbv);
+    }
+    response_message += getTableRow2Col(F("Meterbus Voltage"), String(mbv) + " V");
+  }
+
   response_message += getTableFoot();
 
   response_message += getHTMLFoot();
@@ -770,14 +769,17 @@ void setTimePageHandler() {
     response_message += F("The RTC crystal will be trimmed automatically over time if connected to the Internet and using NTP.<br>\
                           If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year (0.1 ppm).<br>\
                           The offset is where RTC time is compared to NTP, negative means it's fast (ahead of NTP).<br>\
-                          When it's more than &plusmn;100 ms and stable, an automatic trim adjustment will be made.<br>\
+                          When it's more than &plusmn;");
+    response_message += String(RTC_MAX_UNSYNC);
+    response_message += F(" ms and stable, an automatic trim adjustment will be made.<br>\
                           Since last set, the RTC is running about ");
     float my_ppm = getRTCppm();
     if (my_ppm < 0) {
-      response_message += String(abs(my_ppm),3);
+      my_ppm *= -1.0;  // abs() doesn't seem to work right on ESP8266, this does
+      response_message += String(my_ppm,3);
       response_message += F(" ppm slow compared to NTP.<br><br>");
     } else if (my_ppm > 0) {
-      response_message += String(abs(my_ppm),3);
+      response_message += String(my_ppm,3);
       response_message += F(" ppm fast compared to NTP.<br><br>");
     } else {
       response_message += F("the same as NTP.<br><br>");

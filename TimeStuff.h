@@ -48,11 +48,12 @@ unsigned short int getNtpPollFromEEPROM();
 DS3231 Clock;
 extEEPROM rtc_eeprom(kbits_32, 1, 32, 0x57);
 #define RTC_I2C_ADDR 0x68
-#define RTC_EEPROM_I2C_ADDR 0x57 // ZS-042/HW-84 modules have pullups on A0-A2
-#define RTC_DEFAULT_OFFSET 0       // aging offset for ds3231, higher is slower
-                            // ~0.1 ppm per (~9 ms/day, 0.26 sec/month), higher is slower, 
-                            // 11.6 ppm is ~ 1 sec/day
-#define SQW_PIN 14        // GPIO 14 (D5) on both, SQW from DS3231
+#define RTC_EEPROM_I2C_ADDR 0x57  // ZS-042/HW-84 modules have pullups on A0-A2
+#define RTC_DEFAULT_OFFSET 0      // aging offset for ds3231, higher is slower
+                                  // ~0.1 ppm per (~9 ms/day, 0.26 sec/month), higher is slower, 
+                                  // 11.6 ppm is ~ 1 sec/day
+#define RTC_MAX_UNSYNC 125        // adjust when we're this many ms out of sync with NTP
+#define SQW_PIN 14                // GPIO 14 (D5) on both, SQW from DS3231
 
 bool useRTC = false;
 bool twentyFourHourClock = true;
@@ -63,7 +64,7 @@ int Year = 2019;
 byte Month = 4, Day = 1, Weekday = 1, Hour = 0, Minute = 0, Second = 0;  // April fool's
 volatile long int rtc_ms = 0;
 // below underflows with negatives, so all uses add 1000000.
-EwmaT <long int> rtc_diff_ewmat(6, 10, 1000000); // 6/10:weight for new additions, 1000000:starting value
+EwmaT <long int> rtc_diff_ewmat(2, 10, 1000000); // 2/10:weight for new additions, 1000000:starting value
 long int rtc_diff_filtered = 0; // filtered value
 int rtc_IRQ = false;  // faster to set an int than a bool?
 unsigned long int rtc_secs;
@@ -324,10 +325,11 @@ String checkRtcEeprom() {
 }
 
 float getRTCppm() {
-  unsigned long int howlong; 
+  float howlong; 
   howlong = now() - getRtcLastSetTime();          // number of seconds since we last set RTC time
-  return -(rtc_diff_ewmat.output()-1000000) * 1000.0 / howlong;   // drift in ppm
+  return -(rtc_diff_ewmat.output()-1000000.0) * 1000.0 / howlong;   // drift in ppm
 }
+
 void checkClocks(long int rtc_diff_filtered) {  
   #if DEBUG_ON>0
     debugMsg(F("checkClocks"));
@@ -341,7 +343,7 @@ void checkClocks(long int rtc_diff_filtered) {
       unsigned long int howlong;
       float drift;
       int new_offset; 
-      if (abs(rtc_diff_filtered) >= 100) {                // only adjust if we're off by 100+ ms 
+      if (abs(rtc_diff_filtered) >= RTC_MAX_UNSYNC) {                // only adjust if we're off by 100+ ms 
         if (now() - lastNtpUpdateTime() > 120) {          // seconds, first make sure local drift isn't the issue
           updateNTP(); 
           return;                                         // we'll be back in a minute if it's still off
@@ -392,49 +394,81 @@ void ICACHE_RAM_ATTR rtcIRQ() { // handles interrupts from RTC, can't do much he
  * against an ntp second. A negative value indicates it occured before the
  * ntp second.
  * 
+ * We start by collecting timestamps from NTP and RTC. If an RTC interrupt
+ * occurs while getting time from it, it's invalid so we try again. That should
+ * always work, because the next IRQ shouldn't be until a second later.
+ * 
  * rtc_ms is when the RTC sent an interrupt at the start of its last second, 
  * in millis(). If oncePerMinute gets delayed before running, that will be
- * reflected in ms(). So, we subtract that from current millis() to adjust. It 
- * should be very small - 0 or 1. So, the last rtc second happened at:
+ * reflected in opm_ms. So, we subtract that from current millis() to adjust. 
+ * So, the last rtc second happened at:
  * 
- * ms_diff = -(millis() - ms() - rtc_ms);
+ *   ms_diff = -(opm_millis - opm_ms - rtc_ms);
  * 
  * If ms_diff is decreasing, RTC is running faster than NTP (getting more ahead). 
- * If exactly sync'd rtc_secs = now() and ms_diff = 0.
+ * If exactly sync'd rtc_secs = opm_secs and ms_diff = 0.
  * 
- * Then, we have to look at whole seconds. If now()>rtc_secs, the rtc has gotten
- * even more behind (late). 
+ * Then, we have to look at whole seconds. If opm_secs>rtc_secs, the rtc has gotten
+ * behind (late) by more a second, so include that. 
  *  
- * real_rtc_diff_ms = ((now()-(rtc_secs)) * 1000) + ms_diff;
+ *   real_rtc_diff_ms = ((opm_secs-rtc_secs) * 1000) + ms_diff;
+ * 
+ * Note that the local time can change by ms per minute, because
+ * it depends on the ESP crystal/resonator, which may not be particularly 
+ * accurate. So, the difference may rarely converge exactly. So, we allow a 
+ * few ms difference when adjusting.
  * 
  */
 void oncePerMinute() { // not necessarily _on_ the minute
   long int ms_diff;
-  long int real_rtc_diff_ms; 
+  long int real_rtc_diff_ms;
   setEvent(oncePerMinute,now()+60);
+  if (timeStatus() != timeSet) return; // ntp not sync'd
   #if DEBUG_ON>1
     debugMsg(F("oncePerMinute"));
   #endif
-  ms_diff = -(millis() - ms() - rtc_ms);
+  long int opm_millis = millis();  // grab some times immediately
+  int opm_ms = ms();
+  long int opm_secs = now();
+  rtc_IRQ = false;           // watch for IRQ while getting time
+  long int opm_rtc_ms = rtc_ms;
+  rtc_secs = getUnixTime();  // what second does rtc think it is?
+  if (rtc_IRQ) { // got an IRQ, timestamps may be wrong, try again
+    #if DEBUG_ON>3
+      debugMsg(F("RTC IRQ while processing, try again"));
+    #endif
+    opm_millis = millis();
+    opm_ms = ms();
+    opm_secs = now();
+    rtc_IRQ = false;
+    opm_rtc_ms = rtc_ms;
+    rtc_secs = getUnixTime();
+  }
+  if (rtc_IRQ) { // didn't expect that, we just got one...
+    #if DEBUG_ON>3
+      debugMsg(F("Another RTC IRQ while processing, aborting"));
+    #endif
+    return;
+  }
+  ms_diff = -(opm_millis - opm_ms - opm_rtc_ms);
   #if DEBUG_ON>3
-    debugMsg("millis():"+String(millis()));
-    debugMsg("ms():"+String(ms()));
-    debugMsg("rtc_ms:"+String(rtc_ms));
+    debugMsg("opm_millis:"+String(opm_millis));
+    debugMsg("opm_ms:"+String(opm_ms));
+    debugMsg("opm_rtc_ms:"+String(opm_rtc_ms));
     debugMsg("ms_diff:"+String(ms_diff));
   #endif
 
-  if (ms_diff <= -998 || ms_diff >= -1) { //funky behavior (IRQ race?) at extremes, avoid
+  if (ms_diff <= -999 || ms_diff >= 10) { // sanity check, but possible for >0 due to processing delay here 
     #if DEBUG_ON>3
       debugMsgContinue(F("ms_diff out of bounds:"));
       debugMsg(String(ms_diff));
     #endif
     return;
   }
-  if (rtc_IRQ) rtc_secs = getUnixTime(); // haven't gone through main loop, we'll do it here.
-  real_rtc_diff_ms = ((now()-(rtc_secs)) * 1000) + ms_diff;
-    #if DEBUG_ON>3
+  real_rtc_diff_ms = ((opm_secs-rtc_secs) * 1000) + ms_diff;
+    #if DEBUG_ON>4
     debugMsg("rtc_secs:"+String(rtc_secs));
-    debugMsg("now():"+String(now()));
+    debugMsg("opm_secs:"+String(opm_secs));
     debugMsg("ms_diff:"+String(ms_diff));
     debugMsg("real_rtc_diff_ms:"+String(real_rtc_diff_ms));
   #endif
@@ -443,7 +477,9 @@ void oncePerMinute() { // not necessarily _on_ the minute
   #if DEBUG_ON>1
     debugMsg("RTC diff real/filt:" + String(real_rtc_diff_ms) + "/" + String(rtc_diff_filtered));
   #endif        
-  if (timeStatus() == timeSet && real_rtc_diff_ms == rtc_diff_filtered) checkClocks(rtc_diff_filtered); // only if NTP is running
+  if (timeStatus() == timeSet && abs(real_rtc_diff_ms - rtc_diff_filtered) < 5 ) {  // only if NTP is running and
+    checkClocks(rtc_diff_filtered);                                                 // we've averaged to within 5 ms
+  }                                                                                                    
 }
 
 void oncePerHour() { // not necessarily _on_ the hour
@@ -497,13 +533,18 @@ void setupClocks() {
       #if DEBUG_ON>0
         debugMsgContinue(F("NTP Sync'd. Time is "));
         debugMsg(myTZ.dateTime(RFC850));
-        debugMsg(F("Creating timed events"));
       #endif
-      delay(1000);
-      setEvent(oncePerMinute,now()+10); // 
-      setEvent(oncePerHour,now()+20); 
+    } else {
+      #if DEBUG_ON>0
+        debugMsg(F("NTP not sync'd"));
+      #endif      
     }
   }
+  #if DEBUG_ON>0
+    debugMsg(F("Creating timed events"));
+  #endif
+  setEvent(oncePerMinute,now()+10); // set timed events even if not ntp sync'd
+  setEvent(oncePerHour,now()+20); 
 
   if (!Wire.requestFrom(RTC_I2C_ADDR, 2)) {
     #if DEBUG_ON>0
