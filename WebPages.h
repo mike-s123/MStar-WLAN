@@ -141,6 +141,7 @@ void cmdPageHandler() {
                       if (ntp_poll > 65535) ntp_poll = 65535; // unsigned short int
                       ntpInterval = ntp_poll;
                       setInterval(ntpInterval);
+                      rtc_max_unsync = RTC_MAX_UNSYNC * sqrt(ntpInterval/600);
                       storeNtpPollInEEPROM(ntpInterval);
                     }
                     if (ntp_tz != "") {
@@ -290,9 +291,11 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Internal min free heap"), String(ESP.getMinFreeHeap()));
     response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
     response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
-    if (SD_card) {
+    if (sd_card_available) {
       response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
       response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
+      if (sd_card_log) response_message += getTableRow2Col(F("Log file name"), \
+        "<a href=\"/sd/" + my_hostname + ".log" + "\">" + "/sd/" + my_hostname + ".log</a>");
     }
     response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
     response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
@@ -770,7 +773,7 @@ void setTimePageHandler() {
                           If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year (0.1 ppm).<br>\
                           The offset is where RTC time is compared to NTP, negative means it's fast (ahead of NTP).<br>\
                           When it's more than &plusmn;");
-    response_message += String(RTC_MAX_UNSYNC);
+    response_message += String(rtc_max_unsync);
     response_message += F(" ms and stable, an automatic trim adjustment will be made.<br>\
                           Since last set, the RTC is running about ");
     float my_ppm = getRTCppm();
@@ -835,3 +838,102 @@ void setTimePageHandler() {
   response_message += getHTMLFoot();
   server.send(200, F("text/html"), response_message);
 }
+
+#ifdef ARDUINO_ARCH_ESP32
+  bool loadFromSdCard(String path) {
+    String dataType = "text/plain";
+    if (path.endsWith("/")) {
+      path += "index.htm";
+    }
+  
+    if (path.endsWith(".src")) {
+      path = path.substring(0, path.lastIndexOf("."));
+    } else if (path.endsWith(".htm")) {
+      dataType = "text/html";
+    } else if (path.endsWith(".css")) {
+      dataType = "text/css";
+    } else if (path.endsWith(".js")) {
+      dataType = "application/javascript";
+    } else if (path.endsWith(".png")) {
+      dataType = "image/png";
+    } else if (path.endsWith(".gif")) {
+      dataType = "image/gif";
+    } else if (path.endsWith(".jpg")) {
+      dataType = "image/jpeg";
+    } else if (path.endsWith(".ico")) {
+      dataType = "image/x-icon";
+    } else if (path.endsWith(".xml")) {
+      dataType = "text/xml";
+    } else if (path.endsWith(".pdf")) {
+      dataType = "application/pdf";
+    } else if (path.endsWith(".zip")) {
+      dataType = "application/zip";
+    }
+  
+    File dataFile = SD.open(path.c_str());
+    if (dataFile.isDirectory()) {
+      path += "/index.htm";
+      dataType = "text/html";
+      dataFile = SD.open(path.c_str());
+    }
+  
+    if (!dataFile) {
+      return false;
+    }
+  
+    if (server.hasArg("download")) {
+      dataType = "application/octet-stream";
+    }
+    if (server.streamFile(dataFile, dataType) != dataFile.size()) {
+    #if DEBUG_ON>3
+        debugMsg(F("Sent less data than expected!"));
+    #endif
+    }
+  
+    dataFile.close();
+    return true;
+  }
+  
+  
+  void sdPageHandler(String URI){
+    #if DEBUG_ON>3
+      debugMsg("sdPageHandler URI:/sd/"+URI);
+    #endif
+    String relative_uri = "/"+URI;
+  /*  checkController();
+    String response_message;
+    response_message.reserve(4000);
+    response_message = getHTMLHead();
+    response_message += getNavBar();
+    response_message += getFormHead(F("SD"));
+  
+    response_message += "<div>";  
+    response_message += "sdPageHandler requested URI:/sd"+relative_uri;
+    response_message += "</div>";
+  
+    response_message += getFormFoot();
+    response_message += getHTMLFoot();
+    server.send(200, F("text/html"), response_message);
+  */
+    if (sd_card_available && loadFromSdCard(relative_uri)) {
+      return;
+    }
+    String message = "SDCARD Not Detected\n\n";
+    message += "URI: ";
+    message += server.uri();
+    message += "\nrelative URI: ";
+    message += relative_uri;
+    message += "\nMethod: ";
+    message += (server.method() == HTTP_GET) ? "GET" : "POST";
+    message += "\nArguments: ";
+    message += server.args();
+    message += "\n";
+    for (uint8_t i = 0; i < server.args(); i++) {
+      message += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
+    }
+    server.send(404, "text/plain", message);
+    #if DEBUG_ON>3
+      debugMsg(message);
+    #endif
+  }
+#endif //esp32

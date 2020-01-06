@@ -1,6 +1,6 @@
 # MStar-WLAN
 
-This project includes both hardware design and software for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). It's 99% working, but still progressing. The core is an ESP8266 based WEMOS D1 Mini Pro board (about $4 via AliExpress and wait a few weeks) or  an ESP32-WROVER-B 16MB (~$5 from Mouser). These were chosen because they have a relatively large flash (16 MiB) for storing files, which allows having documentation on-board. Work is being done with the ESP32 to support SD cards for logging. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
+This project includes both hardware design and software for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). It's 99% working, but still progressing. The core is an ESP8266 based WEMOS D1 Mini Pro board (about $4 via AliExpress and wait a few weeks) or  an ESP32-WROVER-B 16MB (~$5 from Mouser). A complete build should be <$40, ignoring your time. Those platforms were chosen because they have a relatively large flash (16 MiB) for storing files, which allows having documentation and support for multiple solar controllers on-board. Work is being done with the ESP32 to support SD cards for logging. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
 
 A core with less flash memory should work fine as long as the "data" directory will fit. Delete files from /data/doc and /data/ctl (keep the ones for your specific controller) if needed. The additional flash memory on the recommended cores is there in order to support the config and documentation files needed to support controllers beyond those currently provided in addition to future needs ("640K ought to be enough for anyone!"). Edit /data/documentation.htm if you remove documentation files, or simply live with broken links.
 
@@ -20,9 +20,9 @@ The code will run on a bare D1 Mini Pro powered by USB, but obviously can't talk
 
 To do anything useful, hardware is needed to interface with a Morningstar controller. Morningstar uses a proprietary half-duplex (open collector, see /data/img/Schematic.png) MODBUS interface. A circuit board layout is provided which includes all the necessary interfacing circuitry, even drawing power from the Morningstar controller. It also supports an optional real time clock which may be useful for future features like extended logging.
 
-Circuit board info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with some parts info. The .zip file contains CAM files ready to send to [JLCPCB](https://jlcpcb.com/quote#/) to get boards made. Currently, 5 boards will cost your less than $10, if you will wait about a month to get them. The PCB can support either ESP core. Using a WEMOS is easier, as it uses only through-hole components. ESP32/wrover requires soldering fine pitch SMDs.
+Circuit board info is found in the "hardware/pcb" directory, where there are Eagle .brd, .sch and .lbr files, along with some parts info. The .zip file contains CAM files ready to send to [JLCPCB](https://jlcpcb.com/quote#/) to get boards made. Currently, 5 boards will cost your less than $10, if you will wait about a month to get them. The PCB can support either ESP core. Using a WEMOS is easier, as it uses only through-hole components. ESP32/WROVER-B requires soldering fine pitch SMDs (but provides more capability).
 
-I have a limited number of circuit boards on hand. If you can contribute to the project contact me and I might send you one.
+I have a limited number of circuit boards on hand. If you can contribute to the project, contact me and I might send you one.
 
 ### Prerequisites
 
@@ -30,7 +30,7 @@ Development is currently being done with Arduino IDE 1.8.10, ESP8266 Arduino pla
 
 Library requirements are noted in the .ino file. The [ESP8266](https://github.com/esp8266/Arduino) and/or [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Files may need to be removed from /data in order to upload to the available flash on an ESP32. It's also possible to modify the boards.txt and create a new (partition).csv file to allow a larger SPIFFs FS than supported by the standard boards.
 
-The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update - but ESP8266 only, for now). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The ESP8266 binary posted here uses LittleFS, and the ESP32 one, SPIFFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin). If you want to work with ESP32, contact me - the project uses a custom partition table, so the image here can't be uploaded with the stock IDE. The SPIFFS and code images here are built for that custom partition table.
+The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update - but ESP8266 only, for now). The board will access the files using SPIFFS or LittleFS (ESP8266 only, for now), depending on how it's compiled. The ESP8266 binary posted here uses LittleFS, and the ESP32 one, SPIFFS. To upload, you'll need the appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin). If you want to work with ESP32, see below, the SPIFFS and code images here are built for a custom partition table.
 
 The data/ctl/*.csv files are used to define the different controllers. data/csv_file_desc.txt describes the format.
 
@@ -38,7 +38,7 @@ The WROVER-B (ESP32) build uses a custom partition scheme to provide more SPIFFS
 
 ## Operation
 
-Using a standard "rollover" 6P6C cable, connect to the Meterbus port of a Morningstar controller. A 4P4C cable should also work, if it's short (less wire for power).
+Using a standard "rollover" 6P6C cable (RJ connector tabs on the same side of the cable), connect to the Meterbus port of a Morningstar controller. Don't worry - it's protected if wired wrong. A 4P4C cable should also work, if it's short (less wire for power).
 
 The MStar-WLAN will initially come up as a wireless access point with SSID "MStar" and PSK of "morningstar". It will have an address of 192.168.4.1. 
 
@@ -54,7 +54,7 @@ OTA updates are done from the Utility tab, "Update WLAN module firmware" link. I
 
 ## Support
 
-There is none, although you can certainly ask. You'll get a better response if you can well document a bug. This was a personal project, I'm freely offering it to others for non-commercial use. Feel free to contribute back if you can (don't do github pull requests, that would just be another thing for me to figure out how to make work). Things which need attention or might be an important future direction are commented with "TODO". Talk to me before doing a pull request. I'm not a regular git user.
+There is none, although you can certainly ask. You'll get a better response if you can well document a bug. This was a personal project, I'm freely offering it to others for non-commercial use. Feel free to contribute back if you can (don't do github pull requests, that would just be another thing for me to figure out how to make work, I'm not a regular git user.). Things which need attention or might be an important future direction are commented with "TODO".
 
 ## General answers to any question (pick one)
 

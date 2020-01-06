@@ -72,14 +72,12 @@ void setupWLAN() {
  * WiFi setup
  */
 
-  WiFi.macAddress(mac);
   #ifdef AP_SSID_UNIQ
     ap_SSID.append("-");
-    ap_SSID.append((String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX)).c_str());
+    ap_SSID.append(my_MAC.c_str());
   #endif
   ap_ssid = ap_SSID.c_str();
   //ap_password = AP_PSK;
-  my_hostname = HOSTNAME + String("-") + String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
 
 WiFi.persistent(true);
   #ifdef ARDUINO_ARCH_ESP8266
@@ -145,13 +143,29 @@ void setupModbus() {
 }
 
 #ifdef ARDUINO_ARCH_ESP32
-  bool checkSDCard() {
-    pinMode(SD_DETECT, INPUT_PULLUP);  // TODO future hardware
-    SD_card = SD.begin();
+  bool checkSDCard(int cardNum = 0) {
+    int csPin = SD_CARD0_CS; 
+    pinMode(SD_DETECT, INPUT_PULLUP);  // TODO future hardware, only for SDCard0
+    if (cardNum == 1 ) csPin = SD_CARD1_CS;
+    sd_card_available = SD.begin(csPin);
     #if DEBUG_ON > 0
-      if(!SD_card){
+      if(!sd_card_available){
         debugMsg("SD card mount failed");
       } else {
+        if (sd_card_log) {
+//          String lfn = "/"+ my_hostname + ".log";
+//          File logFile = SD.open(lfn,FILE_WRITE); // starts new log
+//          if (logFile) {
+//            logFile.print(myTZ.dateTime(ATOM)+" ");
+//            logFile.println(F("Log cleared"));
+//          }
+          debugMsg();
+          debugMsg(F("***********BOOTED***********"));
+          debugMsgContinue(F("Reset reason CPU 0:"));
+          debugMsg(get_reset_reason(0));
+          debugMsgContinue(F("Reset reason CPU 1:"));
+          debugMsg(get_reset_reason(1));
+        }
         switch (SD.cardType()) { 
           case CARD_NONE:   debugMsg(F("No SD card attached"));
                             break;
@@ -170,6 +184,7 @@ void setupModbus() {
 #endif //esp32
 
 void setupFS() {
+  
   #if DEBUG_ON>0
     debugMsgContinue(fs_type);
     debugMsg(F(" Starting"));
@@ -198,6 +213,6 @@ void setupFS() {
     ;    
   }
   #ifdef ARDUINO_ARCH_ESP32
-    checkSDCard();
+    checkSDCard(SD_CARD_TO_USE);
   #endif  //esp32
 }

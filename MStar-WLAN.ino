@@ -22,14 +22,15 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.200102"
+#define SOFTWARE_VERSION "v1.200105"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
                      More WLAN work. Started adding time support. Auto adjust<br>\
-                     RTC speed. Prep for SD card support (ESP32)"
+                     RTC speed. Prep for SD card support (ESP32). Platform logging<br>\
+                     to SD card."
 
-#define DEBUG_ON 4                // enable debugging output. 0 currently causes issues (TODO 12/22/2019)
+#define DEBUG_ON 2                // enable debugging output. 0 currently causes issues (TODO 12/22/2019)
                                   // 0 off, 1 least detail, 5 most detail, 9 includes passwords
                                   // 0 not working on ESP32 for now
 //#define debugjs                   // ifdef, overrides servestatic to avoid caching of local.js
@@ -197,9 +198,15 @@
   #define SPI_SCLK 18       // these are default pins for VSPI
   #define SPI_MISO 19       // just here for documentation
   #define SPI_MOSI 23
-  #define SPI_CS 5
-  #define SD_DETECT 26  // SD card inserted
+  #define SD_CARD0_CS 5        // CS for SDCard0
+  #define SD_CARD1_CS 32 // for SDCard1, connected to header
+  #define SD_CARD_TO_USE 0  // Which SD card to use
+  #define SD_DETECT 26    // SD card inserted, only for SDCard0
   #define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
+  #define SD_CARD_LOG true //log to SD card
+  bool sd_card_log = true;
+  bool sd_card_available = false;
+  bool needLogTime = true;  // whether we need to print time to the log
 #endif
 // MBus slave id of controller
 #define mbusSlave 1
@@ -251,6 +258,7 @@ int mbAddr = mbusSlave;
 String model = MODEL;
 String fullModel = MODEL;
 byte mac[6];
+String my_MAC;
 String my_hostname;
 File fsUploadFile;              // a File object to temporarily store the received file
 
@@ -271,7 +279,6 @@ WiFiClient modbusClient;
 //  AsyncWebServer server(80);
   WebServer server(80);
   HardwareSerial mbSerial(1);
-  bool SD_card = false;
 #endif
 
 //order here is important
@@ -295,8 +302,13 @@ void setup() {
     pinMode(SELF_RST_PIN, OUTPUT);
   #endif
 
-  setupRtcSQW();
-  setupComms();
+  WiFi.macAddress(mac);
+  my_MAC =  String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
+  my_hostname = HOSTNAME + String("-") + my_MAC;
+
+  setupRtcSQW();  // real time clock
+  setupComms();   // serial port stuff
+  setupFS();      // filesystems
 
   if ( ESP.getSketchSize() + 4096 < ESP.getFreeSketchSpace() ) {
     largeFlash = true;
@@ -334,7 +346,6 @@ void setup() {
   #endif
 
   setupModbus();
-  setupFS();
   #include "WebServer.h"              // starts up web server
 
   modbusTCP.begin();
@@ -429,10 +440,11 @@ void loop() {
     if (WiFi.isConnected()) {    
       waitForSync(3); // try ntp
       if ((timeStatus() != timeSet) && useRTC) { // no ntp, but rtc avail
-        setInterval(0);  // disable ntp
+//        setInterval(0);  // disable ntp
         setTime(getUnixTime()); // from RTC
       } else {
         setInterval(ntpInterval);
+        rtc_max_unsync = RTC_MAX_UNSYNC * sqrt(ntpInterval/600);
       }
     }
   }

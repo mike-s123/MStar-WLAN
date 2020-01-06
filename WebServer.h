@@ -3,8 +3,7 @@
  * Configure and start the web server
  * 
  */
-  
-  
+ 
   server.on("/",               statusPageHandler);
   server.on(F("/status"),      statusPageHandler);
   
@@ -137,8 +136,13 @@
     #if DEBUG_ON>2
       debugMsg("ESP32 server.ons");
     #endif
+
+    server.on("/sd/{}", []() {
+      sdPageHandler(server.pathArg(0));
+    });
+
   /*handling uploading firmware file */
-      server.on(update_path, HTTP_GET, []() {
+    server.on(update_path, HTTP_GET, []() {
     if (!server.authenticate(update_username, update_password)) {
       return server.requestAuthentication();
     }
@@ -170,7 +174,8 @@
       }
     }
   });
-  #endif // ARDUINO_ARCH_ESP32
+
+#endif // ARDUINO_ARCH_ESP32
   
   server.begin();
   #if DEBUG_ON>0

@@ -10,7 +10,7 @@
  */
 String getLocalJs() {                     // point to local.js in FILESYSTEM here
   String js = F("<script src=\"");
-  js += F("local.js");
+  js += F("/local.js");
   #ifdef debugjs
     js += "?" + myTZ.dateTime(ATOM);
   #endif            
@@ -27,7 +27,7 @@ String wrapScript(String script) {        // in: script out: script wrapped in t
 
 String getHTMLHead(int refresh=0) {
   String header = F("<!DOCTYPE html><html lang=\"en\"><head>");
-  header += F("<link href=\"local.css");
+  header += F("<link href=\"/local.css");
   #ifdef debugcss
     header += "?" + myTZ.dateTime(ATOM);
   #endif            
@@ -45,15 +45,16 @@ String getHTMLHead(int refresh=0) {
 
 String getAjaxHead() {                                      // like getHTMLHead, except includes jquery
   String header = F("<!DOCTYPE html><html><head>");
-  header += F("<script src=\"jquery.min.js\"></script>");
+  header += F("<script src=\"/jquery.min.js\"></script>");
   header += getLocalJs();
-  header += F("<link href=\"local.css\" rel=\"stylesheet\">");
+  header += F("<link href=\"/local.css\" rel=\"stylesheet\">");
   header += F("<title>Modbus interface</title></head>");
   header += F("<body>");
   return header;
 }
 
 String getNavBar() {
+  
   String ctl;
     if (noController) {
     ctl = F("No Controller");
@@ -72,7 +73,7 @@ String getNavBar() {
   navbar += F("<li><a href=\"/setother\">Other Settings</a></li>");
   navbar += F("<li><a href=\"/platform\">Platform</a></li>");
   navbar += F("<li><a href=\"/utility\">Utility</a></li>");
-  navbar += F("</ul></div></div></nav></br>");
+  navbar += F("</ul></div></div></nav><br>");
   navbar += promptReset();
   return navbar;
 }
@@ -340,6 +341,9 @@ String getSubmitButton(String buttonText) {
 }
 
 String getJsButton(String buttonText, String onClick) {
+  #if DEBUG_ON>3
+    debugMsg(F("getJsButton"));
+  #endif
   String result = F("<form><input type=\"button\" value=\"");
   result += buttonText;
   result += F("\" onclick=\"");

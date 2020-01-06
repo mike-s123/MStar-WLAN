@@ -2,7 +2,6 @@
 // ----------------------------------------- Utility functions ----------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-
 void setWlanLED(boolean newState) {
   digitalWrite(WLAN_PIN, newState);
 }
@@ -12,13 +11,29 @@ String formatIPAsString(IPAddress ip) {
 }
 
 #if DEBUG_ON>0                              // needed if debugging
-  void debugMsg(String msg) {
+  void debugMsg(String msg="") {
     #ifdef ARDUINO_ARCH_ESP8266
       logger.println(msg);
     #endif
     #ifdef ARDUINO_ARCH_ESP32
       Serial.println(msg);
-    #endif
+      if (sd_card_available && sd_card_log) {
+        String lfn = "/"+ my_hostname + ".log";
+        File logFile = SD.open(lfn,FILE_APPEND);
+        if (logFile) {
+          if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
+          logFile.println(msg);
+        } else {
+//          Serial.println(F("failed to open logFile"));
+        }
+        logFile.close();
+        needLogTime = true;
+      } else {
+//        Serial.println("sd log no");
+//        Serial.println("sd_card_available:"+String(sd_card_available));
+//        Serial.println("sd_card_log:"+String(sd_card_log));
+      }
+    #endif //ESP32
   }
   
   void debugMsgContinue(String msg) {
@@ -27,7 +42,19 @@ String formatIPAsString(IPAddress ip) {
     #endif
     #ifdef ARDUINO_ARCH_ESP32
       Serial.print(msg);
-    #endif
+      if (sd_card_available && sd_card_log) {
+        String lfn = "/"+ my_hostname + ".log";
+        File logFile = SD.open(lfn,FILE_APPEND);
+        if (logFile) {
+          if (needLogTime) {
+            logFile.print(myTZ.dateTime(ATOM)+" ");
+            needLogTime = false;
+          }
+          logFile.print(msg);
+        }
+        logFile.close();
+      }
+    #endif //ESP32
   }
   
   void setupDebug() {
@@ -669,12 +696,15 @@ String getJsButton(String buttonText, String onClick); // fwd declaration
 
 String promptReset() {
   String response_message = "";
-  bool controllerNeedsReset (); // fwd declaration
+  bool controllerNeedsReset(); // fwd declaration
   if (controllerNeedsReset()) {
+    #if DEBUG_ON>3
+      debugMsg(F("promptReset reset needed"));
+    #endif
     response_message = F("<div class=\"controller\">");
     response_message += F("<br><h3>Settings changed, controller needs restart.</h3>");
     response_message += getJsButton(F("Restart Controller"), F("restart_ctl()"));
-    response_message = F("</div>");
+    response_message += F("</div>");
     }
   return response_message;
 }

@@ -955,14 +955,14 @@ void checkController() {
   }
 }
 
-bool controllerNeedsReset () {
+bool controllerNeedsReset() {
   bool reset = false;
   uint16_t raw=0;
   int reg=0;
   int i;
   reg = findAddrByVar(F("load_fault"));
   MBus_get_reg_raw(reg, raw);
-  for (i=0 ; i<32 ; i++) {
+  for (i=0 ; i<16 ; i++) {
     if ( mbLoadMsg[i].startsWith(F("EEPROM")) ) {
       if ( raw & (0x0001 << i) ) reset = true;
     }
@@ -970,10 +970,14 @@ bool controllerNeedsReset () {
   
   reg = findAddrByVar(F("array_fault"));
   MBus_get_reg_raw(reg, raw);
-  for (i=0 ; i<32 ; i++) {
-    if ( mbLoadMsg[i].startsWith(F("EEPROM")) ) {
+  for (i=0 ; i<16 ; i++) {
+    if ( mbArrayMsg[i].startsWith(F("EEPROM")) ) {
       if ( raw & (0x0001 << i) ) reset = true;
     }
   }
+
+  #if DEBUG_ON>1
+    if (reset) debugMsg(F("Controller needs reset"));
+  #endif
   return reset;
 }
