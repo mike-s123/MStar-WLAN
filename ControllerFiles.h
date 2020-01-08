@@ -2,14 +2,10 @@
 // functions to read the controller .csv file
 
 void getRegFromFile(String model) {
-  #if DEBUG_ON>0
-  debugMsg("Reading registers from /ctl/" + model + ".csv");
-  #endif
+  debugMsgln("Reading registers from /ctl/" + model + ".csv",1);
   File regFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!regFile) {
-    #if DEBUG_ON>0
-    debugMsg("register file not found!");
-    #endif
+    debugMsgln("register file not found!",1);
     return;
   } else {
     int row = 1;
@@ -34,10 +30,8 @@ void getRegFromFile(String model) {
       } while ( received != '\n' && !eof );
       if ( !eof ) {
         if ( line.startsWith("r,",0) ) {      // only do register lines         
-          #if DEBUG_ON>4
-          debugMsg("row=" + String(row) );
-          debugMsg("line=" + line);
-          #endif
+          debugMsgln("row=" + String(row),6);
+          debugMsgln("line=" + line,6);
           int pos = 2;                                   // skip the "r,"
           int delim = 1;         
           for (int i = 1 ; i <= 6 ; i++) {
@@ -140,14 +134,10 @@ void getRegFromFile(String model) {
 }
 
 void getCoilFromFile(String model) {
-  #if DEBUG_ON>0
-  debugMsg("Reading coils from /ctl/" + model + ".csv");
-  #endif
+  debugMsgln("Reading coils from /ctl/" + model + ".csv",5);
   File coilFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!coilFile) {
-    #if DEBUG_ON>0
-    debugMsg(F("Coil file not found!"));
-    #endif
+    debugMsgln(F("Coil file not found!"),1);
     return;
   } else {
     int row = 1;
@@ -172,9 +162,7 @@ void getCoilFromFile(String model) {
       } while ( received != '\n' && !eof );
       if ( !eof ) {
         if ( line.startsWith("c,",0)   ) {      // only coil lines         
-          #if DEBUG_ON>4
-          debugMsg("line=" + line);
-          #endif
+          debugMsgln("line=" + line,6);
           int pos = 2;                                   // skip the "c," 
           int delim = 1;
           for (int i = 1 ; i <= 3 ; i++) {
@@ -201,14 +189,10 @@ void getCoilFromFile(String model) {
 }
 
 void getAlarmFromFile(String model) {
-  #if DEBUG_ON>0
-  debugMsg("Reading alarms from /ctl/" + model + ".csv");
-  #endif
+  debugMsgln("Reading alarms from /ctl/" + model + ".csv",1);
   File alarmFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!alarmFile) {
-    #if DEBUG_ON>0
-    debugMsg(F("Alarm file not found!"));
-    #endif
+    debugMsgln(F("Alarm file not found!"),1);
     return;
   } else {
     int row = 0;
@@ -236,9 +220,7 @@ void getAlarmFromFile(String model) {
 
       if ( !eof ) {
         if ( line.startsWith("m,",0)  ) {      // alarm lines start with "m,"        
-          #if DEBUG_ON>4
-            debugMsg("alarm line=" + line);
-          #endif
+          debugMsgln("alarm line=" + line,6);
           int pos = 2;                                   // process line
           int delim = 1;
           for (int i = 1 ; i <= 2 ; i++) {
@@ -249,9 +231,7 @@ void getAlarmFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbAlarmMsg[myBit] = val;
-                      #if DEBUG_ON>4
-                        debugMsg("set mbAlarmMsg-" + String(myBit) + ":" + mbAlarmMsg[myBit]);
-                      #endif
+                      debugMsgln("set mbAlarmMsg-" + String(myBit) + ":" + mbAlarmMsg[myBit],6);
                 break;
             }
             pos = delim + 1;
@@ -266,14 +246,10 @@ void getAlarmFromFile(String model) {
 }
 
 void getArrayFromFile(String model) {
-  #if DEBUG_ON>0
-  debugMsg("Reading array faults from /ctl/" + model + ".csv");
-  #endif
+  debugMsgln("Reading array faults from /ctl/" + model + ".csv",1);
   File arrayFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!arrayFile) {
-    #if DEBUG_ON>0
-    debugMsg(F("Array file not found!"));
-    #endif
+    debugMsgln(F("Array file not found!"),1);
     return;
   } else {
     int row = 0;
@@ -301,9 +277,7 @@ void getArrayFromFile(String model) {
 
       if ( !eof ) {
         if ( line.startsWith("y,",0)  ) {      // array lines begin with "y,"         
-          #if DEBUG_ON>4
-            debugMsg("array line=" + line);
-          #endif
+          debugMsgln("array line=" + line,6);
           int pos = 2;                                   // process line
           int delim = 1;
           for (int i = 1 ; i <= 2 ; i++) {
@@ -314,9 +288,7 @@ void getArrayFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbArrayMsg[myBit] = val;
-                      #if DEBUG_ON>4
-                        debugMsg("set mbArrayMsg-" + String(myBit) + ":" + mbArrayMsg[myBit]);
-                      #endif
+                      debugMsgln("set mbArrayMsg-" + String(myBit) + ":" + mbArrayMsg[myBit],6);
                 break;
             }
             pos = delim + 1;
@@ -331,14 +303,10 @@ void getArrayFromFile(String model) {
 }
 
 void getLoadFromFile(String model) {
-  #if DEBUG_ON>0
-  debugMsg("Reading load faults from /ctl/" + model + ".csv");
-  #endif
+  debugMsgln("Reading load faults from /ctl/" + model + ".csv",1);
   File loadFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!loadFile) {
-    #if DEBUG_ON>0
-    debugMsg(F("load file not found!"));
-    #endif
+    debugMsgln(F("load file not found!"),1);
     return;
   } else {
     int row = 0;
@@ -366,9 +334,7 @@ void getLoadFromFile(String model) {
 
       if ( !eof ) {
         if ( line.startsWith("l,",0)  ) {      // load lines start with "l,"         
-          #if DEBUG_ON>4
-            debugMsg("load line=" + line);
-          #endif
+          debugMsgln("load line=" + line,6);
           int pos = 2;                                   // process line
           int delim = 1;
           for (int i = 1 ; i <= 2 ; i++) {
@@ -379,9 +345,7 @@ void getLoadFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbLoadMsg[myBit] = val;
-                      #if DEBUG_ON>4
-                        debugMsg("set mbLoadMsg-" + String(myBit) + ":" + mbLoadMsg[myBit]);
-                      #endif
+                      debugMsgln("set mbLoadMsg-" + String(myBit) + ":" + mbLoadMsg[myBit],6);
                 break;
             }
             pos = delim + 1;

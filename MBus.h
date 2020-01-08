@@ -117,9 +117,7 @@ int findAddrByVar(String var) {   // given var name, return addr of register, -1
       addr = mbRegAddr[i]; 
     }
   }
-  #if DEBUG_ON>3
-    debugMsg("findAddrByVar="+var+", addr="+addr);
-  #endif  
+  debugMsgln("findAddrByVar="+var+", addr="+addr,4);
   return addr;  
 }
 
@@ -140,9 +138,7 @@ void getDescVal(int address, String &desc, String &val) {
   mbGetFullReg(reg, address);
   desc = reg.desc;
   val = reg.value + " " + mbRegUnitName[reg.unit];
-  #if DEBUG_ON>3
-    debugMsg("getDescVal desc="+desc+", val="+val);
-  #endif  
+  debugMsgln("getDescVal desc="+desc+", val="+val,4);
 }
 
 int getCoilIndex(int coil) {     // similar to getMbRegIndex
@@ -158,9 +154,7 @@ int getCoilIndex(int coil) {     // similar to getMbRegIndex
 
 int MBus_get_coil(int address, bool &value) {             // returns 0 on success
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_coil: "+String(address));
-  #endif
+  debugMsgln("MBus_get_coil: "+String(address),4);
   uint8_t result = 1;
   for ( int i = 0 ; (i < 3) && result ; i ++ ) {           // try up to 3 times
     result = node.readCoils(address, 1);                   // succcess = 0
@@ -169,9 +163,7 @@ int MBus_get_coil(int address, bool &value) {             // returns 0 on succes
   if (result == node.ku8MBSuccess)  {
     value = (node.getResponseBuffer(0))?true:false; 
   }
-  #if DEBUG_ON>3
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),4);
   return result;
 }
 
@@ -179,9 +171,7 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
   if (noController) return -1;
   bool state;
   valu == "on" ? state=true : state=false ;
-  #if DEBUG_ON>3
-    debugMsg("MBus_write_coil: "+String(address)+", "+String(state));
-  #endif
+  debugMsgln("MBus_write_coil: "+String(address)+", "+String(state),4);
   int row;
   int result;
   row = getCoilIndex(address);
@@ -190,9 +180,7 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
     if ( ( address == 255 || address == 254 ) && state && result == node.ku8MBResponseTimedOut ){  
       result = 0;  // we reset the controller, timeout expected
     }
-    #if DEBUG_ON>4
-      debugMsg("Result: "+String(result));
-    #endif
+    debugMsgln("Result: "+String(result),5);
     return result; 
   } else {
     return -1;
@@ -201,123 +189,93 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
 
 int MBus_get_int(int address, int &value) {                 // get signed int
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_int: "+String(address));
-  #endif
+  debugMsgln("MBus_get_int: "+String(address),4);
   uint8_t result = node.readHoldingRegisters(address, 1);
   if (result == node.ku8MBSuccess)  {
     uint16_t val_16; 
     val_16 = node.getResponseBuffer(0);
     value = reinterpret_cast<int16_t&>(val_16);             // change unsigned to signed
   }
-  #if DEBUG_ON>3
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),4);
   return result;
 }
 
 int MBus_get_uint16(int address, uint16_t &value) {         // get unsigned int
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_uint16: "+String(address));
-  #endif
+  debugMsgln("MBus_get_uint16: "+String(address),4);
   uint8_t result = node.readHoldingRegisters(address, 1);
   if (result == node.ku8MBSuccess)  {
     value = node.getResponseBuffer(0) ;
   }
-  #if DEBUG_ON>3
-    debugMsg("Got "+String(value));
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Got "+String(value),4);
+  debugMsgln("Result: "+String(result),4);
   return result;
 }
 
 int MBus_get_n10(int address, float &value) {             // get 10x unsigned int, return float
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_n10: "+String(address));
-  #endif
+  debugMsgln("MBus_get_n10: "+String(address),4);
   uint16_t intval;
   int result = MBus_get_uint16(address, intval);
   if (result == node.ku8MBSuccess) {
     value = intval/10.;
   }
-  #if DEBUG_ON>3
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),4);
   return result;
 }
   
 int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long int, high first
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_uint32: "+String(address));
-  #endif
+  debugMsgln("MBus_get_uint32: "+String(address),4);
   int result = node.readHoldingRegisters(address, 2);
   if (result == node.ku8MBSuccess) {
     value = node.getResponseBuffer(0) << 16 ;         // HI first
     value += node.getResponseBuffer(1) ;
   }
-  #if DEBUG_ON>3
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),4);
   return result;
 }
 
   
 int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long int, low first
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_uint32: "+String(address));
-  #endif
+  debugMsgln("MBus_get_uint32: "+String(address),4);
   int result = node.readHoldingRegisters(address, 2);
   if (result == node.ku8MBSuccess) {
     value = node.getResponseBuffer(1) << 16 ;         // LO first
     value += node.getResponseBuffer(0) ;
   }
-  #if DEBUG_ON>3
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),4);
   return result;
 }
 
 int MBus_get_dn10(int address, float &value) {        // get long 10x, return float
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_dn10: "+String(address));
-  #endif
+  debugMsgln("MBus_get_dn10: "+String(address),4);
   uint32_t intval;
   int result = MBus_get_uint32(address, intval);
   if (result == node.ku8MBSuccess) {
     value = intval/10.;
   }
-  #if DEBUG_ON>3
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),4);
   return result;
 }  
 
 int MBus_get_float(int address, float &value) {     // get float16, return float32
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_float: "+String(address));
-  #endif
+  debugMsgln("MBus_get_float: "+String(address),4);
   int result = node.readHoldingRegisters(address, 1);
   if (result == node.ku8MBSuccess) {
     uint16_t data = node.getResponseBuffer(0);
     value = IEEEf16::f32(data);
   }
-  #if DEBUG_ON>3
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),4);
   return result;
 }
 
 int MBus_get_reg(int address, String &value) {         // given an address, looks up type and gets value. returns 0 on success
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_reg: "+String(address));
-  #endif
+  debugMsgln("MBus_get_reg: "+String(address),4);
   int row, result = 1, foo_sint;
   uint16_t foo_int;
   float foo_fl;
@@ -414,9 +372,7 @@ int mbGetFullReg(fullReg &myReg, int address) {  //given address, gets all we kn
     myReg.value = "";
     return -1;
   }
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_fullreg: "+String(address));
-  #endif
+  debugMsgln("MBus_get_fullreg: "+String(address),4);
   uint16_t foo_int;
   int foo_sint, result = 0, row;
   float foo_fl;
@@ -437,9 +393,7 @@ int mbGetFullReg(fullReg &myReg, int address) {  //given address, gets all we kn
 
 int MBus_write_reg(int address, String valu) {
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_write_reg: "+String(address)+", "+String(valu));
-  #endif
+  debugMsgln("MBus_write_reg: "+String(address)+", "+String(valu),4);
   int row;
   uint16_t foo_int;
   int foo_sint;
@@ -450,29 +404,21 @@ int MBus_write_reg(int address, String valu) {
   int result = -1; // failure unless we say otherwise
     
   row = getMbRegIndex(address);
-  #if DEBUG_ON>4
-    debugMsg("type "+String(mbRegTypeName[mbRegType[row]]));
-  #endif 
+  debugMsgln("type "+String(mbRegTypeName[mbRegType[row]]),5);
   switch (mbRegType[row]) {
     case f16:     value1 = IEEEf16::f16(valu.toFloat());
-                  #if DEBUG_ON>4
-                    foo_fl = IEEEf16::f32(value1);
-                    debugMsg("writing 0x"+String(value1, HEX)+", "+String(foo_fl));
-                  #endif
+                  foo_fl = IEEEf16::f32(value1);
+                  debugMsgln("writing 0x"+String(value1, HEX)+", "+String(foo_fl),5);
                   result = node.writeSingleRegister(address, value1);
                   break;
     case n10:     value1 = valu.toFloat()*10;
-                  #if DEBUG_ON>4
-                    debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/10");
-                  #endif
+                  debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/10",5);
                   result = node.writeSingleRegister(address, value1);
                   break;
     case dn10:    break;    // TODO ??
     case sigint:  ;
     case usigint: value1 = valu.toInt();
-                  #if DEBUG_ON>4
-                    debugMsg("Writing 0x"+String(value1, HEX)+", "+String(value1));
-                  #endif
+                  debugMsgln("Writing 0x"+String(value1, HEX)+", "+String(value1),5);
                   result = node.writeSingleRegister(address, value1);
                   break;
     case dint:    break;   // TODO ??
@@ -481,92 +427,64 @@ int MBus_write_reg(int address, String valu) {
     case bcd:     break;
 // TODO datatypes below are untested    
     case n673:  value1 = static_cast<int>(valu.toFloat() * 673); // SSDuo datatype, n/673 
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/673");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/673",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n1032: value1 = static_cast<int>(valu.toFloat() * 1032); // SSDuo datatype, n/1032
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/1032");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/1032",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n1800: value1 = static_cast<int>(valu.toFloat() * 1800); // SSDuo datatype, n/1800
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/1800");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/1800",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case r417:  break; // SSDuo datatype, % 0-417 ??? TODO:test result
     case n100:  value1 = static_cast<int>(valu.toFloat() * (32768/100)); // SS-MPPT datatype, n·100·2^-15
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/100)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/100)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n7916: value1 = static_cast<int>(valu.toFloat() * (32768/79.16)); // SS-MPPT datatype, n·79.16·2^-15
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/79.16)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/79.16)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n9895: value1 = static_cast<int>(valu.toFloat() * (65536/989.5)); // SS-MPPT datatype, n·989.5·2^-16
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(65536/989.5)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(65536/989.5)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n96667: value1 = static_cast<int>(valu.toFloat() * (32768/96.667)); // SS-MPPT datatype, n·96.667^2-15
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/96.667)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/96.667)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n13915: value1 = static_cast<int>(valu.toFloat() * (32768/139.15)); // TS datatype, n·139.15·2^-15
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/139.15)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/139.15)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n66667: value1 = static_cast<int>(valu.toFloat() * (32768/66.667)); // TS datatype, n·66.667·2^-15
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/66.667)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/66.667)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n31667: value1 = static_cast<int>(valu.toFloat() * (32768/316.67)); // TS datatype, n·316.67·2^-15
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/316.67)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(32768/316.67)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n9616: value1 = static_cast<int>(valu.toFloat() * (65536/96.667)); // TS datatype, n·96.667·2-16
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(65536/96.667)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(65536/96.667)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
     case n1008: value1 = static_cast<int>(valu.toFloat() * (256.0/100.0)); // SS-MPPT datatype, n*100*2^-8
-                #if DEBUG_ON>4
-                  debugMsg("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(256.0/100.0)");
-                #endif
+                debugMsgln("writing 0x"+String(value1, HEX)+", "+String(value1)+"/(256.0/100.0)",5);
                 result = node.writeSingleRegister(address, value1);
                 break;
       // TODO f32             
     default:           ;
   }
-  #if DEBUG_ON>4
-    debugMsg("Result: "+String(result));
-  #endif
+  debugMsgln("Result: "+String(result),5);
   return result; 
 }
 
 int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpreted
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_reg_raw: "+String(address));
-  #endif
+  debugMsgln("MBus_get_reg_raw: "+String(address),4);
   int result = node.readHoldingRegisters(address, 1);
   if (result == node.ku8MBSuccess) {
     raw = node.getResponseBuffer(0);
@@ -576,24 +494,18 @@ int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpre
 
 int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {  //TODO this returns more than requested.
   if (noController) return -1;
-  #if DEBUG_ON>3
-    debugMsg("MBus_get_regs_raw: "+String(count)+"x, "+String(address));
-  #endif
+  debugMsgln("MBus_get_regs_raw: "+String(count)+"x, "+String(address),4);
   int result = 0;
   int passes = count / 32; // modbusmaster buffer is 64 bytes
   int leftover = count %32;
-  #if DEBUG_ON>3
-    debugMsg("RegsRaw, passes "+String(passes)+", left:"+String(leftover));
-  #endif
+  debugMsgln("RegsRaw, passes "+String(passes)+", left:"+String(leftover),4);
   int i;
   for (i = 0; i < passes; i++) {
 //    delay(5);
     result = node.readHoldingRegisters(address+(i*32), 32);
     for (int j = 0; j<32; j++) {
         rawarray[(i*32)+j] = node.getResponseBuffer(j);
-        #if DEBUG_ON>3
-          debugMsg("rawarray "+String((i*32)+j)+"="+String(node.getResponseBuffer(j),HEX));
-        #endif
+        debugMsgln("rawarray "+String((i*32)+j)+"="+String(node.getResponseBuffer(j),HEX),4);
     }
   }
 //  delay(5);
@@ -608,12 +520,10 @@ int getLogItem(logItem &item, int idx) {   // idx starts at 0, returns 0 on succ
   if (noController) return -1;
   uint16_t startReg = 32768 + (idx * 16);
   int result = MBus_get_uint32_rev(startReg, item.hourmeter);
-  #if DEBUG_ON>3
-    debugMsgContinue(F("getLogItem, startReg=0x"));
-    debugMsg(String(startReg,HEX));
-    debugMsgContinue(F("getLogItem, hourmeter="));
-    debugMsg(String(item.hourmeter)); 
-  #endif 
+  debugMsg(F("getLogItem, startReg=0x"),4);
+  debugMsgln(String(startReg,HEX),4);
+  debugMsg(F("getLogItem, hourmeter="),4);
+  debugMsgln(String(item.hourmeter),4); 
   delay(1);
   result += MBus_get_uint32_rev(startReg+2, item.alarm_daily);
   delay(1);
@@ -672,9 +582,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   }
   query[5] = (uint8_t)(crc & 0x00FF);
   query[6] = (uint8_t)((crc & 0xFF00) >> 8);  // add the CRC to the query
-  #if DEBUG_ON>3
-    debugMsg("Mbus CRC out = " + String(crc,HEX));
-  #endif  
+  debugMsgln("Mbus CRC out = " + String(crc,HEX),4);
 
   preTransmission();
   
@@ -687,9 +595,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
     count = mbSerial.write(query, 7);
   #endif
 
-  #if DEBUG_ON>4
-    debugMsg("readDeviceID, wrote " + String(count));
-  #endif
+  debugMsgln("readDeviceID, wrote " + String(count),5);
 
   //TODO is flush different? TX on 8266, RX on 32???
   #ifdef ARDUINO_ARCH_ESP8266
@@ -714,9 +620,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
       if (mbSerial.available()) {
         response[count++] = mbSerial.read();
     #endif
-    #if DEBUG_ON>4
-      debugMsg("readDeviceID, response char=" + String(response[count-1],HEX));
-    #endif
+    debugMsgln("readDeviceID, response char=" + String(response[count-1],HEX),5);
         doneTime = millis() + charwait; 
       }  //matches xx.available
     if (doneTime < millis()) { done = true; }  // no response or didn't get a char for a while
@@ -731,9 +635,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   for (int i = 0; i < numObjs ; i++) {
     id = response[id_idx]; // which object
     count = response[id_idx+1]; // length
-    #if DEBUG_ON>3
-      debugMsg("readDeviceID, id="+String(id));
-    #endif
+    debugMsgln("readDeviceID, id="+String(id),4);
     for (int j = 0 ; j < count; j++) {
       switch (i) {
         case 0: 
@@ -750,14 +652,12 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
     id_idx = id_idx + count + 2;
   }
   
-  #if DEBUG_ON>3
-    debugMsgContinue(F("readDeviceID, vendorName="));
-    debugMsg(vendorName);
-    debugMsgContinue(F("readDeviceID, productCode="));
-    debugMsg(productCode);
-    debugMsgContinue(F("readDeviceID, majorMinorRevision="));
-    debugMsg(majorMinorRevision);    
-  #endif
+  debugMsg(F("readDeviceID, vendorName="),4);
+  debugMsgln(vendorName,4);
+  debugMsg(F("readDeviceID, productCode="),4);
+  debugMsgln(productCode,4);
+  debugMsg(F("readDeviceID, majorMinorRevision="),4);
+  debugMsgln(majorMinorRevision,4);
 
 /*  //example
   vendorName = String("Morningstar Corp.");
@@ -788,13 +688,11 @@ int mbusTCP() {
     }
     func = mbbuffer[7];
     buffsize = 6 + len;
-    #if DEBUG_ON>3
-      debugMsgContinue(F("modbusTCP received"));
-      for (i=0;i<6+len;i++){
-        debugMsgContinue("."+String(mbbuffer[i],HEX));
-      }
-      debugMsg("");
-    #endif  
+    debugMsg(F("modbusTCP received"),4);
+    for (i=0;i<6+len;i++){
+      debugMsg("."+String(mbbuffer[i],HEX),4);
+    }
+    debugMsgln("",4);
     
     result = 255;
     if (func == 3 || func == 4) {  //read holding/inputs
@@ -836,14 +734,12 @@ int mbusTCP() {
       productCode.reserve(64);
       majorMinorRevision.reserve(64);
       result = readDeviceID(vendorName, productCode, majorMinorRevision);
-      #if DEBUG_ON>4
-        debugMsgContinue(F("MbusTCP, vendorName="));
-        debugMsg(vendorName);
-        debugMsgContinue(F("MbusTCP, productCode="));
-        debugMsg(productCode);
-        debugMsgContinue(F("MbusTCP, majorMinorRevision="));
-        debugMsg(majorMinorRevision);
-      #endif  
+      debugMsg(F("MbusTCP, vendorName="),5);
+      debugMsgln(vendorName,5);
+      debugMsg(F("MbusTCP, productCode="),5);
+      debugMsgln(productCode,5);
+      debugMsg(F("MbusTCP, majorMinorRevision="),5);
+      debugMsgln(majorMinorRevision,5);
 
       mei = mbbuffer[8];
       readID =  mbbuffer[9];
@@ -882,13 +778,11 @@ int mbusTCP() {
       mbbuffer[5] = (uint8_t)(val & 0x00FF);
     }
     if (!result) {
-      #if DEBUG_ON>3
-        debugMsgContinue(F("modbusTCP sending"));
-        for (i=0;i<buffsize;i++){
-          debugMsgContinue("."+String(mbbuffer[i],HEX));
-        }
-        debugMsg("");
-      #endif  
+      debugMsg(F("modbusTCP sending"),4);
+      for (i=0;i<buffsize;i++){
+        debugMsg("."+String(mbbuffer[i],HEX),4);
+      }
+      debugMsgln("",4);
       modbusClient.write((const uint8_t *)mbbuffer, buffsize);
     } else {
       ; // TODO send error response
@@ -904,10 +798,8 @@ String getModel() {
   majorMinorRevision.reserve(64);
   result = readDeviceID(vendorName, productCode, majorMinorRevision);
   if (result == -1 || productCode.length() > 20) productCode = "";
-  #if DEBUG_ON>4
-    debugMsgContinue(F("getModel, readDeviceID returned:"));
-    debugMsg(String(result));
-  #endif
+  debugMsg(F("getModel, readDeviceID returned:"),5);
+  debugMsgln(String(result),5);
   
   /* Model names
    * PS-PWM*, PS-MPPT*, SSDuo (SunSaver Duo), SS-MPPT*, TS-45 or TS-60 (Tristar),
@@ -924,12 +816,10 @@ String getModel() {
   } else if (productCode.startsWith(F("TS-"))) {
                                                         mod = "TS"; 
   }
-  #if DEBUG_ON>1
-    debugMsgContinue(F("getModel received:"));
-    debugMsg(productCode);
-    debugMsgContinue(F("getModel selected:"));
-    debugMsg(mod);
-  #endif
+  debugMsg(F("getModel received:"),2);
+  debugMsgln(productCode,2);
+  debugMsg(F("getModel selected:"),2);
+  debugMsgln(mod,2);
   fullModel = productCode;
   return mod;
 }
@@ -938,15 +828,11 @@ void checkController() {
   String lastModel = model;
   model = getModel();
   if (model == "") {
-    #if DEBUG_ON>0
-      debugMsg(F("No controller found."));
-    #endif  
+    debugMsgln(F("No controller found."),1);
     noController = true;
   } else {
-    #if DEBUG_ON>0
-      debugMsgContinue(F("Controller found:"));
-      debugMsg(model);
-    #endif  
+    debugMsg(F("Controller found:"),1);
+    debugMsgln(model,1);
     if (lastModel != model) {             // model changed
       noController = false;
       void getFile(String model); // fwd declaration
@@ -976,8 +862,6 @@ bool controllerNeedsReset() {
     }
   }
 
-  #if DEBUG_ON>1
-    if (reset) debugMsg(F("Controller needs reset"));
-  #endif
+  if (reset) debugMsgln(F("Controller needs reset"),2);
   return reset;
 }

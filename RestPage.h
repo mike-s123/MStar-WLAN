@@ -23,10 +23,7 @@ void restPageHandler() {                          //  URI /rest
  * skipping unavailable ones.
 */
 
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /rest page."));
-  #endif
-
+  debugMsgln(F("Entering /rest page."),1);
   bool ok = false;
   if ( server.hasArg(F("json")) ) {  //Check if command received
     StaticJsonBuffer<200> jsonInBuffer;
@@ -112,9 +109,7 @@ void restPageHandler() {                          //  URI /rest
         }
       }
     } else if ( cmd == F("writeSingleRegister") ) {
-      #if DEBUG_ON>3
-        debugMsg(F("json writeSingleRegister"));
-      #endif
+      debugMsgln(F("json writeSingleRegister"),4);
       String valu="";
       int result;
       String address = jsonIn[F("addr")] | "-1";
@@ -137,9 +132,7 @@ void restPageHandler() {                          //  URI /rest
 
     } else if ( cmd == F("writeSingleCoil") ) {
       // write a coil  TODO
-      #if DEBUG_ON>3
-        debugMsg(F("json writeSingleCoil"));
-      #endif
+      debugMsgln(F("json writeSingleCoil"),4);
       String valu="";
       bool state;
       int result;
@@ -218,10 +211,8 @@ void restPageHandler() {                          //  URI /rest
           int alarmNum = 1;
           for ( int i = 0 ;  i<32 ; i++ ) {
             if ( item.alarm_daily & alarmbit ) {
-              #if DEBUG_ON>3
-                debugMsg("alarmbit="+String(alarmbit,HEX));
-                debugMsg("mbAlarmMsg-:" + String(i) + ":" + mbAlarmMsg[i]);
-              #endif
+              debugMsgln("alarmbit="+String(alarmbit,HEX),4);
+              debugMsgln("mbAlarmMsg-:" + String(i) + ":" + mbAlarmMsg[i],4);
               if ( mbAlarmMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults          
                 alarm[String(alarmNum)] = mbAlarmMsg[i];
                 alarmNum++;
@@ -237,10 +228,8 @@ void restPageHandler() {                          //  URI /rest
           int alarmNum = 1;
           for ( int i = 0 ;  i<32 ; i++ ) {
             if ( item.load_fault_daily & alarmbit ) {
-              #if DEBUG_ON>3
-                debugMsg("i="+String(i));
-                debugMsg("loadalarmbit="+String(alarmbit,HEX));
-              #endif
+              debugMsgln("i="+String(i),4);
+              debugMsgln("loadalarmbit="+String(alarmbit,HEX),4);
               if ( mbLoadMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults
                 load[String(alarmNum)] = mbLoadMsg[i];
                 alarmNum++;
@@ -256,10 +245,8 @@ void restPageHandler() {                          //  URI /rest
           int alarmNum = 1;
           for ( int i = 0 ;  i<32 ; i++ ) {
             if ( item.array_fault_daily & alarmbit ) {
-              #if DEBUG_ON>3
-                debugMsg("i="+String(i));
-                debugMsg("array alarmbit="+String(alarmbit,HEX));
-              #endif
+               debugMsgln("i="+String(i),4);
+               debugMsgln("array alarmbit="+String(alarmbit,HEX),4);
               if ( mbArrayMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults   
                 array[String(alarmNum)] = mbArrayMsg[i];
                 alarmNum++;

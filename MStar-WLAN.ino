@@ -22,7 +22,7 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.200105"
+#define SOFTWARE_VERSION "v1.200108"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
@@ -30,11 +30,11 @@
                      RTC speed. Prep for SD card support (ESP32). Platform logging<br>\
                      to SD card."
 
-#define DEBUG_ON 2                // enable debugging output. 0 currently causes issues (TODO 12/22/2019)
-                                  // 0 off, 1 least detail, 5 most detail, 9 includes passwords
+#define DEBUG_ON 3                // enable debugging output. 0 currently causes issues (TODO 12/22/2019)
+                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
                                   // 0 not working on ESP32 for now
-//#define debugjs                   // ifdef, overrides servestatic to avoid caching of local.js
-//#define debugcss                  // ditto, for css
+//#define DEBUG_JS                   // ifdef, overrides servestatic to avoid caching of local.js
+//#define DEBUG_CSS                  // ditto, for css
 #ifdef DEBUG_ON
   #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
                                     // because we're swapping the UART to new ones
@@ -82,7 +82,7 @@
 //#include <ESP8266WebServerSecure.h>
 //#include <ESP8266WebServerSecureAxTLS.h>
 //#include <ESP8266WebServerSecureBearSSL.h>
-//#include <ESP8266mDNS.h>  //not working, comment out to not use
+#include <ESP8266mDNS.h>  //not working, comment out to not use
   /* This will compile in OTA support - need at least 1 MB for OTA updates.
      we check available space at runtime before allowing it.
   */
@@ -103,6 +103,7 @@
   #include <SPIFFS.h>
   #include <SD.h>
   #include <SPI.h>
+//  #include "SdFat.h"
   #include <HardwareSerial.h>
 #endif
 
@@ -222,6 +223,11 @@
 // ------------------------------------------  Globals (mostly)  --------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
+#ifdef DEBUG_ON
+  int debug_level = DEBUG_ON;
+#else
+  int debug_level = 0;
+#endif
 const char *web_username = WEB_USERNAME;
 const char *web_password = WEB_PASSWORD;
 const char *json_password = JSON_PASSWORD;
@@ -251,7 +257,7 @@ boolean wlanLedState = true;
 boolean noController = true;
 // used for flashing the WLAN status LED
 int blinkOnTime = 1000;
-int blinkTopTime = 2000;
+int blinkRepeatTime = 2000;
 unsigned long lastMillis = 0;
 unsigned long lastWLANtry;      // when we last tried to connected (or tried) to an AP
 int mbAddr = mbusSlave;
@@ -283,6 +289,7 @@ WiFiClient modbusClient;
 
 //order here is important
 #include "Utility.h"            // utility functions
+#include "WLAN.h"               // wireless stuff
 #include "edit.h"               // ACE editor
 #include "MBus.h"               // Handle MODBUS and datatype conversion
 #include "ControllerFiles.h"    // Read and parse controller .csv files
@@ -291,6 +298,7 @@ WiFiClient modbusClient;
 #include "PS.h"                 // status, charge and other pages for Prostar models
 #include "WebPages.h"           // stuff to serve content
 #include "Setups.h"
+#include "Web.h"                // starts up web server
 
 void setup() {
   #ifdef ARDUINO_ARCH_ESP32
@@ -335,64 +343,46 @@ void setup() {
   IPAddress apIP = WiFi.softAPIP();
   IPAddress myIP = WiFi.localIP();
   
-  #if DEBUG_ON>0
-  debugMsgContinue(F("AP IP address: "));
-  debugMsg(formatIPAsString(apIP));
+  debugMsg(F("AP IP address:"),1);
+  debugMsgln(formatIPAsString(apIP),1);
   if (wlanConnected) {
-    debugMsgContinue(F("WLAN IP address: "));
-    debugMsg(formatIPAsString(myIP));
-    debugMsg("Connected to:" + String(WiFi.SSID()));
+    debugMsg(F("WLAN IP address:"),1);
+    debugMsgln(formatIPAsString(myIP),1);
+    debugMsgln("Connected to:" + String(WiFi.SSID()),1);
   }
-  #endif
 
   setupModbus();
-  #include "WebServer.h"              // starts up web server
+  startWeb();
 
   modbusTCP.begin();
 
-  #ifdef ESP8266MDNS_LEGACY_H
-    // Set up mDNS responder:
-    // - first argument is the domain name, in this example
-    //   the fully-qualified domain name is "esp8266.local"
-    // - second argument is the IP address to advertise
-    //   we send our IP address on the WiFi network
-    if (!MDNS.begin("MStar-WLAN", WiFi.localIP())) {
-      #if DEBUG_ON>0
-        debugMsg(F("Error setting up MDNS responder!"));
-      #endif
-      while (1) {
-        delay(1000);
-      }
-    }
+  if (!MDNS.begin("MStarWLAN")) {
+    debugMsgln(F("Error setting up MDNS responder!"),1);
+  } else {
     MDNS.addService("http", "tcp", 80);
-    #if DEBUG_ON>0
-      debugMsg(F("mDNS responder started"));
-    #endif
-  #endif
-  
-  #if DEBUG_ON>0
-    debugMsg("Getting modbus info for " + model);
-  #endif
-getFile(model);
+    debugMsgln(F("mDNS responder started"),1);
+  }
 
-getRTCTime();
-  #if DEBUG_ON>0
-    debugMsg(F("Leaving setup()"));
-  #endif
+  debugMsgln("Getting modbus info for " + model,1);
+  getFile(model);
+
+  getRtcTime();
+  debugMsgln(F("Leaving setup()"),1);
 } // setup()
 
 void loop() {
   
   #ifdef ARDUINO_ARCH_ESP8266
     ESP.wdtFeed();
-    #ifdef ESP8266MDNS_LEGACY_H
-      MDNS.update();
-    #endif
   #endif
 
+  #ifdef MDNS_H // ESP8266
+    MDNS.update();
+  #endif
   events(); // for EZTime
+  checkNtp();
   server.handleClient();
-  #if DEBUG_ON==0
+  #ifndef DEBUG_ON
     serialPassthrough();
   #endif
 
@@ -407,49 +397,19 @@ void loop() {
  *  Blink the LED based on current connection state.
  */
  
-  if (WiFi.softAPgetStationNum()) {                     // AP client connected, every 3 sec
-    blinkOnTime = 5;       
-    blinkTopTime = 3000;
+  if (WiFi.softAPgetStationNum()) {                     // AP client connected, mostly on
+    blinkOnTime = 275;       
+    blinkRepeatTime = 300;
   } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA (or AP), flash 1/sec
     wlanConnected = true;
     blinkOnTime = 5;
-    blinkTopTime = 1000;
+    blinkRepeatTime = 1000;
   } else {                                              // no connections, every 10 sec
     blinkOnTime = 2;
-    blinkTopTime = 10000;  
+    blinkRepeatTime = 10000;  
   }
 
-  /* 
-   *  If we have configured WLANs and are not connected as a station, try to connect every few minutes
-   *  Only if running as both AP and STA (doesn't take AP down, but will be non-responsive to client
-   *  while scanning). If running as STA -or- AP, don't scan if client is connected.
-   */
-  #ifdef WIFI_AP_STA  // if AP_STA mode, ok to try with client connected
-    if (( wlan_count && !WiFi.isConnected() && (millis() - lastWLANtry) > 300000) ) {  // 5 minutes
-  #else               // if not, would disconnect client, so check
-    if (( wlan_count && !WiFi.isConnected() && !WiFi.softAPgetStationNum() &&(millis() - lastWLANtry) > 30000) ) {
-  #endif
-    
-    #if DEBUG_ON>1 
-      debugMsg("lastWLANtry="+String(lastWLANtry));
-      debugMsg(F("Trying WLAN connection"));
-    #endif
-    tryWLAN();
-    lastWLANtry = millis();   // mark attempt
-
-    if (WiFi.isConnected()) {    
-      waitForSync(3); // try ntp
-      if ((timeStatus() != timeSet) && useRTC) { // no ntp, but rtc avail
-//        setInterval(0);  // disable ntp
-        setTime(getUnixTime()); // from RTC
-      } else {
-        setInterval(ntpInterval);
-        rtc_max_unsync = RTC_MAX_UNSYNC * sqrt(ntpInterval/600);
-      }
-    }
-  }
-
-  if (((millis() - lastMillis) > blinkTopTime) && wlanLedState) {
+  if (((millis() - lastMillis) > blinkRepeatTime) && wlanLedState) {
     lastMillis = millis();
     wlanLedState = false;
     setWlanLED(wlanLedState);

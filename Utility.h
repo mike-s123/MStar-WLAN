@@ -2,83 +2,86 @@
 // ----------------------------------------- Utility functions ----------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-void setWlanLED(boolean newState) {
-  digitalWrite(WLAN_PIN, newState);
-}
+void rxEnable(bool state); // forward declaration
 
-String formatIPAsString(IPAddress ip) {
-  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
-}
-
-#if DEBUG_ON>0                              // needed if debugging
-  void debugMsg(String msg="") {
-    #ifdef ARDUINO_ARCH_ESP8266
-      logger.println(msg);
-    #endif
-    #ifdef ARDUINO_ARCH_ESP32
-      Serial.println(msg);
-      if (sd_card_available && sd_card_log) {
-        String lfn = "/"+ my_hostname + ".log";
-        File logFile = SD.open(lfn,FILE_APPEND);
-        if (logFile) {
-          if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
-          logFile.println(msg);
-        } else {
-//          Serial.println(F("failed to open logFile"));
-        }
-        logFile.close();
-        needLogTime = true;
-      } else {
-//        Serial.println("sd log no");
-//        Serial.println("sd_card_available:"+String(sd_card_available));
-//        Serial.println("sd_card_log:"+String(sd_card_log));
-      }
-    #endif //ESP32
-  }
-  
-  void debugMsgContinue(String msg) {
-    #ifdef ARDUINO_ARCH_ESP8266
-    logger.print(msg);
-    #endif
-    #ifdef ARDUINO_ARCH_ESP32
-      Serial.print(msg);
-      if (sd_card_available && sd_card_log) {
-        String lfn = "/"+ my_hostname + ".log";
-        File logFile = SD.open(lfn,FILE_APPEND);
-        if (logFile) {
-          if (needLogTime) {
-            logFile.print(myTZ.dateTime(ATOM)+" ");
-            needLogTime = false;
+void debugMsgln(String msg, int level) {
+  #ifdef DEBUG_ON
+    if (level <= debug_level) {
+      #ifdef ARDUINO_ARCH_ESP8266
+        logger.println(msg);
+      #endif
+      #ifdef ARDUINO_ARCH_ESP32
+        Serial.println(msg);
+        if (sd_card_available && sd_card_log) {
+          String lfn = "/"+ my_hostname + ".log";
+          File logFile = SD.open(lfn,FILE_APPEND);
+//          SdFile logFile = SD.open("foo.log",O_WRONLY & O_APPEND);
+          if (logFile) {
+            if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
+            logFile.println(msg);
+          } else {
+    //          Serial.println(F("failed to open logFile"));
           }
-          logFile.print(msg);
+          logFile.close();
+          needLogTime = true;
+        } else {
+    //        Serial.println("sd log no");
+    //        Serial.println("sd_card_available:"+String(sd_card_available));
+    //        Serial.println("sd_card_log:"+String(sd_card_log));
         }
-        logFile.close();
-      }
-    #endif //ESP32
-  }
-  
-  void setupDebug() {
+      #endif //ESP32
+    } // level
+  #endif
+}
+
+void debugMsg(String msg,int level) {
+  #ifdef DEBUG_ON
+    if (level <= debug_level) {
+      #ifdef ARDUINO_ARCH_ESP8266
+        logger.print(msg);
+      #endif
+      #ifdef ARDUINO_ARCH_ESP32
+        Serial.print(msg);
+        if (sd_card_available && sd_card_log) {
+          String lfn = "/"+ my_hostname + ".log";
+          File logFile = SD.open(lfn,FILE_APPEND);
+//          SdFile logFile = SD.open("foo.log",O_WRONLY & O_APPEND);
+          if (logFile) {
+            if (needLogTime) {
+              logFile.print(myTZ.dateTime(ATOM)+" ");
+              needLogTime = false;
+            }
+            logFile.print(msg);
+          }
+          logFile.close();
+        }
+      #endif //ESP32
+    } // level
+  #endif
+}
+
+void setupDebug() {
+  #ifdef DEBUG_ON
     #ifdef ARDUINO_ARCH_ESP8266
       logger.begin(BAUD_LOGGER);
     #endif
     #ifdef ARDUINO_ARCH_ESP32
       Serial.begin(BAUD_LOGGER);
     #endif
-    debugMsg("");
-    debugMsg(F("Starting debug session"));
-  }
-#else                                       // maybe serial passthrough will work someday
-  void setupPassthru() {
+    debugMsgln("",1);
+    debugMsgln(F("Starting debug session"),1);
+  #endif
+}
+
+void setupPassthru() {
 /*
  * Try to pass serial from USB side (softserial because we swapped UART pins)
  * through to the controller, half duplex Modbus.
  */
 //    cSerial->begin(9600);
-  }
+}
   
-  void rxEnable(bool state); // forward declaration
-  
-  void serialPassthrough() {  // this connects Serial (controller) to cSerial (USB)
+void serialPassthrough() {  // this connects Serial (controller) to cSerial (USB)
 //work in progress...
 /*    static long int txdTimer;
     
@@ -98,55 +101,49 @@ String formatIPAsString(IPAddress ip) {
       rxEnable(true); 
     }
 */
-
 return;  
-  }
-#endif                                            // end serial passthrough
+} // serial passthrough
 
 int getDecInt(String value) {
-/*  
- *   From a String of decimal, hex, or octal, 
- *   return an int.
- */
+// From a String of decimal, hex, or octal, return an int.
   char *endptr;
-  #if DEBUG_ON>3
-    debugMsg("getAddress of "+value);
-  #endif
-  return strtol(value.c_str(),&endptr,0) ;  // default decimal, 0x = hex, 0=octal
+  return strtol(value.c_str(),&endptr,0) ;  // default decimal, 0x=hex, O=octal
 }
 
 inline String secToMin(String seconds) {
   return String(seconds.toInt()/60);
 }
 
+inline void setWlanLED(boolean newState) {
+  digitalWrite(WLAN_PIN, newState);
+}
+
+String formatIPAsString(IPAddress ip) {
+  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+}
+
 /*
  *  This stores WLAN credentials in the first slot [0]
  */
 void storeWLANsInEEPROM(String qsid, String qpass, int idx=0) {
-  #if DEBUG_ON>2
-  debugMsg("writing eeprom "+String(idx)+" ssid " + qsid );
-  #endif
+  debugMsgln("writing eeprom "+String(idx)+" ssid " + qsid,3);
   if (idx < 0 || idx > 3) return;
   wlanRead = false;                   // now needs to be re-read
   for (int i = 0; i < 32; i++) {
     if (i < qsid.length()) {
       EEPROM.write(eeWLANSSID + (32*idx) + i, qsid[i]);
-      #if DEBUG_ON>4
-      debugMsg("Wrote: " + String(qsid[i]));
-      #endif
+      debugMsgln("Wrote: " + String(qsid[i]),5);
     } else {
       EEPROM.write(eeWLANSSID + (32*idx) + i, 0);
     }
   }
-  #if DEBUG_ON>2
-  debugMsg("writing eeprom "+String(idx)+" pass " + qpass);
-  #endif
+  debugMsg("writing eeprom "+String(idx)+" pass ",3);
+  debugMsg(qpass,9);
+  debugMsgln("",3);
   for (int i = 0; i < 32; i++) {
     if ( i < qpass.length()) {
       EEPROM.write(eeWLANPASS + (32*idx) + i, qpass[i]);
-      #if DEBUG_ON>8
-      debugMsg("Wrote: " + String(qpass[i]));
-      #endif
+      debugMsgln("Wrote: " + String(qpass[i]),9);
     } else {
       EEPROM.write(eeWLANPASS + (32*idx) + i, 0);
     }
@@ -169,9 +166,7 @@ void getWLANsFromEEPROM() {
       }
       esid[j] += char(readByte);
     }
-    #if DEBUG_ON>2
-    debugMsg("Read SSID " + String(j) +":" + esid[j]);
-    #endif
+    debugMsgln("Read SSID " + String(j) +":" + esid[j],3);
     wlanRead = true;
     wlanSet = false;
   }
@@ -187,29 +182,19 @@ void getWLANsFromEEPROM() {
       }
       epass[j] += char(readByte);
     }
-    #if DEBUG_ON>2
-      debugMsgContinue("Read password:");
-    #endif
-    #if DEBUG_ON>8                            // only show password debug level 6+
-      debugMsgContinue(epass[j]);
-    #endif
-    #if DEBUG_ON>2
-      debugMsg("");
-    #endif
+    debugMsg("Read password:",3);
+    debugMsg(epass[j],9); // only show password debug level 9+
+    debugMsgln("",3);
   }
 }
 
 void storeModelInEEPROM(String model) {
-  #if DEBUG_ON>2
-  debugMsg("writing eeprom model " + model +" ("+String(model.length())+")");
-  #endif
+  debugMsgln("writing eeprom model " + model +" ("+String(model.length())+")",3);
   for (int i = 0; i < 16; i++)
   {
     if (i < model.length()) {
       EEPROM.write(i+eeModel, model[i]);
-      #if DEBUG_ON>4
-      debugMsg("Wrote: " + String(model[i]));
-      #endif
+      debugMsgln("Wrote: " + String(model[i]),5);
     } else {
       EEPROM.write(i+eeModel, 0);
     }
@@ -230,23 +215,17 @@ String getModelFromEEPROM() {
     }
     model += char(readByte);
   }
-  #if DEBUG_ON>2
-    debugMsg("EEPROM read model: " + model);
-  #endif
+  debugMsgln("EEPROM read model: " + model,3);
   return model;
 }
 
 void storeNtpServerInEEPROM(String server) {
-  #if DEBUG_ON>2
-  debugMsg("eeprom writing NtpServer:" + server + " ("+String(server.length())+")");
-  #endif
+  debugMsgln("eeprom writing NtpServer:" + server + " ("+String(server.length())+")",3);
   for (int i = 0; i < 32; i++)
   {
     if (i < server.length()) {
       EEPROM.write(i+eeNtpServer, server[i]);
-      #if DEBUG_ON>4
-      debugMsg("Wrote:" + String(server[i]));
-      #endif
+      debugMsgln("Wrote:" + String(server[i]),5);
     } else {
       EEPROM.write(i+eeNtpServer, 0);
     }
@@ -267,23 +246,17 @@ String getNtpServerFromEEPROM() {
     }
     server += char(readByte);
   }
-  #if DEBUG_ON>2
-    debugMsg("eeprom read NtpServer: " + server);
-  #endif
+  debugMsgln("eeprom read NtpServer: " + server,3);
   return server;
 }
 
 void storeNtpTZInEEPROM(String tz) {
-  #if DEBUG_ON>2
-  debugMsg("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")");
-  #endif
+  debugMsgln("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")",3);
   for (int i = 0; i < 32; i++)
   {
     if (i < tz.length()) {
       EEPROM.write(i+eeNtpTZ, tz[i]);
-      #if DEBUG_ON>4
-      debugMsg("Wrote:" + String(tz[i]));
-      #endif
+      debugMsgln("Wrote:" + String(tz[i]),5);
     } else {
       EEPROM.write(i+eeNtpTZ, 0);
     }
@@ -304,38 +277,28 @@ String getNtpTZFromEEPROM() {
     }
     tz += char(readByte);
   }
-  #if DEBUG_ON>2
-    debugMsg("eeprom read NtpTZ:" + tz);
-  #endif
+  debugMsgln("eeprom read NtpTZ:" + tz,3);
   return tz;
 }
 
 void storeNtpPollInEEPROM(unsigned short int poll) {
-  #if DEBUG_ON>2
-  debugMsg("eeprom writing NtpPoll:" + String(poll) + " (2)");
-  #endif
+  debugMsgln("eeprom writing NtpPoll:" + String(poll) + " (2)",3);
   EEPROM.write(eeNtpPoll, (poll >> 8));
   EEPROM.write(eeNtpPoll+1, (poll & 0xff));
-  #if DEBUG_ON>4
-  debugMsg("Wrote:" + String(poll));
-  #endif
+  debugMsgln("Wrote:" + String(poll),5);
   EEPROM.commit();
 }
 
 unsigned short int getNtpPollFromEEPROM() {
   unsigned short int poll = 0;
-    poll = EEPROM.read(eeNtpPoll) << 8;
-    poll += EEPROM.read(1 + eeNtpPoll);
-  #if DEBUG_ON>2
-    debugMsg("eeprom read NtpPoll: " + String(poll));
-  #endif
+  poll = EEPROM.read(eeNtpPoll) << 8;
+  poll += EEPROM.read(1 + eeNtpPoll);
+  debugMsgln("eeprom read NtpPoll: " + String(poll),3);
   return poll;
 }
 
 void wipeEEPROM() {
-  #if DEBUG_ON>0
-    debugMsg(F("Wiping EEPROM."));
-  #endif  
+  debugMsgln(F("Wiping EEPROM."),1);
   for (int i = 0; i < EEPROM_SIZE; i++) {
     EEPROM.write(i, 255);
   }
@@ -344,9 +307,7 @@ void wipeEEPROM() {
 
 void resetEEPROM() {
   wipeEEPROM();
-  #if DEBUG_ON>0
-    debugMsg(F("Resetting EEPROM."));
-  #endif
+  debugMsgln(F("Resetting EEPROM."),1);
   for (int i = 0; i<=3 ; i++) {
     storeWLANsInEEPROM("", "", i);
   }
@@ -357,9 +318,7 @@ void resetEEPROM() {
   String chkstr = F(EEPROM_SIG);
   for (int i = 0; i<=3 ; i++) {
     EEPROM.write(i + EEPROM_SIZE -4, chkstr[i]);
-    #if DEBUG_ON>4
-      debugMsg("Wrote chkstr: " + chkstr[i]);
-    #endif
+    debugMsgln("Wrote chkstr: " + chkstr[i],5);
   }
   EEPROM.commit();
 } 
@@ -368,209 +327,18 @@ String checkEEPROM() {
 /* 
  *  Check if valid, reset if not
  */
-  #if DEBUG_ON>0
-    debugMsgContinue(F("Check ESP EEPROM..."));
-  #endif    
+  debugMsg(F("Check ESP EEPROM..."),1);
   String chkstr = "";
   for (int i = EEPROM_SIZE - 4; i < EEPROM_SIZE; i++) {
     chkstr += char(EEPROM.read(i));
   }
   if (chkstr != F(EEPROM_SIG)) {
-    #if DEBUG_ON>0
-      debugMsg(F("invalid, resetting"));
-    #endif  
+    debugMsgln(F("invalid, resetting"),1);
     resetEEPROM();      
   } else {
-  #if DEBUG_ON>0
-    debugMsg(F("valid"));
-  #endif  
+  debugMsgln(F("valid"),1);
   }
   return chkstr;
-}
-
-void startAP(const char* ssid, const char* password) {
-/*
- * This starts AP only, probably because we had no stored STA info.
- */
-  #ifdef ARDUINO_ARCH_ESP8266
-    WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
-  #endif
-  WiFi.mode(WIFI_AP);
-  #if DEBUG_ON>0
-    debugMsgContinue(F("Starting AP, SSID \""));
-    debugMsgContinue(String(ssid));
-    debugMsgContinue(F("\", pass \""));
-    debugMsgContinue(String(password));
-    debugMsg(F("\""));
-  #endif  
-  if (strlen(password) > 0) {
-    WiFi.softAP(ssid, password, 6, false, 8);
-  } else {
-    WiFi.softAP(ssid);
-  }
-}
-
-
-boolean connectToWLAN(const char* ssid = "", const char* password = "") {
-/*
- *  Try to connect as a station with the given credentials. Give up after a while.
- *   if we can't get in. Returns connected status.
- *   Station only, because AP_STA results in frequent disconnects (~5 minute intervals).
-*/
-  int retries = 0;
-  #ifdef ARDUINO_ARCH_ESP8266
-    WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
-  #endif
-
-//  WiFi.persistent(true);
-  if (strlen(ssid)>0) {         // here we try to connect using the info passed to us
-    wlan_count++ ;
-    if (password && strlen(password) > 0 ) {    
-        #if DEBUG_ON>3
-          debugMsgContinue(F("wifiMulti adding SSID:"));
-          debugMsg(ssid);
-        #endif
-        #if DEBUG_ON>8
-          debugMsgContinue(F("wifiMulti   with pass:"));
-          debugMsg(password);
-        #endif
-      wifiMulti.addAP(ssid, password);        //esid.c_str()?
-    } else {
-        wifiMulti.addAP(ssid);
-    }
-  } else {                        // if we weren't given info, look it up
-    getWLANsFromEEPROM();
-    int i;
-    for (i = 0; i<=3; i++) {
-      if (esid[i] != "") {
-        if ( epass[i] != "" ) {   // got both ssid and pass
-//          if (!wifiMulti.existsAP(esid[i].c_str(), epass[i].c_str()) ) { // skip if already there ESP8266 only
-            if (!wlanSet) { // skip if already there
-            #if DEBUG_ON>3
-              debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
-              debugMsg(esid[i]);
-              debugMsgContinue(F("wifiMulti   with pass from EEPROM:"));
-              #if DEBUG_ON>8
-                debugMsgContinue(epass[i]);
-              #endif
-              debugMsg("");
-            #endif
-            wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
-            wlan_count++ ;
-          }
-        } else {  // only ssid, no pass
-//          if (!wifiMulti.existsAP(esid[i].c_str())) {                  // skip if already there ESP8266 only
-            if (!wlanSet) {                  // skip if already there
-            #if DEBUG_ON>3
-              debugMsgContinue(F("wifiMulti adding SSID from EEPROM:"));
-              debugMsg(esid[i]);
-            #endif
-            wifiMulti.addAP(esid[i].c_str());
-            wlan_count++ ;
-          }
-        }
-      }
-    }  // done getting WLANs
-    wlanSet = true;
-  }  // else, didn't get passed WLAN info
-  
-  #ifdef WIFI_MODE_AP_STA           // mode controlled by #define
-    WiFi.mode(WIFI_AP_STA);
-    if (strlen(ap_password) > 0) {
-      WiFi.softAP(ap_ssid, ap_password, 6, false, 8);
-    } else {
-      WiFi.softAP(ap_ssid);
-    }
-  #else
-    WiFi.mode(WIFI_STA);
-    #if DEBUG_ON>0
-      debugMsg(F("WLAN changing to station mode."));
-    #endif
-  #endif
-  
-  if (wlan_count) {    // if we have WLANs configured for station mode, try to connect
-    #if DEBUG_ON>0
-      if (wlan_count) {
-        debugMsgContinue(F("WLAN connecting ("));
-        debugMsgContinue(String(wlan_count));
-        debugMsgContinue(")");
-      }  
-    #endif
-
-    #ifdef ARDUINO_ARCH_ESP32
-      WiFi.config(IPAddress(0,0,0,0), IPAddress(0,0,0,0), IPAddress(0,0,0,0));  // test, force DHCP
-    #endif
-    while ( wifiMulti.run() != WL_CONNECTED && wlan_count ) {
-      delay(500);
-      #if DEBUG_ON>0
-        debugMsgContinue(".");
-      #endif
-      retries++;
-      if (retries > 20) {   // try for 10  seconds
-        #if DEBUG_ON>0
-          debugMsg("");
-          debugMsg(F("Failed to connect"));
-        #endif      
-        return false;
-      }
-    }
-    #if DEBUG_ON>0
-      if (WiFi.isConnected()) {
-        debugMsg("");
-        debugMsg(F("WLAN connected"));
-      }
-    #endif
-  } else {  // no wlan_count
-    #if DEBUG_ON>0
-      debugMsg(F("No WLANs configured"));
-    #endif
-    return false;      
-  }
-  return true;
-}
-
-boolean tryWLAN() {  // simply tries to connect to configured WLANs
-  int retries=0;
-  #ifndef WIFI_MODE_AP_STA                       // we're in AP mode, switch to try
-    #if DEBUG_ON>0
-      debugMsg(F("WLAN switching to STA"));
-    #endif
-    WiFi.mode(WIFI_STA);
-  #endif
-
-  #if DEBUG_ON>0
-      debugMsgContinue(F("Trying to connect to WLAN ("));
-      debugMsgContinue(String(wlan_count));
-      debugMsgContinue(")");  
-  #endif
-  while ( wifiMulti.run() != WL_CONNECTED ) {
-    delay(500);
-    #if DEBUG_ON>0
-      debugMsgContinue(".");
-    #endif
-    retries++;
-    if (retries > 20) {   // try for 10  seconds
-      #if DEBUG_ON>0
-      debugMsg("");
-      debugMsg(F("Failed to connect"));
-      #endif
-      #ifndef WIFI_MODE_AP_STA                       // go back to AP mode so users can connect
-        #if DEBUG_ON>0
-        debugMsg(F("WLAN switching back to AP"));
-        #endif
-      startAP(ap_ssid, ap_password);
-      #endif
-      return false;
-    }
-  }
-  #if DEBUG_ON>0
-    debugMsg("");
-    IPAddress ip = WiFi.localIP();
-    debugMsgContinue(F("WLAN IP address:"));
-    debugMsg(formatIPAsString(ip));
-    debugMsg("Connected to:" + String(WiFi.SSID()));
-  #endif
-  return true;
 }
 
 
@@ -652,9 +420,7 @@ public:
 };  // need semicolon to end class definition
 
 void reboot() {
-  #if DEBUG_ON>0
-    debugMsg(F("Doing ESP.restart()"));
-  #endif  
+  debugMsgln(F("Doing ESP.restart()"),1);
   #ifdef ARDUINO_ARCH_ESP8266
     digitalWrite(SELF_RST_PIN, LOW); // this should do a hard reset.
     delay(50);
@@ -698,9 +464,7 @@ String promptReset() {
   String response_message = "";
   bool controllerNeedsReset(); // fwd declaration
   if (controllerNeedsReset()) {
-    #if DEBUG_ON>3
-      debugMsg(F("promptReset reset needed"));
-    #endif
+    debugMsgln(F("promptReset: reset needed"),4);
     response_message = F("<div class=\"controller\">");
     response_message += F("<br><h3>Settings changed, controller needs restart.</h3>");
     response_message += getJsButton(F("Restart Controller"), F("restart_ctl()"));

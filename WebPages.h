@@ -7,9 +7,7 @@ void statusPageHandler () {
 /*  
  *   Returns a page of basic controller status.
  */
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /status page."));
-  #endif
+    debugMsgln(F("Entering /status page."),2);
   checkController();
   if (noController || model.startsWith("PS-")) {  // break out different controller families
     psStatusPageHandler();
@@ -20,9 +18,7 @@ void setChargePageHandler() {
 /*  
  *   Page to set controller charging settings.
  */
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /setcharge page."));
-  #endif
+  debugMsgln(F("Entering /setcharge page."),2);
   checkController();
   if (noController || model.startsWith("PS-")) {  // break out different controller families
     psSetChargePageHandler();
@@ -35,9 +31,7 @@ void setOtherPageHandler() {
  */
   int addr, result;
   String desc, val;
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /setother page."));
-  #endif   
+  debugMsgln(F("Entering /setother page."),2);
   checkController();
   if (noController || model.startsWith("PS-")) {  // break out different controller families
     psSetOtherPageHandler();
@@ -54,14 +48,10 @@ void cmdPageHandler() {
   String data, value, ssid, pass, response_message = F("OK"), rtcTime, ntp_item, ntp_svr = "", ntp_tz = "";
   enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, set_rtc_ntp, cfg_ntp };
   commands cmd;
-  #if DEBUG_ON>2
-    debugMsgContinue(F("SET args received:"));
-    debugMsg(String(numArgs));
-  #endif  
+  debugMsg(F("SET args received:"),3);
+  debugMsgln(String(numArgs),3);
   for (int i=0 ; i<numArgs ; i++) {
-    #if DEBUG_ON>2
-      debugMsg("SET arg#"+String(i)+", "+server.argName(i)+":"+server.arg(i));
-    #endif
+    debugMsgln("SET arg#"+String(i)+", "+server.argName(i)+":"+server.arg(i),3);
     if ( server.argName(i) == F("writereg") ) {
       cmd = write_reg;
       addr = server.arg(i).toInt();
@@ -92,16 +82,12 @@ void cmdPageHandler() {
     } else if ( server.argName(i) == F("setrtcntp") ) {
       cmd = set_rtc_ntp;
     } else if ( server.argName(i) == F("setntpcfg") ) {
-      #if DEBUG_ON>1
-        debugMsg(F("/cmd, setntpcfg received"));
-      #endif  
+      debugMsgln(F("/cmd, setntpcfg received"),2);
       cmd = cfg_ntp;
       ntp_item = server.arg(i);
     } else if ( server.argName(i) == F("ntp_svr") ) {
-      #if DEBUG_ON>1
-        debugMsgContinue(F("/cmd, setntpcfg received server:"));
-        debugMsg(server.arg(i));
-      #endif  
+      debugMsg(F("/cmd, setntpcfg received server:"),2);
+      debugMsgln(server.arg(i),2);
       ntp_svr = server.arg(i);
     } else if ( server.argName(i) == F("ntp_poll") ) {
       ntp_poll = server.arg(i).toInt();
@@ -127,7 +113,7 @@ void cmdPageHandler() {
                     break;
     case set_aging: setAgingOffset(offset);
                     break;
-    case set_wlan:  storeWLANsInEEPROM(ssid, pass, wlan);
+    case set_wlan:  storeWLANsInEEPROM(ssid, pass, wlan); // /cmd?setwlan=[0-3]&ssid=xxxx&pass=yyyy
                     break;
     case set_rtc_ntp: setRtcTimeNTP();
                     break;
@@ -149,6 +135,7 @@ void cmdPageHandler() {
                       myTZ.setPosix(ntpTZ);
                       storeNtpTZInEEPROM(ntpTZ);
                     }
+                    updateNTP();
                     break;
     default:        response_message = F("err");
   }
@@ -160,10 +147,7 @@ void platformPageHandler()
  * Returns a page with info on the ESP platform.
  */
 {
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /platform page."));
-  #endif
-
+  debugMsgln(F("Entering /platform page."),2);
   checkController();
 
   String response_message;
@@ -236,9 +220,9 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Chip revision"), String(ESP.getChipRevision()));
   #endif
   response_message += getTableRow2Col(F("CPU Frequency (MHz)"), String(ESP.getCpuFreqMHz()));
-  if (useRTC) {
+  if (rtcPresent) {
     response_message += getTableRow2Col(F("RTC Time"), myTZ.dateTime(getUnixTime(),RFC850));
-    response_message += getTableRow2Col(F("RTC Temp"), String(getRTCTemp(), 2));
+    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2));
   }
   String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST");
   response_message += getTableRow2Col(F("Compiled on"), myTZ.dateTime(compileTime(), RFC850));  //datetime);
@@ -325,9 +309,7 @@ void platformPageHandler()
 
 void allregsPageHandler()
 {
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /allregs page."));
-  #endif
+  debugMsgln(F("Entering /allregs page."),2);
   String response_message;
   response_message.reserve(8500);
   response_message = getHTMLHead();
@@ -344,10 +326,8 @@ void allregsPageHandler()
     if (mbRegAddr[row] >= mbRegMax) { eof = true; }    
     String reginfo = mbRegDesc[row] + " [" + String(mbRegAddr[row]) + "]" + " (" + mbRegVar[row] + ")";
     String unit = " " + mbRegUnitName[mbRegUnit[row]];
-    #if DEBUG_ON>3
-      debugMsgContinue(F("processing modbus register "));
-      debugMsg(String(mbRegAddr[row]));
-    #endif
+    debugMsg(F("processing modbus register "),4);
+    debugMsgln(String(mbRegAddr[row]),4);
     switch (mbRegType[row]) {
       case f16:     MBus_get_float(mbRegAddr[row], foo_fl);
                     response_message += getTableRow2Col(reginfo, String(foo_fl) + unit);
@@ -388,11 +368,8 @@ void allregsPageHandler()
 }
 
 
-void allcoilsPageHandler()
-{
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /allcoils page."));
-  #endif
+void allcoilsPageHandler() {
+  debugMsgln(F("Entering /allcoils page."),2);
   String response_message;
   response_message.reserve(3000);
   response_message = getHTMLHead();
@@ -411,10 +388,8 @@ void allcoilsPageHandler()
   String coilInfo;
   for ( int row = 1; row <= COIL_ROWS && !eof ; row++ ) {
     if (mbCoilAddr[row] >= mbCoilMax) { eof = true; }
-    #if DEBUG_ON>3
-      debugMsgContinue(F("processing modbus coil "));
-      debugMsg(String(mbCoilAddr[row]));
-    #endif
+    debugMsg(F("processing modbus coil "),4);
+    debugMsgln(String(mbCoilAddr[row]),4);
     MBus_get_coil(mbCoilAddr[row], state);
     coilInfo = mbCoilDesc[row] + " [" + String(mbCoilAddr[row]) + "]" + " (" + mbCoilVar[row] + ")";
     response_message += getTableRow2Col(coilInfo, String(state));
@@ -432,58 +407,41 @@ void allcoilsPageHandler()
 void wlanPageHandler()
 {
   String ssid, pass;
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /wlan_config page."));
-  #endif
+  debugMsgln(F("Entering /wlan_config page."),2);
 
   // Check if there are any GET parameters, if there are, we are configuring
   if (server.hasArg(F("ssid"))) {
       ssid = server.arg("ssid");
 //    WiFi.persistent(true);
-    #if DEBUG_ON>0
-      debugMsg(F("Configuring WiFi"));
-      debugMsgContinue(F("New SSID entered:"));
-      debugMsg(ssid);
-    #endif
+    debugMsgln(F("Configuring WiFi"),2);
+    debugMsg(F("New SSID entered:"),2);
+    debugMsgln(ssid,2);
     
     if (server.hasArg(F("password")))  {
       pass = server.arg(F("password"));
-      #if DEBUG_ON>3
-      debugMsgContinue(F("New PASSWORD entered:"));
-      #endif
-      #if DEBUG_ON>8
-      debugMsgContinue(pass);
-      #endif
-      #if DEBUG_ON>3
-      debugMsg("");
-      #endif
+      debugMsg(F("New PASSWORD entered:"),4);
+      debugMsg(pass,9);
+      debugMsgln("",4);
     }
 
-    #if DEBUG_ON>0
-    debugMsgContinue("ssid length:");
-    debugMsg(String(strlen(ssid.c_str())));
-    debugMsgContinue("pass length:");
-    debugMsg(String(strlen(pass.c_str())));
-    #endif
-
+    debugMsg("ssid length:",2);
+    debugMsgln(String(strlen(ssid.c_str())),2);
+    debugMsg("pass length:",2);
+    debugMsgln(String(strlen(pass.c_str())),2);
     
     if (connectToWLAN(ssid.c_str(), pass.c_str())) {                // try to connect
       storeWLANsInEEPROM(ssid, pass, 0);                      //save in slot 0 if we did
-      #if DEBUG_ON>0
-        debugMsg("");
-        debugMsg(F("WiFi connected"));
-        debugMsgContinue(F("IP address: "));
-        debugMsg(formatIPAsString(WiFi.localIP()));
-        debugMsgContinue(F("SoftAP IP address: "));
-        debugMsg(formatIPAsString(WiFi.softAPIP()));
-      #endif
+      debugMsgln("",2);
+      debugMsgln(F("WiFi connected"),1);
+      debugMsg(F("IP address: "),1);
+      debugMsgln(formatIPAsString(WiFi.localIP()),1);
+      debugMsg(F("SoftAP IP address: "),1);
+      debugMsgln(formatIPAsString(WiFi.softAPIP()),1);
       delay(50);
       reboot();                                                     // and reboot to pick up the new config
     } else {
-      #if DEBUG_ON>0
-        debugMsg("");
-        debugMsg(F("WiFi connect failed."));
-      #endif
+      debugMsgln("",1);
+      debugMsgln(F("WiFi connect failed."),1);
     }
   } // end, got an SSID to configure
 
@@ -495,9 +453,7 @@ void wlanPageHandler()
   // form header
   response_message += getFormHead(F("Set Configuration"));
 
-  #if DEBUG_ON>3
-    debugMsg("Starting WiFi scan.");
-  #endif
+  debugMsgln("Starting WiFi scan.",4);
   // Get number of visible access points
   int ap_count = WiFi.scanNetworks();
 
@@ -524,14 +480,12 @@ void wlanPageHandler()
       wlanId += String(WiFi.RSSI(ap_idx));
       wlanId += F(")");
 
-      #if DEBUG_ON>2
-      debugMsgContinue(F("Found ssid: "));
-      debugMsg(WiFi.SSID(ap_idx));
+      debugMsg(F("Found ssid: "),3);
+      debugMsgln(WiFi.SSID(ap_idx),3);
       if ((esid[0] == ssid)) {                             //TODO multiwifi, push like stack (discard oldest)
       } else {
-        debugMsg(F("IsCurrent: N"));
+        debugMsgln(F("IsCurrent: N"),3);
       }
-      #endif
       
       response_message += getDropDownOption(ssid, wlanId, (esid[0] == ssid));
     }
@@ -571,9 +525,7 @@ void wlanPageHandler()
 */
 void utilityPageHandler()
 {
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /utility page."));
-  #endif
+  debugMsgln(F("Entering /utility page."),2);
 
   String response_message;
   response_message.reserve(2000);
@@ -623,9 +575,7 @@ void utilityPageHandler()
    Reset the ESP card
 */
 void getfilePageHandler() {
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /getfile page."));
-  #endif
+  debugMsgln(F("Entering /getfile page."),2);
 
   String response_message;
   response_message.reserve(2000);
@@ -639,15 +589,11 @@ void getfilePageHandler() {
       if (model == "") {
     model = "PS-MPPT";
   }
-  #if DEBUG_ON>0
-    debugMsgContinue(F("EEPROM got model:"));
-    debugMsg(model);
-  #endif
+  debugMsg(F("EEPROM got model:"),1);
+  debugMsgln(model,1);
   } else {
-    #if DEBUG_ON>0
-      debugMsgContinue(F("Got model from mbus:"));
-      debugMsg(model);
-    #endif
+    debugMsg(F("Got model from mbus:"),1);
+    debugMsgln(model,1);
     noController = false;
   }
   getFile(model);
@@ -661,9 +607,7 @@ void getfilePageHandler() {
    Reset the EEPROM and stored values
 */
 void resetAllPageHandler() {
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /resetall page."));
-  #endif
+  debugMsgln(F("Entering /resetall page."),2);
 
   String response_message;
   response_message.reserve(2000);
@@ -697,9 +641,7 @@ void resetAllPageHandler() {
    Reset the ESP card
 */
 void resetPageHandler() {
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /reset page."));
-  #endif
+  debugMsgln(F("Entering /reset page."),2);
 
   String response_message;
   response_message.reserve(2000);
@@ -719,13 +661,10 @@ void resetPageHandler() {
 
 void setTimePageHandler() {
  //   Page to set RTC.
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /setTime page."));
-  #endif
-    String serverArg = "";
+  debugMsgln(F("Entering /setTime page."),2);
+  String serverArg = "";
 
- if (server.hasArg("tzname")) // for POSIX lookup
-  {
+  if (server.hasArg("tzname")) {          // for POSIX lookup
     serverArg = String(server.arg("tzname").c_str());
     if ( serverArg.length() > 3 && serverArg.length() < 64 ) {
       tzName = server.arg("tzname").c_str();
@@ -744,31 +683,69 @@ void setTimePageHandler() {
 
   response_message += F("<center><img src=\"/img/setTime.png\"></center>");
   response_message += getFormHead("Clock status");
+
+  if (rtcPresent) {
+  response_message += F("The RTC (Real Time Clock) uses a battery to keep time while the controller is not connected to power. ");
+  }
+  response_message += F("NTP (Network Time Protocol) can retrieve the current time if a connection to the Internet is available. <br><br>");
   
-  if (useRTC) {  
+  if (rtcPresent) {  
     response_message += getTextInput(F("Current RTC time"), F("rtc_time"), myTZ.dateTime(getUnixTime(),RFC850), true);
     response_message += F("<br><br>");
-  } 
+    response_message += getTextInput(F("RTC last set"), F("rtc_lastset"), myTZ.dateTime(getRtcLastSetTime(),RFC850), true);
+    response_message += F("<br><br>");
+  } else {
+    response_message += getTextInput(F("RTC not available<br><br>"), F("rtc_avail"), "", true);
+  }
   
   if (timeStatus() == timeSet) {  // ntp got time
     response_message += getTextInput(F("Current NTP time"), F("ntp_time"), myTZ.dateTime(RFC850), true);
     response_message += F("<br><br>");
     response_message += getTextInput(F("Last NTP update"), F("ntp_update"), myTZ.dateTime(lastNtpUpdateTime(), UTC_TIME, RFC850), true);
     response_message += F("<br><br>");
-  } else if (!useRTC) {
-    response_message += F("<br>No time source.");
-  }
-  
-  if (useRTC) {
-    response_message += getTextInput(F("RTC last set"), F("rtc_lastset"), myTZ.dateTime(getRtcLastSetTime(),RFC850), true);
+  } else if (timeStatus() == timeNeedsSync) {
+    response_message += getTextInput(F("NTP status"), F("ntp_status"), F("Needs sync"), true);
     response_message += F("<br><br>");
+  } else if (timeStatus() == timeNotSet) {
+    response_message += getTextInput(F("NTP status"), F("ntp_status"), F("Time not set by NTP"), true);
+    response_message += F("<br><br>");
+  }
+  if (rtcNeedsTime && timeStatus() != timeSet) {
+    response_message += F("No time source.<br><br>");
+  }  
+  if (rtcPresent) {
     if (timeStatus() == timeSet) {                // ntp has current time
-      response_message += F("<br><br>");
       response_message += getJsButton(F("Set RTC from NTP"), F("setRtcTimeNTP()"));
     }
     response_message += getJsButton(F("Set RTC from computer"), F("setRtcTime()"));
     response_message += F("<br><br>");
+  }
+  response_message += getFormFoot();
 
+//getTextInput(String heading, String input_name, String value, boolean disabled)
+//getNumberInput(String heading, String input_name, int minVal, int maxVal, int value, boolean disabled)
+  response_message += getFormHead("Configure NTP");
+  response_message += F("The NTP poll time should <i>not</i> be set to a multiple of 60 seconds. That will help spread ");
+  response_message += F("out the load on the NTP servers. 7201 seconds is good, 7200 is not. If using an ntp.org pool ");
+  response_message += F("server, polls should happen no more often than every 1/2 hour (1801 seconds) to comply with ");
+  response_message += F("their terms of service. <br><br>");
+  response_message += getTextInput(F("NTP server"), F("ntp_svr"), ntpServer, false);
+  response_message += F("<br><br>");
+  String foo = F("Poll interval<br>(");
+  foo += String(NTP_MIN_INTERVAL);
+  foo += "-";
+  foo += String(NTP_MAX_INTERVAL);
+  foo += F(" sec)");
+  response_message += getNumberInput(foo, F("ntp_poll"), 601, 64999, ntpInterval, false);
+  response_message += "<br><br>";
+  response_message += getTextInput(F("POSIX timezone string"), F("ntp_tz"), ntpTZ, false);
+  response_message += F("<br><br>");
+  response_message += getJsButton(F("Update NTP settings"), F("setNtpCfg()"));
+  response_message += F("<br><br>");
+  response_message += getFormFoot();
+
+  if (rtcPresent && !rtcNeedsTime) {
+    response_message += getFormHead("Real Time Clock (RTC) trimming");
     response_message += F("The RTC crystal will be trimmed automatically over time if connected to the Internet and using NTP.<br>\
                           If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year (0.1 ppm).<br>\
                           The offset is where RTC time is compared to NTP, negative means it's fast (ahead of NTP).<br>\
@@ -776,7 +753,7 @@ void setTimePageHandler() {
     response_message += String(rtc_max_unsync);
     response_message += F(" ms and stable, an automatic trim adjustment will be made.<br>\
                           Since last set, the RTC is running about ");
-    float my_ppm = getRTCppm();
+    float my_ppm = getRtcppm();
     if (my_ppm < 0) {
       my_ppm *= -1.0;  // abs() doesn't seem to work right on ESP8266, this does
       response_message += String(my_ppm,3);
@@ -792,30 +769,11 @@ void setTimePageHandler() {
     response_message += getNumberInput(F("RTC crystal trim"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
     response_message += F("<br><div>(&plusmn;127 - lower makes RTC faster and the offset above decrease)</div><br>");
     response_message += getJsButton(F("Set crystal trim"), F("setAging('rtc_offset')"));
+    response_message += F("<br><br>");
+    response_message += getFormFoot();
   }
   
-  response_message += getFormFoot();
-  response_message += getFormHead("Configure NTP");
-
-//getTextInput(String heading, String input_name, String value, boolean disabled)
-//getNumberInput(String heading, String input_name, int minVal, int maxVal, int value, boolean disabled)
-
-  response_message += getTextInput(F("NTP server"), F("ntp_svr"), ntpServer, false);
-  response_message += F("<br><br>");
-  String foo = F("Poll interval<br>(");
-  foo += String(NTP_MIN_INTERVAL);
-  foo += "-";
-  foo += String(NTP_MAX_INTERVAL);
-  foo += F(" sec)");
-  response_message += getNumberInput(foo, F("ntp_poll"), 601, 64999, ntpInterval, false);
-  response_message += "<br><br>";
-  response_message += getTextInput(F("POSIX timezone string"), F("ntp_tz"), ntpTZ, false);
-  response_message += F("<br><br>");
-  response_message += getJsButton(F("Update NTP settings"), F("setNtpCfg()"));
-  response_message += getFormFoot();
- 
-  response_message += getFormHead(F("Configuration Info"));
-
+  response_message += getFormHead(F("POSIX timezone lookup"));
   response_message += F("You can try a POSIX lookup by entering an ");
   response_message += F("<a href=\"https://en.wikipedia.org/wiki/List_of_tz_database_time_zones\" target=\"_blank\">");
   response_message += F("Olson name</a> (like America/Detroit) here, and then copy/paste it to the field above. ");
@@ -828,13 +786,8 @@ void setTimePageHandler() {
   response_message += F("<a href=\"http://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html\" target=\"_blank\">");
   response_message += F("POSIX time zone string reference,</a> e.g. US Eastern is <b>EST5EDT,M3.2.0,M11.1.0</b>. ");
   response_message += F("<br><hr/>");
-  response_message += F("The NTP poll time should <i>not</i> be set to a multiple of 60 seconds. That will help spread ");
-  response_message += F("out the load on the NTP servers. 7201 seconds is good, 7200 is not. If using an ntp.org pool ");
-  response_message += F("server, polls should happen no more often than every 1/2 hour (1800 seconds) to comply with ");
-  response_message += F("their terms of service.");
   response_message += getFormFoot();
-
-
+  
   response_message += getHTMLFoot();
   server.send(200, F("text/html"), response_message);
 }
@@ -885,9 +838,7 @@ void setTimePageHandler() {
       dataType = "application/octet-stream";
     }
     if (server.streamFile(dataFile, dataType) != dataFile.size()) {
-    #if DEBUG_ON>3
-        debugMsg(F("Sent less data than expected!"));
-    #endif
+    debugMsgln(F("Sent less data than expected!"),4);
     }
   
     dataFile.close();
@@ -896,9 +847,7 @@ void setTimePageHandler() {
   
   
   void sdPageHandler(String URI){
-    #if DEBUG_ON>3
-      debugMsg("sdPageHandler URI:/sd/"+URI);
-    #endif
+    debugMsgln("sdPageHandler URI:/sd/"+URI,4);
     String relative_uri = "/"+URI;
   /*  checkController();
     String response_message;
@@ -932,8 +881,6 @@ void setTimePageHandler() {
       message += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
     }
     server.send(404, "text/plain", message);
-    #if DEBUG_ON>3
-      debugMsg(message);
-    #endif
+    debugMsgln(message,5);
   }
 #endif //esp32

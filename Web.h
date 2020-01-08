@@ -3,7 +3,8 @@
  * Configure and start the web server
  * 
  */
- 
+
+void startWeb() { 
   server.on("/",               statusPageHandler);
   server.on(F("/status"),      statusPageHandler);
   
@@ -98,9 +99,7 @@
   }, handleFileUpload);
 
   server.onNotFound([]() {                              // If the client requests any URI
-    #if DEBUG_ON>2
-      debugMsg("server.onNotFound:" + server.uri());
-    #endif
+    debugMsgln("server.onNotFound:" + server.uri(),3);
     if (!handleFileRead(server.uri()))                  // send it if it exists
       server.send(404, F("text/plain"), F("404: Not Found")); // otherwise, respond with a 404 (Not Found) error
   });
@@ -114,10 +113,10 @@
   server.serveStatic("/ctl/TS-MPPT.png",      FILESYSTEM, "/ctl/TS-MPPT.png",       "max-age=43200"); 
   server.serveStatic("/ctl/TS-600.png",       FILESYSTEM, "/ctl/TS-600.png",        "max-age=43200"); 
   server.serveStatic("/ctl/Nocontroller.png", FILESYSTEM, "/ctl/Nocontroller.png",  "max-age=43200"); 
-  #ifndef debugjs
+  #ifndef DEBUG_JS
     server.serveStatic("/local.js",             FILESYSTEM, "/local.js",              "max-age=43200");
   #endif 
-  #ifndef debugcss
+  #ifndef DEBUG_CSS
     server.serveStatic("/local.css",            FILESYSTEM, "/local.css",             "max-age=43200");
   #endif
   server.serveStatic("/img/charging.png",     FILESYSTEM, "/img/charging.png",      "max-age=43200");
@@ -133,10 +132,8 @@
 
 
   #ifdef ARDUINO_ARCH_ESP32
-    #if DEBUG_ON>2
-      debugMsg("ESP32 server.ons");
-    #endif
-
+    debugMsgln("ESP32 server.ons",1);
+    
     server.on("/sd/{}", []() {
       sdPageHandler(server.pathArg(0));
     });
@@ -178,6 +175,6 @@
 #endif // ARDUINO_ARCH_ESP32
   
   server.begin();
-  #if DEBUG_ON>0
-  debugMsg(F("HTTP server started"));
-  #endif
+  debugMsgln(F("HTTP server started"),1);
+
+}

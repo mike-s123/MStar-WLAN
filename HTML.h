@@ -11,7 +11,7 @@
 String getLocalJs() {                     // point to local.js in FILESYSTEM here
   String js = F("<script src=\"");
   js += F("/local.js");
-  #ifdef debugjs
+  #ifdef DEBUG_JS
     js += "?" + myTZ.dateTime(ATOM);
   #endif            
   js += F("\"></script>");
@@ -28,7 +28,7 @@ String wrapScript(String script) {        // in: script out: script wrapped in t
 String getHTMLHead(int refresh=0) {
   String header = F("<!DOCTYPE html><html lang=\"en\"><head>");
   header += F("<link href=\"/local.css");
-  #ifdef debugcss
+  #ifdef DEBUG_CSS
     header += "?" + myTZ.dateTime(ATOM);
   #endif            
   header += F("\" rel=\"stylesheet\">");
@@ -341,9 +341,7 @@ String getSubmitButton(String buttonText) {
 }
 
 String getJsButton(String buttonText, String onClick) {
-  #if DEBUG_ON>3
-    debugMsg(F("getJsButton"));
-  #endif
+  debugMsgln(F("getJsButton"),4);
   String result = F("<form><input type=\"button\" value=\"");
   result += buttonText;
   result += F("\" onclick=\"");

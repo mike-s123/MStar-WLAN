@@ -44,9 +44,7 @@ String getContentType(String filename); // fwd
 
 #ifdef ARDUINO_ARCH_ESP8266
   bool handleFileRead(String path) {
-    #if DEBUG_ON>2
-      debugMsg("handleFileRead: " + path);
-    #endif
+    debugMsgln("handleFileRead: " + path,3);
     if (path.endsWith("/")) {
       path += "index.htm";
     }
@@ -56,17 +54,13 @@ String getContentType(String filename); // fwd
       if (FILESYSTEM.exists(pathWithGz)) {
         path += ".gz";
       }
-      #if DEBUG_ON>2
-        debugMsg("handleFileRead, opening: " + path);
-      #endif
+      debugMsgln("handleFileRead, opening: " + path,3);
       File file = FILESYSTEM.open(path, "r");
       server.streamFile(file, contentType);
       file.close();
       return true;
     }
-    #if DEBUG_ON>2
-      debugMsg("handleFileRead: " + path + " doesn't exist?");
-    #endif
+    debugMsgln("handleFileRead: " + path + " doesn't exist?",3);
     return false;
   }
   
@@ -80,9 +74,7 @@ String getContentType(String filename); // fwd
       if (!filename.startsWith("/")) {
         filename = "/" + filename;
       }
-      #if DEBUG_ON>2
-        debugMsgContinue("handleFileUpload Name: "); debugMsg(filename);
-      #endif
+      debugMsg("handleFileUpload Name: ",3); debugMsgln(filename,3);
       fsUploadFile = FILESYSTEM.open(filename, "w");
       filename = String();
     } else if (upload.status == UPLOAD_FILE_WRITE) {
@@ -94,9 +86,7 @@ String getContentType(String filename); // fwd
       if (fsUploadFile) {
         fsUploadFile.close();
       }
-      #if DEBUG_ON>2
-        debugMsgContinue("handleFileUpload Size: "); debugMsg(String(upload.totalSize));
-      #endif
+        debugMsg("handleFileUpload Size: ",3); debugMsgln(String(upload.totalSize),3);
     }
   }
   
@@ -105,9 +95,7 @@ String getContentType(String filename); // fwd
       return server.send(500, "text/plain", "BAD ARGS");
     }
     String path = server.arg(0);
-    #if DEBUG_ON>2
-      debugMsg("handleFileDelete: " + path);
-    #endif
+    debugMsgln("handleFileDelete: " + path,3);
     if (path == "/") {
       return server.send(500, "text/plain", "BAD PATH");
     }
@@ -124,9 +112,7 @@ String getContentType(String filename); // fwd
       return server.send(500, "text/plain", "BAD ARGS");
     }
     String path = server.arg(0);
-    #if DEBUG_ON>2
-      debugMsg("handleFileCreate: " + path);
-    #endif
+    debugMsgln("handleFileCreate: " + path,3);
     if (path == "/") {
       return server.send(500, "text/plain", "BAD PATH");
     }
@@ -150,11 +136,8 @@ String getContentType(String filename); // fwd
     }
   
     String path = server.arg("dir");
-    #if DEBUG_ON>2
-      debugMsg("handleFileList: " + path);
-    #endif
+    debugMsgln("handleFileList: " + path,3);
     Dir dir = FILESYSTEM.openDir(path);
-//    path = String();
   
     String output = "[";
     while (dir.next()) {
@@ -195,9 +178,7 @@ String getContentType(String filename); // fwd
 #ifdef ARDUINO_ARCH_ESP32
 
 bool handleFileRead(String path) {
-  #if DEBUG_ON>2
-    debugMsg("handleFileRead: " + path);
-  #endif
+  debugMsgln("handleFileRead: " + path,3);
   if (path.endsWith("/")) {
     path += "index.htm";
   }
@@ -225,9 +206,7 @@ void handleFileUpload() {
     if (!filename.startsWith("/")) {
       filename = "/" + filename;
     }
-    #if DEBUG_ON>2
-      debugMsgContinue("handleFileUpload Name: "); debugMsg(filename);
-    #endif
+    debugMsg("handleFileUpload Name: ",3); debugMsgln(filename,3);
     fsUploadFile = FILESYSTEM.open(filename, "w");
     filename = String();
   } else if (upload.status == UPLOAD_FILE_WRITE) {
@@ -239,9 +218,7 @@ void handleFileUpload() {
     if (fsUploadFile) {
       fsUploadFile.close();
     }
-    #if DEBUG_ON>2
-      debugMsgContinue("handleFileUpload Size: "); debugMsg(String(upload.totalSize));
-    #endif
+    debugMsg("handleFileUpload Size: ",3); debugMsgln(String(upload.totalSize),3);
   }
 }
 
@@ -250,9 +227,7 @@ void handleFileDelete() {
     return server.send(500, "text/plain", "BAD ARGS");
   }
   String path = server.arg(0);
-  #if DEBUG_ON>2
-  debugMsg("handleFileDelete: " + path);
-  #endif
+  debugMsgln("handleFileDelete: " + path,3);
   if (path == "/") {
     return server.send(500, "text/plain", "BAD PATH");
   }
@@ -269,9 +244,7 @@ void handleFileCreate() {
     return server.send(500, "text/plain", "BAD ARGS");
   }
   String path = server.arg(0);
-  #if DEBUG_ON>2
-    debugMsg("handleFileCreate: " + path);
-  #endif
+  debugMsgln("handleFileCreate: " + path,3);
   if (path == "/") {
     return server.send(500, "text/plain", "BAD PATH");
   }
@@ -295,9 +268,7 @@ void handleFileList() {
   }
 
   String path = server.arg("dir");
-  #if DEBUG_ON>2
-    debugMsg("handleFileList: " + path);
-  #endif
+  debugMsgln("handleFileList: " + path,3);
 
   File root = FILESYSTEM.open(path);
   path = String();

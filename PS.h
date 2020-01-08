@@ -8,9 +8,7 @@ void psStatusPageHandler () {
 /*  
  *   Returns a page of basic controller status.
  */
-  #if DEBUG_ON>0
-    debugMsg(F("Entering Prostar /status page."));
-  #endif
+  debugMsgln(F("Entering Prostar /status page."),1);
   fullReg reg;
   int result;
   String response_message;
@@ -118,9 +116,7 @@ void psSetChargePageHandler() {
  */
   int addr, result;
   String desc, val;
-  #if DEBUG_ON>0
-    debugMsg(F("Entering PS /setcharge page."));
-  #endif
+  debugMsgln(F("Entering PS /setcharge page."),1);
 
   checkController();
 
@@ -171,9 +167,7 @@ void psSetOtherPageHandler() {
  */
   int addr, result;
   String desc, val;
-  #if DEBUG_ON>0
-    debugMsg(F("Entering /setother page."));
-  #endif
+  debugMsgln(F("Entering /setother page."),1);
    
   checkController();
 
