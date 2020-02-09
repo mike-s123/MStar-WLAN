@@ -209,3 +209,45 @@ void psSetOtherPageHandler() {
   response_message += getHTMLFoot();
   server.send(200, F("text/html"), response_message);
 }
+
+void psLog() {
+
+  /*
+   *   Battery V (18,adc_vb_f_1m)
+   *   Net A (25,adc_ib_f_1m)
+   *   Target V (36,vb_ref)
+   *   Battery temp (27,T_batt)
+   *   Array V (19,adc_va)
+   *   Array C (17,adc_ia)
+   *   Load V (20,adc_vl)
+   *   Load C (22,adc_il)
+   *   State (Abs/Fl/Eq) (33,charge_state)
+   *     0 START
+   *     1 NIGHT_CHECK
+   *     2 DISCONNECT
+   *     3 NIGHT
+   *     4 FAULT
+   *     5 BULK
+   *     6 ABSORPTION
+   *     7 FLOAT
+   *     8 EQUALIZE
+   */
+  int registers[] = { 18,25,36,27,19,17,20,22,33 };
+  int numReg = sizeof(registers)/sizeof(registers[0]);
+  fullReg reg;
+  String logLine="";
+  static String logLast="";
+  logLine.reserve(100);
+  for (int i=0; i<numReg; i++) {
+    mbGetFullReg(reg, registers[i]);
+    logLine+=String(reg.value);
+    if (i+1 < numReg) logLine += ",";
+  }
+  if (logLine != logLast) { // only write an entry if something has changed
+    #ifdef ARDUINO_ARCH_ESP32
+      ctl_logFile.print(UTC.dateTime(F("Y-m-d\\TH:i\\Z"))+","); //ECMAScript: YYYY-MM-DDTHH:mmZ
+      ctl_logFile.println(logLine);
+    #endif
+    logLast = logLine;
+  }
+}

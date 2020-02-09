@@ -31,7 +31,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
   #endif
 
-//  WiFi.persistent(true);
+  WiFi.persistent(true);
   if (strlen(ssid)>0) {         // here we try to connect using the info passed to us
     wlan_count++ ;
     if (password && strlen(password) > 0 ) {
@@ -91,7 +91,14 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     }  
 
     #ifdef ARDUINO_ARCH_ESP32
-      WiFi.config(IPAddress(0,0,0,0), IPAddress(0,0,0,0), IPAddress(0,0,0,0));  // test, force DHCP
+      //WiFi.config(IPAddress(0,0,0,0), IPAddress(0,0,0,0), IPAddress(0,0,0,0));  // test, force DHCP
+      #ifdef STATIC_IP
+        IPAddress local_IP(192, 168, 168, 184); // my IP address
+        IPAddress gateway(192, 168, 168, 2);
+        IPAddress subnet(255, 255, 255, 0);
+        IPAddress primaryDNS(192, 168, 168, 1);   //optional
+        WiFi.config(local_IP, gateway, subnet, primaryDNS);
+      #endif  
     #endif
     while ( wifiMulti.run() != WL_CONNECTED && wlan_count ) {
       delay(500);
@@ -103,10 +110,13 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
         return false;
       }
     }
-    if (WiFi.isConnected()) {
+    if (WiFi.isConnected()) {  
       debugMsgln("",1);
-      debugMsg(F("WLAN connected to "),1);
-      debugMsgln(WiFi.SSID(),1);
+      debugMsg(F("WLAN connected to:"),1);
+      debugMsgln(String(WiFi.SSID()),1);
+      IPAddress ip = WiFi.localIP();
+      debugMsg(F("WLAN IP address:"),1);
+      debugMsgln(formatIPAsString(ip),1);
     }
   } else {  // no wlan_count
     debugMsgln(F("No WLANs configured"),1);

@@ -48,10 +48,10 @@ void cmdPageHandler() {
   String data, value, ssid, pass, response_message = F("OK"), rtcTime, ntp_item, ntp_svr = "", ntp_tz = "";
   enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, set_rtc_ntp, cfg_ntp };
   commands cmd;
-  debugMsg(F("SET args received:"),3);
-  debugMsgln(String(numArgs),3);
+  debugMsg(F("SET args received:"),4);
+  debugMsgln(String(numArgs),4);
   for (int i=0 ; i<numArgs ; i++) {
-    debugMsgln("SET arg#"+String(i)+", "+server.argName(i)+":"+server.arg(i),3);
+    debugMsgln("SET arg#"+String(i)+", "+server.argName(i)+":"+server.arg(i),4);
     if ( server.argName(i) == F("writereg") ) {
       cmd = write_reg;
       addr = server.arg(i).toInt();
@@ -278,8 +278,8 @@ void platformPageHandler()
     if (sd_card_available) {
       response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
       response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
-      if (sd_card_log) response_message += getTableRow2Col(F("Log file name"), \
-        "<a href=\"/sd/" + my_hostname + ".log" + "\">" + "/sd/" + my_hostname + ".log</a>");
+      if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Log file name"), \
+        "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>");
     }
     response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
     response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
@@ -412,7 +412,7 @@ void wlanPageHandler()
   // Check if there are any GET parameters, if there are, we are configuring
   if (server.hasArg(F("ssid"))) {
       ssid = server.arg("ssid");
-//    WiFi.persistent(true);
+      WiFi.persistent(true);
     debugMsgln(F("Configuring WiFi"),2);
     debugMsg(F("New SSID entered:"),2);
     debugMsgln(ssid,2);
@@ -695,7 +695,8 @@ void setTimePageHandler() {
     response_message += getTextInput(F("RTC last set"), F("rtc_lastset"), myTZ.dateTime(getRtcLastSetTime(),RFC850), true);
     response_message += F("<br><br>");
   } else {
-    response_message += getTextInput(F("RTC not available<br><br>"), F("rtc_avail"), "", true);
+    response_message += getTextInput(F("RTC not available"), F("rtc_avail"), "", true);
+    response_message += F("<br><br>");
   }
   
   if (timeStatus() == timeSet) {  // ntp got time
@@ -725,10 +726,10 @@ void setTimePageHandler() {
 //getTextInput(String heading, String input_name, String value, boolean disabled)
 //getNumberInput(String heading, String input_name, int minVal, int maxVal, int value, boolean disabled)
   response_message += getFormHead("Configure NTP");
-  response_message += F("The NTP poll time should <i>not</i> be set to a multiple of 60 seconds. That will help spread ");
-  response_message += F("out the load on the NTP servers. 7201 seconds is good, 7200 is not. If using an ntp.org pool ");
-  response_message += F("server, polls should happen no more often than every 1/2 hour (1801 seconds) to comply with ");
-  response_message += F("their terms of service. <br><br>");
+  response_message += F("The NTP poll time should <i>not</i> be set to a multiple of 60 seconds. That will help spread \
+                        out the load on the NTP servers. 7201 seconds is good, 7200 is not. If using an ntp.org pool \
+                        server, polls should happen no more often than every 1/2 hour (1801 seconds) to comply with \
+                        their terms of service. <br><br>");
   response_message += getTextInput(F("NTP server"), F("ntp_svr"), ntpServer, false);
   response_message += F("<br><br>");
   String foo = F("Poll interval<br>(");
@@ -745,10 +746,11 @@ void setTimePageHandler() {
   response_message += getFormFoot();
 
   if (rtcPresent && !rtcNeedsTime) {
-    response_message += getFormHead("Real Time Clock (RTC) trimming");
-    response_message += F("The RTC crystal will be trimmed automatically over time if connected to the Internet and using NTP.<br>\
-                          If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year (0.1 ppm).<br>\
-                          The offset is where RTC time is compared to NTP, negative means it's fast (ahead of NTP).<br>\
+    response_message += getFormHead("RTC speed adjustment");
+    response_message += F("The RTC crystal will be trimmed automatically over time if connected to the Internet and using NTP. \
+                          If not using NTP, it can be set by hand here. Each unit is about 3 seconds per year (0.1 ppm). \
+                          The factory default is 0. \
+                          The offset is where RTC time is compared to NTP, negative means it's fast (ahead of NTP). \
                           When it's more than &plusmn;");
     response_message += String(rtc_max_unsync);
     response_message += F(" ms and stable, an automatic trim adjustment will be made.<br>\
@@ -822,7 +824,13 @@ void setTimePageHandler() {
     } else if (path.endsWith(".zip")) {
       dataType = "application/zip";
     }
-  
+
+    if (logFile) logFile.flush();      // flush logs
+    if (ctl_logFile) ctl_logFile.flush();
+    #ifdef EZT_DEBUG
+      if (ezt_logFile) ezt_logFile.flush();
+    #endif
+
     File dataFile = SD.open(path.c_str());
     if (dataFile.isDirectory()) {
       path += "/index.htm";
@@ -844,7 +852,6 @@ void setTimePageHandler() {
     dataFile.close();
     return true;
   }
-  
   
   void sdPageHandler(String URI){
     debugMsgln("sdPageHandler URI:/sd/"+URI,4);

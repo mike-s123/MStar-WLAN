@@ -1,7 +1,7 @@
 
 ##############################################################
 
-MStar-WLAN.name=ESP32 Wrover Module (16 MB, custom partition)
+MStar-WLAN.name=ESP32 MStar-WLAN (WROVER-B, 16 MB, custom partition)
 
 MStar-WLAN.upload.tool=esptool_py
 MStar-WLAN.upload.maximum_size=1310720
@@ -17,44 +17,16 @@ MStar-WLAN.build.variant=esp32
 MStar-WLAN.build.board=ESP32_DEV
 
 MStar-WLAN.build.f_cpu=240000000L
-MStar-WLAN.build.flash_size=4MB
+MStar-WLAN.build.flash_size=16MB
 MStar-WLAN.build.flash_freq=40m
 MStar-WLAN.build.flash_mode=dio
 MStar-WLAN.build.boot=dio
 MStar-WLAN.build.partitions=default
 MStar-WLAN.build.defines=-DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue
 
-MStar-WLAN.menu.PartitionScheme.default=Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
-MStar-WLAN.menu.PartitionScheme.default.build.partitions=default
-MStar-WLAN.menu.PartitionScheme.defaultffat=Default 4MB with ffat (1.2MB APP/1.5MB FATFS)
-MStar-WLAN.menu.PartitionScheme.defaultffat.build.partitions=default_ffat
-MStar-WLAN.menu.PartitionScheme.default_8MB=8M Flash (3MB APP/1.5MB FAT)
-MStar-WLAN.menu.PartitionScheme.default_8MB.build.partitions=default_8MB
-MStar-WLAN.menu.PartitionScheme.minimal=Minimal (1.3MB APP/700KB SPIFFS)
-MStar-WLAN.menu.PartitionScheme.minimal.build.partitions=minimal
-MStar-WLAN.menu.PartitionScheme.no_ota=No OTA (2MB APP/2MB SPIFFS)
-MStar-WLAN.menu.PartitionScheme.no_ota.build.partitions=no_ota
-MStar-WLAN.menu.PartitionScheme.no_ota.upload.maximum_size=2097152
-MStar-WLAN.menu.PartitionScheme.noota_3g=No OTA (1MB APP/3MB SPIFFS)
-MStar-WLAN.menu.PartitionScheme.noota_3g.build.partitions=noota_3g
-MStar-WLAN.menu.PartitionScheme.noota_3g.upload.maximum_size=1048576
-MStar-WLAN.menu.PartitionScheme.noota_ffat=No OTA (2MB APP/2MB FATFS)
-MStar-WLAN.menu.PartitionScheme.noota_ffat.build.partitions=noota_ffat
-MStar-WLAN.menu.PartitionScheme.noota_ffat.upload.maximum_size=2097152
-MStar-WLAN.menu.PartitionScheme.noota_3gffat=No OTA (1MB APP/3MB FATFS)
-MStar-WLAN.menu.PartitionScheme.noota_3gffat.build.partitions=noota_3gffat
-MStar-WLAN.menu.PartitionScheme.noota_3gffat.upload.maximum_size=1048576
-MStar-WLAN.menu.PartitionScheme.huge_app=Huge APP (3MB No OTA/1MB SPIFFS)
-MStar-WLAN.menu.PartitionScheme.huge_app.build.partitions=huge_app
-MStar-WLAN.menu.PartitionScheme.huge_app.upload.maximum_size=3145728
-MStar-WLAN.menu.PartitionScheme.min_spiffs=Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)
-MStar-WLAN.menu.PartitionScheme.min_spiffs.build.partitions=min_spiffs
-MStar-WLAN.menu.PartitionScheme.min_spiffs.upload.maximum_size=1966080
-MStar-WLAN.menu.PartitionScheme.fatflash=16M Flash (2MB APP/12.5MB FAT)
-MStar-WLAN.menu.PartitionScheme.fatflash.build.partitions=ffat
-MStar-WLAN.menu.PartitionScheme.largest_spiffs=Largest SPIFFS (~13 MB FS)
-MStar-WLAN.menu.PartitionScheme.largest_spiffs.build.partitions=largest_spiffs_16MB
-MStar-WLAN.menu.PartitionScheme.largest_spiffs.upload.maximum_size=1572864
+MStar-WLAN.menu.PartitionScheme.default=Largest SPIFFS (~13 MB FS)
+MStar-WLAN.menu.PartitionScheme.default.build.partitions=largest_spiffs_16MB
+MStar-WLAN.menu.PartitionScheme.default.upload.maximum_size=1572864
 
 MStar-WLAN.menu.FlashMode.qio=QIO
 MStar-WLAN.menu.FlashMode.qio.build.flash_mode=dio

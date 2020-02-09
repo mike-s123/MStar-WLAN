@@ -85,6 +85,8 @@ void setupWLAN() {
     WiFi.mode(WIFI_STA);
     char __hostname[sizeof(my_hostname)+1];
     my_hostname.toCharArray(__hostname, sizeof(__hostname));
+    // __hostname[sizeof(my_hostname)] = '\0';
+    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     WiFi.setHostname(__hostname);             // TODO not working
   }
   #endif
@@ -129,42 +131,70 @@ void setupModbus() {
 
 
 #ifdef ARDUINO_ARCH_ESP32
+
   bool checkSDCard(int cardNum = 0) {
     int csPin = SD_CARD0_CS; 
-    pinMode(SD_DETECT, INPUT_PULLUP);  // TODO future hardware, only for SDCard0
-    if (cardNum == 1 ) csPin = SD_CARD1_CS;
+    if (cardNum == 1 ) csPin = SD_CARD1_CS;    
     sd_card_available = SD.begin(csPin);
     if(!sd_card_available){
       debugMsgln("SD card mount failed",1);
-    } else {
-      if (sd_card_log) {
-//          String lfn = "/"+ my_hostname + ".log";
-//          File logFile = SD.open(lfn,FILE_WRITE); // starts new log
-//          if (logFile) {
-//            logFile.print(myTZ.dateTime(ATOM)+" ");
-//            logFile.println(F("Log cleared"));
-//          }
+    } else { // SD card mounted
+      logFile = SD.open(logFileName,FILE_APPEND);
+      ctl_logFile = SD.open(CTL_LOGFILE,FILE_APPEND);
+      #ifdef EZT_DEBUG
+        ezt_logFile = SD.open(EZT_LOGFILE,FILE_APPEND);
+      #endif
+      if (logFile && millis() < 15000) { // just booted, not a running SD card insertion      
         debugMsgln("",1);
         debugMsgln(F("***********BOOTED***********"),1);
         debugMsg(F("Reset reason CPU 0:"),1);
         debugMsgln(get_reset_reason(0),1);
         debugMsg(F("Reset reason CPU 1:"),1);
         debugMsgln(get_reset_reason(1),1);
+        #ifdef EZT_DEBUG
+          if (ezt_logFile) ezt_logFile.println(F("***********eztime.log opened***********"));
+        #endif
       }
       switch (SD.cardType()) { 
         case CARD_NONE:   debugMsgln(F("No SD card attached"),1);
                           break;
-        case CARD_MMC:    debugMsgln(F("MMC card attached"),1);
+        case CARD_MMC:    debugMsgln(F("MMC card available"),1);
                           break;
-        case CARD_SD:     debugMsgln(F("SD card attached"),1);
+        case CARD_SD:     debugMsgln(F("SD card availaable"),1);
                           break;
-        case CARD_SDHC:   debugMsgln(F("SDHC card attached"),1);
+        case CARD_SDHC:   debugMsgln(F("SDHC card available"),1);
                           break;
         default:          debugMsgln(F("SD card unknown"),1);
                           break;
       }
     }
   }
+
+  void IRAM_ATTR SDCardIRQ(){
+    sd_card_changed = true;
+  }
+
+  void setupSDCard(){
+    pinMode(SD_DETECT, INPUT_PULLUP);  // only for SDCard0
+    attachInterrupt(digitalPinToInterrupt(SD_DETECT), SDCardIRQ, CHANGE); 
+  }
+
+  void changeSDCard(){
+    delay(100); // debounce
+    if (digitalRead(SD_DETECT)) { // sd card removed
+      SD.end();
+      sd_card_available = false;
+      debugMsgln(F("SD card removed"),1);
+    } else {                // sd card inserted
+      delay(100);
+      if (!digitalRead(SD_DETECT)) {
+        debugMsgln(F("SD card inserted"),1);
+        checkSDCard(0);
+      }
+    }
+    sd_card_changed = false; // reset for next time
+  }
+
 #endif //esp32
 
 

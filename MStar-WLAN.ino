@@ -1,5 +1,5 @@
 /*
- * MStar-WLAN 2019 mjs
+ * MStar-WLAN 2020 mjs
  * 
  * ESP8266 (working) or ESP32
  *   ESP8266 - Lolin D1 Mini Pro
@@ -11,37 +11,40 @@
  *   -vtables: IRAM
  *   
  *   ESP32 - WROVER-B, custom partitions (WROVER 16 MB w/13M FS with modified files)
- *   cpu: fastest
- *   flash: 2M+ FILESYSTEM
  *   lwIP: v2 higher bandwidth
  *   vTables: IRAM
  *   
  *   Original work, License CC BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
+ *   All rights reserved.
  *   some parts subject to other licenses as noted.
  *   
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.200108"
+#define SOFTWARE_VERSION "v1.200207"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
                      wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
-                     More WLAN work. Started adding time support. Auto adjust<br>\
-                     RTC speed. Prep for SD card support (ESP32). Platform logging<br>\
-                     to SD card."
+                     Time support. Auto adjust RTC speed. SD card support (ESP32).<br>\
+                     Platform logging to SD card. Change for /sd/ wildcard. Controller<br>\
+                     logging to SD Card."
 
-#define DEBUG_ON 3                // enable debugging output. 0 currently causes issues (TODO 12/22/2019)
+#define DEBUG_ON 2                // enable debugging output. If defined, debug_level can be changed during runtime.
                                   // 0 off, 1 least detail, 8 most detail, 9 includes passwords
-                                  // 0 not working on ESP32 for now
 //#define DEBUG_JS                   // ifdef, overrides servestatic to avoid caching of local.js
 //#define DEBUG_CSS                  // ditto, for css
+
 #ifdef DEBUG_ON
   #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
                                     // because we're swapping the UART to new ones
   #define DEBUG_ESP_PORT logger
   //#define DEBUG_ESP_HTTP_SERVER
   //#define DEBUG_ESP_CORE
+  //#define EZT_DEBUG DEBUG           // for EZTime
 #endif
+
+//#define STATIC_IP
+
 #include <string>
 #include <sstream>
 #include <EEPROM.h>
@@ -53,7 +56,7 @@
 #ifdef ARDUINO_ARCH_ESP8266
   #include <SoftwareSerial.h>
   ADC_MODE(ADC_VCC);
-  #if DEBUG_ON>0
+  #ifdef DEBUG_ON
       SoftwareSerial logger(3, 1); // RX, TX
   #else
 //    SoftwareSerial* cSerial = nullptr;  
@@ -105,6 +108,14 @@
   #include <SPI.h>
 //  #include "SdFat.h"
   #include <HardwareSerial.h>
+  File logFile;                         // platform log file
+  String logFileName;
+  File ctl_logFile;                     // controller log file
+  #define CTL_LOGFILE "/controller.log" // must start with /
+  #ifdef EZT_DEBUG
+    File ezt_logFile;                   // ez-time log file
+    #define EZT_LOGFILE "/eztime.log"   // must start with /
+  #endif
 #endif
 
 #include <ArduinoJson.h>   // Benoit Blanchon 5.13.4, via IDE
@@ -154,7 +165,7 @@
  */
 //#define WIFI_MODE_AP_STA                // define to run AP while also connected as station
 
-#define HOSTNAME "MStarWLAN"
+#define HOSTNAME "MStarW"  // needs to be short - esp32 only does 12 char hostnames!
 
 #define JSON_VERSION "1.0"                // changes with api changes
 #define JSON_VERSION_MIN "1.0"            // changes when backward compatibility is broken
@@ -172,7 +183,7 @@
  * 128-255 (4x32) WLAN password
  * 256-272 (16) Controller model
  * 272-303 (32) ntp server
- * 304-305 (2)  ntp poll interval (u_int 16)
+ * 304-305 (2)  ntp poll interval (uint_t 16)
  * 306-337 (32) ntp POSIX timestring
  * 508-511 (4)  Valid signature (EEPROM_SIG)
  */
@@ -205,8 +216,9 @@
   #define SD_DETECT 26    // SD card inserted, only for SDCard0
   #define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
   #define SD_CARD_LOG true //log to SD card
-  bool sd_card_log = true;
+  bool sd_card_log = SD_CARD_LOG;
   bool sd_card_available = false;
+  volatile bool sd_card_changed = false;
   bool needLogTime = true;  // whether we need to print time to the log
 #endif
 // MBus slave id of controller
@@ -269,7 +281,6 @@ String my_hostname;
 File fsUploadFile;              // a File object to temporarily store the received file
 
 String referrer; 
-IPAddress apIP(192, 168, 99, 1);
 ModbusMaster node;
 
 #ifdef ARDUINO_ARCH_ESP8266
@@ -303,17 +314,20 @@ WiFiClient modbusClient;
 void setup() {
   #ifdef ARDUINO_ARCH_ESP32
     pinMode(I2C_SDA_RESET ,INPUT);
+    setupSDCard();
   #endif
   
   #ifdef ARDUINO_ARCH_ESP8266
     digitalWrite(SELF_RST_PIN, HIGH); // So board can do a hardware reset of itself
     pinMode(SELF_RST_PIN, OUTPUT);
   #endif
-
+  
   WiFi.macAddress(mac);
   my_MAC =  String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
   my_hostname = HOSTNAME + String("-") + my_MAC;
-
+  #ifdef ARDUINO_ARCH_ESP32
+    logFileName = "/"+ my_hostname + ".log";
+  #endif
   setupRtcSQW();  // real time clock
   setupComms();   // serial port stuff
   setupFS();      // filesystems
@@ -382,6 +396,11 @@ void loop() {
   events(); // for EZTime
   checkNtp();
   server.handleClient();
+
+  #ifdef ARDUINO_ARCH_ESP32
+    if (sd_card_changed) changeSDCard();
+  #endif
+  
   #ifndef DEBUG_ON
     serialPassthrough();
   #endif
@@ -402,10 +421,10 @@ void loop() {
     blinkRepeatTime = 300;
   } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA (or AP), flash 1/sec
     wlanConnected = true;
-    blinkOnTime = 5;
+    blinkOnTime = 200;
     blinkRepeatTime = 1000;
-  } else {                                              // no connections, every 10 sec
-    blinkOnTime = 2;
+  } else {                                              // no connections, every 3 sec
+    blinkOnTime = 25;
     blinkRepeatTime = 10000;  
   }
 

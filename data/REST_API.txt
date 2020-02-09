@@ -29,7 +29,6 @@ Variables:
 "back"		Optional. "true" or "false". Mostly for setting coils - does a Javascript 
 				"window.history.back()" to return to calling page instead of
 				returning data.
-"force"		Optional. With writeSingleCoil, bypasses checks if "true".				
 ==================================================================================				
 Commented response to query "/rest?json={"addr":0,"cmd":"readInputRegisters","count":2}"
 Definitions are in register and coil csv files (see "csv_file_desc.txt").

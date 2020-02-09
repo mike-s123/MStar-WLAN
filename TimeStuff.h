@@ -9,6 +9,7 @@
 void debugMsg(String msg, int level);
 void debugMsgln(String msg, int level);
 void tryWLAN();
+void ctlLog();
 
 signed char getAgingOffset(); // fwd declaration
 String getNtpTZFromEEPROM();
@@ -40,18 +41,8 @@ unsigned short int getNtpPollFromEEPROM();
 #define RtcEepromSecond 7
 #define RtcEepromLastSetTime 8
 #define RTC_DRIFT_FACTOR 0.9      // multiply drift offset correction by this
-/* TESTING
- * esp8266 (75565f) -1.73 ppm drift, changed offset from 0 to -22 (factor 1.3) on 12/3, 11:26
- *  0.69 drift (~40% overcorrected), -22 to -15 12/5 13:56
- * 
- * esp32 (d42fa9) 1.14 drift, rtc 0, changed offset from -32 to -21 12/3, 20:16, 0.9 factor
- *  0.571 drift, -21 to -14
- * 
- * esp32 (d42fa9) drift, rtc 5, 
- * esp32 (d42fa9) drift, rtc -6, 
- */
 
-#define NTP_DEFAULT_TZ "EST5EDT,M3.2.0,M11.1.0"   //POSIX format
+#define NTP_DEFAULT_TZ "EST5EDT,M3.2.0,M11.1.0"   // POSIX format
 #define NTP_DEFAULT_INTERVAL 7207                 // seconds, best if not a multiple of 60
 #define NTP_DEFAULT_SERVER "0.pool.ntp.org"
 #define NTP_MIN_INTERVAL 601                      // seconds
@@ -235,18 +226,18 @@ bool setRtcTimeNTP() {
       while ( ms() != 997) yield();       // for testing, deliberately set rtc wrong
     #elif RTCtestNtpSet == 2             // set 997 ms fast
       while ( ms() != 3) yield();         // for testing, deliberately set rtc wrong
-      Clock.setSecond(second()+1);       // for testing, note: may wrap with minutes
+      Clock.setSecond(myTZ.second()+1);       // for testing, note: may wrap with minutes
     #else
       while ( ms() < 6 ) yield();        // this waits for a seconds rollover
       while ( ms() > 5 ) yield();        // then updates the RTC as fast as possible
-      Clock.setSecond(second());
+      Clock.setSecond(myTZ.second());
     #endif
-    Clock.setMinute(minute());
-    Clock.setHour(hour());
-    Clock.setDoW(weekday());
-    Clock.setDate(day());
-    Clock.setMonth(month());
-    Clock.setYear(year() % 100);
+    Clock.setMinute(myTZ.minute());
+    Clock.setHour(myTZ.hour());
+    Clock.setDoW(myTZ.weekday());
+    Clock.setDate(myTZ.day());
+    Clock.setMonth(myTZ.month());
+    Clock.setYear(myTZ.year() % 100);
     setRtcLastSetTime(now());
     rtc_diff_ewmat.reset(); //reset averaging filter
     rtc_diff_filtered = 0;
@@ -339,6 +330,10 @@ float getRtcppm() {
 
 void checkClocks(long int rtc_diff_filtered) {  
   debugMsgln(F("checkClocks"),3);
+  if (UTC.hour() == 7 && UTC.minute() < 10) {
+    debugMsgln(F("7UTC skip/return"),3);
+    return; // test - reboots happen at 7 UTC?.
+  }
   if (rtcPresent && !rtcNeedsTime) {
     if (timeStatus() != timeSet) { // ntp went away
         // TODO retry NTP
@@ -348,7 +343,9 @@ void checkClocks(long int rtc_diff_filtered) {
       float drift;
       int new_offset; 
       if (abs(rtc_diff_filtered) >= rtc_max_unsync) {     // only adjust if we're off by so much 
+        debugMsgln(F("RTC/NTP out of sync"),3);
         if (now() - lastNtpUpdateTime() > 120) {          // first make sure local drift isn't the issue
+          debugMsgln(F("Poll NTP"),3);
           updateNTP(); 
           return;                                         // we'll be back in a minute if it's still off
         }
@@ -381,7 +378,7 @@ void checkClocks(long int rtc_diff_filtered) {
 /*
  * IRQ, RTC marks millis() every second
  */
-void ICACHE_RAM_ATTR rtcIRQ() { // handles interrupts from RTC, can't do much here
+void IRAM_ATTR rtcIRQ() { // handles interrupts from RTC, can't do much here
   rtc_ms = millis();  // tracks difference between ntp and rtc
   rtc_IRQ = true;
   ;
@@ -474,6 +471,14 @@ void oncePerFive() { // every 5 minutes
   setEvent(oncePerFive,now()+300);
   debugMsgln(F("oncePerFive"),2);
   tryWLAN(); // try to connect as station
+  #ifdef ARDUINO_ARCH_ESP32
+    ctlLog(); // log controller data, 1 per 5 min = ~7MB/year
+    if (logFile) logFile.flush();      // flush logs every 5 minutes
+    if (ctl_logFile) ctl_logFile.flush();
+    #ifdef EZT_DEBUG
+      if (ezt_logFile) ezt_logFile.flush();
+    #endif
+  #endif //esp32
 }
 
 void oncePerHour() { // not necessarily _on_ the hour
@@ -513,7 +518,7 @@ void setupClocks() {
     if (rtcNeedsOffset) setAgingOffset(getAgingOffset());
     debugMsgln(F("RTC configuring interrupts"),1);
     Clock.enableOscillator(true, false, 0);                            // Ena SQW output, but not on batt, 1 Hz
-    attachInterrupt(digitalPinToInterrupt(SQW_PIN), rtcIRQ, FALLING);  // runs rtcIRQ once a second, falling edge (start of second)
+    attachInterrupt(digitalPinToInterrupt(SQW_PIN), rtcIRQ, FALLING);  // runs rtcIRQ once a second, falling edge (start of second)    
   } // using rtc
 
     
@@ -564,9 +569,9 @@ void setupClocks() {
   }
 
   debugMsgln(F("Creating timed events"),1);
-  setEvent(oncePerMinute,now()+40); // set timed events even if not ntp sync'd
-  setEvent(oncePerFive,now()+50);
-  setEvent(oncePerHour,now()+60); 
+  setEvent(oncePerMinute,now()+50); // set timed events even if not ntp sync'd
+  setEvent(oncePerFive,now()+40);
+  setEvent(oncePerHour,now()+30); 
 }
 
 void checkNtp() {  // watches for changes to ntp state

@@ -595,8 +595,6 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
     count = mbSerial.write(query, 7);
   #endif
 
-  debugMsgln("readDeviceID, wrote " + String(count),5);
-
   //TODO is flush different? TX on 8266, RX on 32???
   #ifdef ARDUINO_ARCH_ESP8266
     Serial.flush();
@@ -620,11 +618,12 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
       if (mbSerial.available()) {
         response[count++] = mbSerial.read();
     #endif
-    debugMsgln("readDeviceID, response char=" + String(response[count-1],HEX),5);
         doneTime = millis() + charwait; 
       }  //matches xx.available
     if (doneTime < millis()) { done = true; }  // no response or didn't get a char for a while
   } // while() - done getting response
+
+  debugMsgln("readDeviceID, wrote " + String(count),5);
 
   if (count == 0) {return -1;} else {count = 0;}
   id_idx = 8;
@@ -816,9 +815,9 @@ String getModel() {
   } else if (productCode.startsWith(F("TS-"))) {
                                                         mod = "TS"; 
   }
-  debugMsg(F("getModel received:"),2);
+  debugMsg(F("getModel received:"),3);
   debugMsgln(productCode,2);
-  debugMsg(F("getModel selected:"),2);
+  debugMsg(F("getModel selected:"),3);
   debugMsgln(mod,2);
   fullModel = productCode;
   return mod;

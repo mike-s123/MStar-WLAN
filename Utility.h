@@ -2,7 +2,10 @@
 // ----------------------------------------- Utility functions ----------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-void rxEnable(bool state); // forward declaration
+
+void rxEnable(bool state); // forward declarations
+void checkController();
+void psLog();
 
 void debugMsgln(String msg, int level) {
   #ifdef DEBUG_ON
@@ -12,23 +15,11 @@ void debugMsgln(String msg, int level) {
       #endif
       #ifdef ARDUINO_ARCH_ESP32
         Serial.println(msg);
-        if (sd_card_available && sd_card_log) {
-          String lfn = "/"+ my_hostname + ".log";
-          File logFile = SD.open(lfn,FILE_APPEND);
-//          SdFile logFile = SD.open("foo.log",O_WRONLY & O_APPEND);
-          if (logFile) {
-            if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
-            logFile.println(msg);
-          } else {
-    //          Serial.println(F("failed to open logFile"));
-          }
-          logFile.close();
+        if (logFile) {
+          if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
+          logFile.println(msg);
           needLogTime = true;
-        } else {
-    //        Serial.println("sd log no");
-    //        Serial.println("sd_card_available:"+String(sd_card_available));
-    //        Serial.println("sd_card_log:"+String(sd_card_log));
-        }
+        } 
       #endif //ESP32
     } // level
   #endif
@@ -42,18 +33,12 @@ void debugMsg(String msg,int level) {
       #endif
       #ifdef ARDUINO_ARCH_ESP32
         Serial.print(msg);
-        if (sd_card_available && sd_card_log) {
-          String lfn = "/"+ my_hostname + ".log";
-          File logFile = SD.open(lfn,FILE_APPEND);
-//          SdFile logFile = SD.open("foo.log",O_WRONLY & O_APPEND);
-          if (logFile) {
-            if (needLogTime) {
-              logFile.print(myTZ.dateTime(ATOM)+" ");
-              needLogTime = false;
-            }
-            logFile.print(msg);
+        if (logFile) {
+          if (needLogTime) {
+            logFile.print(myTZ.dateTime(ATOM)+" ");
+            needLogTime = false;
           }
-          logFile.close();
+          logFile.print(msg);
         }
       #endif //ESP32
     } // level
@@ -64,12 +49,30 @@ void setupDebug() {
   #ifdef DEBUG_ON
     #ifdef ARDUINO_ARCH_ESP8266
       logger.begin(BAUD_LOGGER);
+      #ifdef EZT_DEBUG
+        setDebug(EZT_DEBUG,logger);
+      #endif
     #endif
     #ifdef ARDUINO_ARCH_ESP32
       Serial.begin(BAUD_LOGGER);
+      #ifdef EZT_DEBUG
+        setDebug(EZT_DEBUG,ezt_logFile);
+      #endif
+
     #endif
     debugMsgln("",1);
     debugMsgln(F("Starting debug session"),1);
+  #endif
+}
+
+void ctlLog() {
+  #ifdef ARDUINO_ARCH_EP32
+    checkController();
+    if (!noController && ctl_logFile) {
+      if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+        psLog();
+      }
+    }
   #endif
 }
 
@@ -220,7 +223,7 @@ String getModelFromEEPROM() {
 }
 
 void storeNtpServerInEEPROM(String server) {
-  debugMsgln("eeprom writing NtpServer:" + server + " ("+String(server.length())+")",3);
+  debugMsgln("eeprom writing NtpServer:" + server + " ("+String(server.length())+")",4);
   for (int i = 0; i < 32; i++)
   {
     if (i < server.length()) {
@@ -246,12 +249,12 @@ String getNtpServerFromEEPROM() {
     }
     server += char(readByte);
   }
-  debugMsgln("eeprom read NtpServer: " + server,3);
+  debugMsgln("eeprom read NtpServer: " + server,4);
   return server;
 }
 
 void storeNtpTZInEEPROM(String tz) {
-  debugMsgln("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")",3);
+  debugMsgln("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")",4);
   for (int i = 0; i < 32; i++)
   {
     if (i < tz.length()) {
@@ -277,12 +280,12 @@ String getNtpTZFromEEPROM() {
     }
     tz += char(readByte);
   }
-  debugMsgln("eeprom read NtpTZ:" + tz,3);
+  debugMsgln("eeprom read NtpTZ:" + tz,4);
   return tz;
 }
 
 void storeNtpPollInEEPROM(unsigned short int poll) {
-  debugMsgln("eeprom writing NtpPoll:" + String(poll) + " (2)",3);
+  debugMsgln("eeprom writing NtpPoll:" + String(poll),4);
   EEPROM.write(eeNtpPoll, (poll >> 8));
   EEPROM.write(eeNtpPoll+1, (poll & 0xff));
   debugMsgln("Wrote:" + String(poll),5);
@@ -293,7 +296,7 @@ unsigned short int getNtpPollFromEEPROM() {
   unsigned short int poll = 0;
   poll = EEPROM.read(eeNtpPoll) << 8;
   poll += EEPROM.read(1 + eeNtpPoll);
-  debugMsgln("eeprom read NtpPoll: " + String(poll),3);
+  debugMsgln("eeprom read NtpPoll: " + String(poll),4);
   return poll;
 }
 

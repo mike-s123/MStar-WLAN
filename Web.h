@@ -6,71 +6,71 @@
 
 void startWeb() { 
   server.on("/",               statusPageHandler);
-  server.on(F("/status"),      statusPageHandler);
+  server.on("/status",      statusPageHandler);
   
-  server.on(F("/platform"), platformPageHandler);
+  server.on("/platform", platformPageHandler);
 
-  server.on(F("/setTime"), []() {
+  server.on("/setTime", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return setTimePageHandler();
   });
 
-  server.on(F("/cmd"), []() {
+  server.on("/cmd", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return cmdPageHandler();
   });
 
-  server.on(F("/setcharge"), []() {
+  server.on("/setcharge", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return setChargePageHandler();
   });
 
-  server.on(F("/setother"), []() {
+  server.on("/setother", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return setOtherPageHandler();
   });
 
-  server.on(F("/rest"), []() {
+  server.on("/rest", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return restPageHandler();
   });
 
-  server.on(F("/allregs"),      allregsPageHandler);
-  server.on(F("/allcoils"),     allcoilsPageHandler);
+  server.on("/allregs",      allregsPageHandler);
+  server.on("/allcoils",     allcoilsPageHandler);
 
-  server.on(F("/wlan_config"), []() {
+  server.on("/wlan_config", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return wlanPageHandler();
   });
-  server.on(F("/utility"), []() {
+  server.on("/utility", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return utilityPageHandler();
   });
 
-  server.on(F("/getfile"),   getfilePageHandler);
+  server.on("/getfile",   getfilePageHandler);
 
-  server.on(F("/reset"), []() {
+  server.on("/reset", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
     return resetPageHandler();
   });
 
-  server.on(F("/resetall"), []() {
+  server.on("/resetall", []() {
     if (!server.authenticate(web_username, web_password)) {
       return server.requestAuthentication();
     }
@@ -133,8 +133,8 @@ void startWeb() {
 
   #ifdef ARDUINO_ARCH_ESP32
     debugMsgln("ESP32 server.ons",1);
-    
-    server.on("/sd/{}", []() {
+    #include <uri/UriBraces.h>
+    server.on(UriBraces("/sd/{}"), []() {
       sdPageHandler(server.pathArg(0));
     });
 
