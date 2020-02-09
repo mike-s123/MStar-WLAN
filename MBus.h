@@ -816,9 +816,9 @@ String getModel() {
                                                         mod = "TS"; 
   }
   debugMsg(F("getModel received:"),3);
-  debugMsgln(productCode,2);
+  debugMsgln(productCode,3);
   debugMsg(F("getModel selected:"),3);
-  debugMsgln(mod,2);
+  debugMsgln(mod,3);
   fullModel = productCode;
   return mod;
 }

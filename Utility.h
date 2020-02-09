@@ -66,10 +66,11 @@ void setupDebug() {
 }
 
 void ctlLog() {
-  #ifdef ARDUINO_ARCH_EP32
+  #ifdef ARDUINO_ARCH_ESP32
     checkController();
     if (!noController && ctl_logFile) {
       if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+        debugMsgln(F("Logging PS- controller"),3);
         psLog();
       }
     }

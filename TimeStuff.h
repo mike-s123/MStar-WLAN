@@ -582,11 +582,11 @@ void checkNtp() {  // watches for changes to ntp state
     if ( ntp_state == timeSet && rtcNeedsTime ) {
       setRtcTimeNTP();
       deleteEvent(oncePerMinute);          // reset timed events
-      setEvent(oncePerMinute,now()+10); 
+      setEvent(oncePerMinute,now()+30); 
       deleteEvent(oncePerFive);
       setEvent(oncePerFive,now()+20);
       deleteEvent(oncePerHour);
-      setEvent(oncePerHour,now()+30); 
+      setEvent(oncePerHour,now()+10); 
     }
   }
 }
