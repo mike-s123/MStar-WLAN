@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="50" unitdist="mil" unit="mil" style="lines" multiple="1" display="yes" altdistance="5" altunitdist="mil" altunit="mil"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="yes" active="yes"/>
 <layer number="16" name="Bottom" color="1" fill="1" visible="yes" active="yes"/>
@@ -1797,7 +1797,7 @@ type 0204, grid 5 mm</description>
 </device>
 </devices>
 </deviceset>
-<deviceset name="RTC-DS3231-AT24C32-6">
+<deviceset name="RTC-DS3231-AT24C32-6" prefix="RTC">
 <description>&lt;b&gt;RTC Module with Battery and EEPROM&lt;/b&gt; based on &lt;b&gt;DS3231&lt;/b&gt; and &lt;b&gt;AT24C32&lt;/b&gt; chips
 &lt;p&gt;Tutorial can be found here:&lt;br /&gt;
 &lt;a href="https://edwardmallon.wordpress.com/2014/05/21/using-a-cheap-3-ds3231-rtc-at24c32-eeprom-from-ebay/"&gt;https://edwardmallon.wordpress.com/2014/05/21/using-a-cheap-3-ds3231-rtc-at24c32-eeprom-from-ebay/&lt;/a&gt;&lt;/p&gt;
@@ -1847,7 +1847,7 @@ type 0204, grid 5 mm</description>
 </device>
 </devices>
 </deviceset>
-<deviceset name="VP2106">
+<deviceset name="VP2106" prefix="Q$">
 <description>P-channel enhancement MOSFET</description>
 <gates>
 <gate name="G$1" symbol="P-MOSFET" x="0" y="0"/>
@@ -1933,7 +1933,7 @@ type 0204, grid 5 mm</description>
 </device>
 </devices>
 </deviceset>
-<deviceset name="WEMOS-D1-MINI-PRO">
+<deviceset name="WEMOS-D1-MINI-PRO" prefix="ESP">
 <description>&lt;b&gt;WEMOS D1 mini Pro&lt;/b&gt;: Mini Wi-Fi Board based on &lt;b&gt;ESP-8266EX&lt;/b&gt; chip
 &lt;p&gt;More details can be found here:&lt;br /&gt;
 &lt;a href="https://www.wemos.cc/product/d1-mini-pro.html"&gt;https://www.wemos.cc/product/d1-mini-pro.html&lt;/a&gt;&lt;/p&gt;

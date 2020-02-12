@@ -825,13 +825,16 @@ String getModel() {
 
 void checkController() {
   String lastModel = model;
+  bool lastState = noController;
   model = getModel();
   if (model == "") {
-    debugMsgln(F("No controller found."),1);
+    if (!lastState) debugMsgln(F("No controller found."),1);
     noController = true;
   } else {
-    debugMsg(F("Controller found:"),1);
-    debugMsgln(model,1);
+    if (lastState) {
+      debugMsg(F("Controller found:"),1);
+      debugMsgln(model,1);
+    }
     if (lastModel != model) {             // model changed
       noController = false;
       void getFile(String model); // fwd declaration
