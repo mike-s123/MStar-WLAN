@@ -1,6 +1,6 @@
 # MStar-WLAN
 
-This project includes both software and hardware design for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). It's 99.9% working, with features still being added. The core is <s>an ESP8266 based WEMOS D1 Mini Pro board (about $4 via AliExpress and wait a few weeks) or</s> (ESP8266 deprecated) an ESP32-WROVER-B 16MB (~$5 from Mouser) or an ESP32 DevkitC v4. A complete build should be <$40, ignoring your time. Those platforms were chosen because they're available with a relatively large flash (16 MiB) for storing files, which allows having documentation and support for multiple solar controllers on-board. ESP32 supports MS-View compatible logging of controller info to an SD card, in addition to a debugging log. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
+This project includes both software and hardware design for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). It's 99.9% working, with features still being added. The core is an ESP32-WROVER-B 16MB (~$5 from Mouser) or an ESP32 DevkitC v4. A complete build should be <$40, ignoring your time. Those platforms were chosen because they're available with a relatively large flash (16 MiB) for storing files, which allows having documentation and support for multiple solar controllers on-board. ESP32 supports MS-View compatible logging of controller info to an SD card, in addition to a debugging log. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
 
 A core with less flash memory should work fine as long as the "data" directory will fit. Delete files from /data/doc and /data/ctl (keep the ones for your specific controller) if needed. The additional flash memory on the recommended cores is there in order to support the config and documentation files needed to support controllers beyond those currently provided in addition to future needs ("640K ought to be enough for anyone!"). Edit /data/documentation.htm if you remove documentation files, or simply live with broken links. Or move the files to the SD card and change the code.
 
@@ -8,7 +8,7 @@ It is written using the [Arduino IDE](https://www.arduino.cc/en/Main/Software), 
 
 The printed circuit board was done in [Eagle](https://www.autodesk.com/products/eagle/overview).
 
-Development has been done testing against the Prostar MPPT and Prostar PWM Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have register definition .csv files (see data/csv_file_desc.txt) added. Might need to do some work for register datatypes - Morningstar has many (really, what were they thinking creating one which based on a 16 bit int, n·316.67·2^-15, and multiple similar) and they've changed over time. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support <s>might</s> will require more than just creating the .csv files.
+Development has been done testing against the Prostar MPPT and Prostar PWM Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have register definition .csv files (see data/csv_file_desc.txt) added. Might need to do some work for register datatypes - Morningstar has many (really, what were they thinking creating one which based on a 16 bit int, n·316.67·2^-15, and multiple similar) and they've changed over time. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support will require more than just creating the .csv files.
 
 MODBUS-TCP works with Morningstar's MSView, allowing it to be used to monitor and configure a controller wirelessly. To do that, in MSView, do "Devices/Manual connection", select your controller type, select Connection Type Remote, and enter the IP address or DNS name of the MStar-WLAN. OK. Then right click on the controller in the left column and "connect." MSView first downloads any logs, so may take a minute before much else happens. That should work with any controller supporting MODBUS, it doesn't depend on the .csv files, so if nothing else, it can be a wireless alternative to their USB/RS-232 to MeterBus converters (except for doing firmware updates).
 
@@ -26,15 +26,16 @@ I have a limited number of circuit boards on hand. If you can contribute to the 
 
 ### Prerequisites
 
-Development is currently being done with Arduino IDE 1.8.10, <s>ESP8266 Arduino platform 2.6.2 (latest git version),</s> and ESP32 Arduino platform 1.0.4.
+Development is currently being done with Arduino IDE 1.8.10, and ESP32 Arduino platform 1.0.4.
 
-Library requirements are noted in the .ino file. The <s>[ESP8266](https://github.com/esp8266/Arduino) and/or</s> [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Modified boards.txt (newboards.txt) and partition (largest_spiffs_16MB.csv) files are provided to better support large SPIFFs.
+Library requirements are noted in the .ino file. The [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Modified boards.txt (newboards.txt) and partition (largest_spiffs_16MB.csv) files are provided to better support large SPIFFs.
 
-The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update - but ESP8266 only, for now). The board will access the files using SPIFFS <s>or LittleFS (ESP8266 only, for now), depending on how it's compiled. The ESP8266 binary posted here uses LittleFS, and the ESP32 one, SPIFFS. To upload, you'll need the <s>appropriate plug-in, [SPIFFS](https://github.com/esp8266/arduino-esp8266fs-plugin) [LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin). If you want to work with ESP32, see below, the SPIFFS and code images here are built for a custom partition table.</s>
+The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update). The board will access the files using SPIFFS. After installing the code via the IDE, you can upload a SPIFFS image via OTA. Or, you can use the [arduino-esp32fs-plugin](https://github.com/me-no-dev/arduino-esp32fs-plugin) to uploade from the IDE.
+
+The ESP32 builds use a custom partition scheme to provide more SPIFFS storage. The "largest_spiffs_16MB.csv" file should be put in your Arduino folder, under "hardware\espressif\esp32\tools\partitions". The "boards.txt" file should be put into the "hardware\espressif\esp32\boards.txt" file (back up the original first). That should result in a new "MStar-WLAN" board which you can build for, and which supports the new partition scheme.
 
 The data/ctl/*.csv files are used to define the different controllers. data/csv_file_desc.txt describes the format.
 
-The ESP32 builds use a custom partition scheme to provide more SPIFFS storage. The "largest_spiffs_16MB.csv" file should be put in your Arduino folder, under "hardware\espressif\esp32\tools\partitions". The "newboard.txt" file should be inserted into the "hardware\espressif\esp32\boards.txt" file (back up the original). That should result in a new "MStar-WLAN" board which you can build for, and which supports the new partition scheme.
 
 ## Operation
 
@@ -46,7 +47,7 @@ The web interface has some minimal security. Any page which allows configuration
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your DHCP server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (statistically) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex (not working with ESP32, not my fault).
 
-OTA updates are done from the Utility tab, "Update WLAN module firmware" link. OTA updates of the flash (/data) image are also possible. <s>For ESP8266 firmware, the image is named "MStar-WLAN.ino.d1_mini.bin". Default is that uses the LittleFS filesystem, which is "MStar-WLAN.mklittlefs.bin".</s> ESP32 uses "MStar-WLAN.ino.esp32.bin" and "MStar-WLAN.spiffs.bin". <s>Currently, LittleFS is only for an ESP8266 build, and SPIFFS is for ESP32 because the partition sizes are different. There's a build #define flag to use SPIFFS with ESP8266, but why?, and you'll have to create the FS image.</s>
+OTA updates are done from the Utility tab, "Update WLAN module firmware" link. OTA updates of the flash (/data) image are also possible. ESP32 uses "MStar-WLAN.ino.esp32.bin" and "MStar-WLAN.spiffs.bin". 
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 
