@@ -9,12 +9,7 @@
  * License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  */
 String getLocalJs() {                     // point to local.js in FILESYSTEM here
-  String js = F("<script src=\"");
-  js += F("/local.js");
-  #ifdef DEBUG_JS
-    js += "?" + myTZ.dateTime(ATOM);
-  #endif            
-  js += F("\"></script>");
+  String js = F("<script src=\"/local.js\"></script>");
   return js;
 }
 
@@ -27,11 +22,7 @@ String wrapScript(String script) {        // in: script out: script wrapped in t
 
 String getHTMLHead(int refresh=0) {
   String header = F("<!DOCTYPE html><html lang=\"en\"><head>");
-  header += F("<link href=\"/local.css");
-  #ifdef DEBUG_CSS
-    header += "?" + myTZ.dateTime(ATOM);
-  #endif            
-  header += F("\" rel=\"stylesheet\">");
+  header += F("<link href=\"/local.css\" rel=\"stylesheet\">");
   header += getLocalJs();
   if (refresh) {
     header += "<meta http-equiv=\"refresh\" content=\"" + String(refresh) + "\">";
@@ -43,6 +34,7 @@ String getHTMLHead(int refresh=0) {
   return header;
 }
 
+/*
 String getAjaxHead() {                                      // like getHTMLHead, except includes jquery
   String header = F("<!DOCTYPE html><html><head>");
   header += F("<script src=\"/jquery.min.js\"></script>");
@@ -52,6 +44,7 @@ String getAjaxHead() {                                      // like getHTMLHead,
   header += F("<body>");
   return header;
 }
+*/
 
 String getNavBar() {
   
@@ -59,7 +52,7 @@ String getNavBar() {
     if (noController) {
     ctl = F("No Controller");
   } else {
-    ctl = fullModel;
+    ctl = fullModel + " (" + ctlSerialNum + ")";
   }
   String navbar = F("<nav class=\"navbar navbar-inverse navbar-fixed-top\">");
   navbar += F("<div class=\"container-fluid\"><div class=\"navbar-header\">");
@@ -96,23 +89,23 @@ String getFormFoot() {
   return F("</form></div>");
 }
 
-void handleNotFound() {
+void handleNotFound(AsyncWebServerRequest *request) {
 /* Called if requested page is not found */  
   String message = F("File Not Found\n\n");
   message += F("URI: ");
-  message += server.uri();
+  message += request->url();
   message += F("\nMethod: ");
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += (request->method() == HTTP_GET) ? "GET" : "POST";
   message += F("\nArguments: ");
-  message += server.args();
+  message += request->args();
   message += "\n";
 
-  for (uint8_t i = 0; i < server.args(); i++)
+  for (uint8_t i = 0; i < request->args(); i++)
   {
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+    message += " " + request->argName(i) + ": " + request->arg(i) + "\n";
   }
 
-  server.send(404, F("text/plain"), message);
+  request->send(404, F("text/plain"), message);
 }
 
 String getTableHead2Col(String tableHeader, String col1Header, String col2Header) {
@@ -147,7 +140,26 @@ String getHTMLFoot() {
   return F("</body></html>");
 }
 
-String getStatusItem(String var, String label="") {
+String getStatusItemBare(String var, String label="") {
+/*  
+ *  Given a controller variable name, returns content of 
+ *  label/value/unit. Used by main status page to 
+ *  place values on graphic using CSS.
+ */
+  String result;
+//  if ( var.endsWith("\0") ) var.remove(var.length(),1);  // remove c string trailing null
+  int addr = findAddrByVar(var);
+  fullReg reg;
+  if (addr >= 0) {
+    mbGetFullReg(reg, addr);
+    String val = reg.value;
+    if (val == "-0.00") val = "0.00";
+    result += label + val + " " + mbRegUnitName[reg.unit];
+  }
+  return result;
+}
+
+String getStatusItemDiv(String var, String label="") {
 /*  
  *  Given a controller variable name, returns a div
  *  with an id of that name, and content of 
@@ -364,46 +376,3 @@ String getContentType(String filename) { // convert the file extension to the MI
   else if (filename.endsWith(F(".gz"))) return F("application/x-gzip");
   return F("text/plain");
 }
-
-#ifdef ARDUINO_ARCH_ESP32
-  /*
-   * Server Index Page
-   */
-   
-  const char* serverIndex = 
-  "<script src='/jquery.min.js'></script>"
-  "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
-     "<input type='file' name='update'>"
-          "<input type='submit' value='Update'>"
-      "</form>"
-   "<div id='prg'>progress: 0%</div>"
-   "<script>"
-    "$('form').submit(function(e){"
-    "e.preventDefault();"
-    "var form = $('#upload_form')[0];"
-    "var data = new FormData(form);"
-    " $.ajax({"
-    "url: '/update',"
-    "type: 'POST',"
-    "data: data,"
-    "contentType: false,"
-    "processData:false,"
-    "xhr: function() {"
-    "var xhr = new window.XMLHttpRequest();"
-    "xhr.upload.addEventListener('progress', function(evt) {"
-    "if (evt.lengthComputable) {"
-    "var per = evt.loaded / evt.total;"
-    "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-    "}"
-    "}, false);"
-    "return xhr;"
-    "},"
-    "success:function(d, s) {"
-    "console.log('success!')" 
-   "},"
-   "error: function (a, b, c) {"
-   "}"
-   "});"
-   "});"
-   "</script>";
-#endif

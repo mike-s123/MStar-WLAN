@@ -15,7 +15,7 @@ void debugMsgln(String msg, int level) {
       #endif
       #ifdef ARDUINO_ARCH_ESP32
         Serial.println(msg);
-        if (logFile) {
+        if (sd_card_available && logFile) {
           if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
           logFile.println(msg);
           needLogTime = true;
@@ -33,7 +33,7 @@ void debugMsg(String msg,int level) {
       #endif
       #ifdef ARDUINO_ARCH_ESP32
         Serial.print(msg);
-        if (logFile) {
+        if (sd_card_available && logFile) {
           if (needLogTime) {
             logFile.print(myTZ.dateTime(ATOM)+" ");
             needLogTime = false;
@@ -65,10 +65,31 @@ void setupDebug() {
   #endif
 }
 
+void psGetSn(); //fwd
+void getSn() {
+  checkController();
+  if (!noController) {
+    if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+      psGetSn();
+    }
+  }
+}
+
+void psGetCtlLogFileName(); //fwd dec
+void getCtlLogFileName() {
+  #ifdef ARDUINO_ARCH_ESP32
+    if (!noController) {
+      if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+        psGetCtlLogFileName();
+      }
+    }
+  #endif
+}
+
 void ctlLog() {
   #ifdef ARDUINO_ARCH_ESP32
     checkController();
-    if (!noController && ctl_logFile) {
+    if (!noController && sd_card_available && ctl_logFile) {
       if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
         debugMsgln(F("Logging PS- controller"),3);
         psLog();
@@ -130,7 +151,7 @@ String formatIPAsString(IPAddress ip) {
  *  This stores WLAN credentials in the first slot [0]
  */
 void storeWLANsInEEPROM(String qsid, String qpass, int idx=0) {
-  debugMsgln("writing eeprom "+String(idx)+" ssid " + qsid,3);
+  debugMsgln("Writing eeprom "+String(idx)+" SSID " + qsid,1);
   if (idx < 0 || idx > 3) return;
   wlanRead = false;                   // now needs to be re-read
   for (int i = 0; i < 32; i++) {
@@ -255,8 +276,8 @@ String getNtpServerFromEEPROM() {
 }
 
 void storeNtpTZInEEPROM(String tz) {
-  debugMsgln("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")",4);
-  for (int i = 0; i < 32; i++)
+  debugMsgln("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")",3);
+  for (int i = 0; i < 64; i++)
   {
     if (i < tz.length()) {
       EEPROM.write(i+eeNtpTZ, tz[i]);
@@ -271,7 +292,7 @@ void storeNtpTZInEEPROM(String tz) {
 String getNtpTZFromEEPROM() {
   String tz = "";
   byte readByte;
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < 64; i++)
   {
     readByte = EEPROM.read(i+eeNtpTZ);
     if (readByte == 0) {
@@ -557,4 +578,17 @@ int I2C_ClearBus() {
   pinMode(SDA_PIN, INPUT); // and reset pins as tri-state inputs which is the default state on reset
   pinMode(SCL_PIN, INPUT);
   return 0; // all ok
+}
+
+//format bytes
+String formatBytes(size_t bytes) {
+  if (bytes < 1024) {
+    return String(bytes) + " B";
+  } else if (bytes < (1024 * 1024)) {
+    return String(bytes / 1024.0) + " KiB";
+  } else if (bytes < (1024 * 1024 * 1024)) {
+    return String(bytes / 1024.0 / 1024.0) + " MiB";
+  } else {
+    return String(bytes / 1024.0 / 1024.0 / 1024.0) + " GiB";
+  }
 }

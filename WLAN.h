@@ -22,9 +22,9 @@ void startAP(const char* ssid, const char* password) {
 
 boolean connectToWLAN(const char* ssid = "", const char* password = "") {
 /*
- *  Try to connect as a station with the given credentials. Give up after a while.
- *   if we can't get in. Returns connected status.
- *   Station only, because AP_STA results in frequent disconnects (~5 minute intervals).
+ *  Try to connect as a station with the given info. 
+ *  If no info provided, read stored info from eeprom. Give up after a while
+ *  if we can't get in. Returns connected status.
 */
   int retries = 0;
   #ifdef ARDUINO_ARCH_ESP8266
@@ -84,40 +84,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
   #endif
   
   if (wlan_count) {    // if we have WLANs configured for station mode, try to connect
-    if (wlan_count) {
-      debugMsg(F("WLAN connecting ("),1);
-      debugMsg(String(wlan_count),1);
-      debugMsgln(")",1);
-    }  
-
-    #ifdef ARDUINO_ARCH_ESP32
-      //WiFi.config(IPAddress(0,0,0,0), IPAddress(0,0,0,0), IPAddress(0,0,0,0));  // test, force DHCP
-      #ifdef STATIC_IP
-        IPAddress local_IP(192, 168, 168, 184); // my IP address
-        IPAddress gateway(192, 168, 168, 2);
-        IPAddress subnet(255, 255, 255, 0);
-        IPAddress primaryDNS(192, 168, 168, 1);   //optional
-        WiFi.config(local_IP, gateway, subnet, primaryDNS);
-      #endif  
-    #endif
-    while ( wifiMulti.run() != WL_CONNECTED && wlan_count ) {
-      delay(500);
-      debugMsg(".",1);
-      retries++;
-      if (retries > 20) {   // try for 10  seconds
-        debugMsgln("",1);
-        debugMsgln(F("Failed to connect"),1);
-        return false;
-      }
-    }
-    if (WiFi.isConnected()) {  
-      debugMsgln("",1);
-      debugMsg(F("WLAN connected to:"),1);
-      debugMsgln(String(WiFi.SSID()),1);
-      IPAddress ip = WiFi.localIP();
-      debugMsg(F("WLAN IP address:"),1);
-      debugMsgln(formatIPAsString(ip),1);
-    }
+    tryWLAN();
   } else {  // no wlan_count
     debugMsgln(F("No WLANs configured"),1);
     return false;      
@@ -153,13 +120,14 @@ void tryWLAN() {
       delay(500);
       debugMsg(".",1);
       retries++;
-      if (retries > 20) {   // try for 10  seconds
+      if (retries > 5) {   // try for a while
         debugMsgln("",1);
         debugMsgln(F("Failed to connect"),1);
         #ifndef WIFI_MODE_AP_STA                       // go back to AP mode so users can connect
           debugMsgln(F("WLAN switching back to AP"),1);
           startAP(ap_ssid, ap_password);
         #endif
+        return;
       }
     } // while
     debugMsgln("",1);

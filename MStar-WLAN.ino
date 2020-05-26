@@ -1,19 +1,30 @@
-/*
+ /*
  * MStar-WLAN 2020 mjs
  * 
- * ESP8266 (working) or ESP32
- *   ESP8266 - Lolin D1 Mini Pro
+ * ESP32 or ESP8266
+ *   
+ *  ESP32 - WROVER-B, custom partitions (WROVER 16 MB w/13M FS with modified files)
+ *   lwIP: v2 higher bandwidth
+ *   vTables: IRAM
+ *   240 MHz
+ *   
+ *  ESP32 - WROOM (4 MB), 
+ *    -ESP32 Dev Module
+ *    -Default 4 MB w/SPIFFS (1.2 MB APP/1.5MB SPIFFS)
+ *    or
+ *    -Minimal (1.3 MB APP/700kB SPIFFS)
+ *  
+ *  ESP8266 - DEPRECATED, NO LONGER WORKING (WiFi scan broke with change to asynch webserver)
+ *    Lolin D1 Mini Pro (deprecated - WiFi scanning doesn't work since 
+ *    changing to asynch webserver - probably a memory shortage issue. #ifdefs are still here
+ *    if someone wants to work on it. Future direction is ESP32.)
  *   -Upload: 921600
  *   -CPU: 160MHz
  *   -Flash: 16MB (FS:14MB...)
  *   -Debug: disabled
  *   -IwIP: v2 Higher bandwidth
  *   -vtables: IRAM
- *   
- *   ESP32 - WROVER-B, custom partitions (WROVER 16 MB w/13M FS with modified files)
- *   lwIP: v2 higher bandwidth
- *   vTables: IRAM
- *   
+
  *   Original work, License CC BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  *   All rights reserved.
  *   some parts subject to other licenses as noted.
@@ -21,29 +32,38 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v1.200207"
+#define SOFTWARE_VERSION "v2.200525"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Refactor for different controller families. ESP32 working.<br>\
-                     wifiMulti (no GUI). WLAN robustness. WIFI_AP_STA support.<br>\
-                     Time support. Auto adjust RTC speed. SD card support (ESP32).<br>\
-                     Platform logging to SD card. Change for /sd/ wildcard. Controller<br>\
-                     logging to SD Card."
+#define BUILD_NOTES "Platform logging to SD card. Change for /sd/ wildcard. Controller<br>\
+                     logging to SD Card. ESPAsyncWebServer. ESP8266 support gone. Keep RTC<br>\
+                     in UTC. Dynamic updates of /status page. Some changes for small flash.<br>\
+                     Change to ArduinoJSON 6, using PS_RAM."
 
-#define DEBUG_ON 2                // enable debugging output. If defined, debug_level can be changed during runtime.
+#define DEBUG_ON 1                // enable debugging output. If defined, debug_level can be changed during runtime.
                                   // 0 off, 1 least detail, 8 most detail, 9 includes passwords
-//#define DEBUG_JS                   // ifdef, overrides servestatic to avoid caching of local.js
-//#define DEBUG_CSS                  // ditto, for css
 
 #ifdef DEBUG_ON
   #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
                                     // because we're swapping the UART to new ones
-  #define DEBUG_ESP_PORT logger
+  #ifdef ARDUINO_ARCH_ESP8266
+    #define DEBUG_ESP_PORT logger
+  #endif
+  #ifdef ARDUINO_ARCH_ESP32
+    #define DEBUG_ESP_PORT Serial
+  #endif
+  
   //#define DEBUG_ESP_HTTP_SERVER
   //#define DEBUG_ESP_CORE
   //#define EZT_DEBUG DEBUG           // for EZTime
 #endif
 
-//#define STATIC_IP
+/*
+ * If we define WIFI_MODE_AP_STA, it will both be an AP and try to connect as a station.
+ * If not defined, we're a station if able to connect to a configured WLAN, otherwise
+ * we turn into an AP. When an AP, if there are WLANs configured, it will try to connect
+ * every few minutes if there is no client connected.
+ */
+//#define WIFI_MODE_AP_STA                // define to run AP while also connected as station
 
 #include <string>
 #include <sstream>
@@ -81,7 +101,7 @@
   #include <ESP8266WiFiScan.h>
   #include <ESP8266WiFiSTA.h>
   #include <ESP8266WiFiType.h>
-  #include <ESP8266WebServer.h>
+//  #include <ESP8266WebServer.h>
 //#include <ESP8266WebServerSecure.h>
 //#include <ESP8266WebServerSecureAxTLS.h>
 //#include <ESP8266WebServerSecureBearSSL.h>
@@ -89,14 +109,19 @@
   /* This will compile in OTA support - need at least 1 MB for OTA updates.
      we check available space at runtime before allowing it.
   */
-  #include <ESP8266HTTPUpdateServer.h>
+//  #include <ESP8266HTTPUpdateServer.h>
+  #include <Updater.h>
+  #include "ESPAsyncTCP.h"  //https://github.com/me-no-dev/ESPAsyncTCP
 #endif
+
+#include "ESPAsyncWebServer.h" 
 
 #ifdef ARDUINO_ARCH_ESP32
   #include <WiFi.h>
   #include <WiFiMulti.h>
-  #include <WebServer.h>
-  //#include "ESPAsyncWebServer.h"
+  //#include <WebServer.h>
+  #include <AsyncTCP.h>
+  #include "ESPAsyncWebServer.h"
   #include <ESPmDNS.h>
   #include <Update.h>
   #include <FS.h>
@@ -106,19 +131,21 @@
   #include <SPIFFS.h>
   #include <SD.h>
   #include <SPI.h>
+  #include <sys/time.h>
 //  #include "SdFat.h"
   #include <HardwareSerial.h>
   File logFile;                         // platform log file
   String logFileName;
   File ctl_logFile;                     // controller log file
-  #define CTL_LOGFILE "/controller.log" // must start with /
+  #define CTL_LOGFILE "/ctl.log"        // default, must start with /
+  String ctlLogFileName = CTL_LOGFILE;
   #ifdef EZT_DEBUG
     File ezt_logFile;                   // ez-time log file
     #define EZT_LOGFILE "/eztime.log"   // must start with /
   #endif
 #endif
 
-#include <ArduinoJson.h>   // Benoit Blanchon 5.13.4, via IDE
+#include <ArduinoJson.h>   // Benoit Blanchon 6.15.2, via IDE
 #include <WiFiClient.h>
 //#include <WiFiClientSecure.h>
 //#include <WiFiClientSecureAxTLS.h>
@@ -131,17 +158,19 @@
 #include <WiFiUdp.h>
 #include <ModbusMaster.h> //Doc Walker 2.0.1, via IDE
 
-#include "TimeStuff.h"
 //---------------------------
 // definitions
 //---------------------------
+
+// hardware
+#define PS_RAM      // PS-RAM available (WROVER-B)
 
 //security
 #define WEB_USERNAME "admin"
 #define WEB_PASSWORD "setup"
 #define UPDATE_USERNAME "admin"
 #define UPDATE_PASSWORD "update"
-#define UPDATE_PATH "/updateme"
+#define UPDATE_PATH "/update"
 #define JSON_PASSWORD "imsure"
 //#define nosec
 #ifdef nosec
@@ -157,13 +186,6 @@
 // password, if used, must be 8-32 chars
 #define AP_PSK  "morningstar"
 
-/*
- * If we define WIFI_MODE_AP_STA, it will both be an AP and try to connect as a station.
- * If not defined, we're a station if able to connect to a configured WLAN, otherwise
- * we turn into an AP. When an AP, if there are WLANs configured, it will try to connect
- * every few minutes if there is no client connected.
- */
-//#define WIFI_MODE_AP_STA                // define to run AP while also connected as station
 
 #define HOSTNAME "MStarW"  // needs to be short - esp32 only does 12 char hostnames!
 
@@ -184,7 +206,7 @@
  * 256-272 (16) Controller model
  * 272-303 (32) ntp server
  * 304-305 (2)  ntp poll interval (uint_t 16)
- * 306-337 (32) ntp POSIX timestring
+ * 306-369 (64) ntp POSIX timestring
  * 508-511 (4)  Valid signature (EEPROM_SIG)
  */
 #define eeWLANSSID 0
@@ -267,6 +289,9 @@ boolean largeFlash = false;
 boolean mbActive = false;    // whether we're using mbus
 boolean wlanLedState = true;
 boolean noController = true;
+boolean mytz2skip = false; //testing
+uint32_t mytz2skipMillis;
+
 // used for flashing the WLAN status LED
 int blinkOnTime = 1000;
 int blinkRepeatTime = 2000;
@@ -275,6 +300,7 @@ unsigned long lastWLANtry;      // when we last tried to connected (or tried) to
 int mbAddr = mbusSlave;
 String model = MODEL;
 String fullModel = MODEL;
+String ctlSerialNum = "00000000";
 byte mac[6];
 String my_MAC;
 String my_hostname;
@@ -285,23 +311,25 @@ ModbusMaster node;
 
 #ifdef ARDUINO_ARCH_ESP8266
   ESP8266WiFiMulti wifiMulti;
-  ESP8266WebServer server(80);
-  ESP8266HTTPUpdateServer httpUpdater;
+//  ESP8266WebServer server(80);
+//  ESP8266HTTPUpdateServer httpUpdater;
 #endif
 WiFiServer modbusTCP(502);
 WiFiClient modbusClient;
-  
+
+AsyncWebServer server(80);
+
 #ifdef ARDUINO_ARCH_ESP32
   WiFiMulti wifiMulti;
-//  AsyncWebServer server(80);
-  WebServer server(80);
+//  WebServer server(80);
   HardwareSerial mbSerial(1);
 #endif
 
 //order here is important
+#include "TimeStuff.h"
 #include "Utility.h"            // utility functions
 #include "WLAN.h"               // wireless stuff
-#include "edit.h"               // ACE editor
+//#include "edit.h"               // ACE editor
 #include "MBus.h"               // Handle MODBUS and datatype conversion
 #include "ControllerFiles.h"    // Read and parse controller .csv files
 #include "HTML.h"               // Common HTML stuff
@@ -314,7 +342,7 @@ WiFiClient modbusClient;
 void setup() {
   #ifdef ARDUINO_ARCH_ESP32
     pinMode(I2C_SDA_RESET ,INPUT);
-    setupSDCard();
+    attachSDCardIRQ();
   #endif
   
   #ifdef ARDUINO_ARCH_ESP8266
@@ -337,7 +365,7 @@ void setup() {
   }
   if ( largeFlash ) {
     #ifdef ARDUINO_ARCH_ESP8266
-      httpUpdater.setup(&server, update_path, update_username, update_password);
+//      httpUpdater.setup(&server, update_path, update_username, update_password);
     #endif
   }
 
@@ -347,7 +375,7 @@ void setup() {
   getWLANsFromEEPROM();
   setupWLAN();
   setupClocks();
-  
+/*  
   #ifndef WIFI_MODE_AP_STA
     if (!wlanConnected) {             // If can't connect in STA mode, switch to AP mode
       startAP(ap_ssid, ap_password);
@@ -356,16 +384,19 @@ void setup() {
   
   IPAddress apIP = WiFi.softAPIP();
   IPAddress myIP = WiFi.localIP();
-  
-  debugMsg(F("AP IP address:"),1);
-  debugMsgln(formatIPAsString(apIP),1);
+
+  if (WiFi.getMode() == WIFI_MODE_AP || WiFi.getMode() == WIFI_MODE_APSTA) {
+    debugMsg(F("AP IP address:"),1);
+    debugMsgln(formatIPAsString(apIP),1);
+  }
   if (wlanConnected) {
     debugMsg(F("WLAN IP address:"),1);
     debugMsgln(formatIPAsString(myIP),1);
     debugMsgln("Connected to:" + String(WiFi.SSID()),1);
   }
-
+*/
   setupModbus();
+  server.begin();
   startWeb();
 
   modbusTCP.begin();
@@ -379,8 +410,14 @@ void setup() {
 
   debugMsgln("Getting modbus info for " + model,1);
   getFile(model);
+  #ifdef ARDUINO_ARCH_ESP32
+    refreshCtlLogFile();
+  #endif
 
   getRtcTime();
+  WiFi.setTxPower(WIFI_POWER_19dBm); // 15 is about 1/3 the power of the default 19.5 dBm
+
+  setEvents(); // setup regular events.
   debugMsgln(F("Leaving setup()"),1);
 } // setup()
 
@@ -393,9 +430,23 @@ void loop() {
   #ifdef MDNS_H // ESP8266
     MDNS.update();
   #endif
-  events(); // for EZTime
+
+events(); // for EZTime
+/*  if (!mytz2skip || millis() > mytz2skipMillis + 180000) {   // don't do events around 0200 local, test
+    unsigned long int tempmillis=0;
+    if (mytz2skip) tempmillis = millis();
+    events(); // for EZTime
+    if (tempmillis > 0) {
+      debugMsgln("event millis:"+String(millis()-tempmillis),1);
+      if (logFile) logFile.flush();
+      WiFi.setTxPower(WIFI_POWER_15dBm);
+      mytz2skip = false;
+    }
+  }
+*/
+  
   checkNtp();
-  server.handleClient();
+//  server.handleClient();
 
   #ifdef ARDUINO_ARCH_ESP32
     if (sd_card_changed) changeSDCard();
@@ -423,7 +474,7 @@ void loop() {
     wlanConnected = true;
     blinkOnTime = 200;
     blinkRepeatTime = 1000;
-  } else {                                              // no connections, every 3 sec
+  } else {                                              // no connections, every 10 sec
     blinkOnTime = 25;
     blinkRepeatTime = 10000;  
   }

@@ -103,18 +103,19 @@ void rxEnable(bool state) {                                   // high = enabled 
 
 void preTransmission() {  // callbacks for half-duplex MODBUS
   rxEnable(false);
-  delay(5);               // can't repeat requests too quickly, minimum interframe 3.65 ms
-}
+  delayMicroseconds(4011);               // can't repeat requests too quickly, character time is
+}                                        // 11 bits @ 9600 = 0.00114583 s, *3.5 char min interframe = 4.011 ms.
 void postTransmission() {
   rxEnable(true);
-  delay(2);               // just to give background stuff a chance to run
 }
 
 int findAddrByVar(String var) {   // given var name, return addr of register, -1 if not found
   int addr = -1;
-  for (int i = 1 ; mbRegAddr[i] != mbRegMax ; i++) {
+  bool done = false;
+  for (int i = 1 ; (mbRegAddr[i] != mbRegMax) && !done ; i++) {
     if ( mbRegVar[i] == var ) {
-      addr = mbRegAddr[i]; 
+      addr = mbRegAddr[i];
+      done = true;
     }
   }
   debugMsgln("findAddrByVar="+var+", addr="+addr,4);
@@ -354,9 +355,9 @@ int MBus_get_reg(int address, String &value) {         // given an address, look
         // TODO f32, TS-600 datatype
         default:           ;
       }
-      delay(i*50); // increasing delay between failed attempts 
+      if (result) delay(i*50); // increasing delay between failed attempts 
     }  // try 3 times
-    return result;
+    return result;  // false (0) if success
   } else {
     return -1;   
   } 
@@ -484,11 +485,15 @@ int MBus_write_reg(int address, String valu) {
 
 int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpreted
   if (noController) return -1;
+  int result;
   debugMsgln("MBus_get_reg_raw: "+String(address),4);
-  int result = node.readHoldingRegisters(address, 1);
-  if (result == node.ku8MBSuccess) {
-    raw = node.getResponseBuffer(0);
-  }  
+  for ( int i = 0 ; (i < 3) && result ; i ++ ) {  // try 3 times
+    result = node.readHoldingRegisters(address, 1);
+    if (result == node.ku8MBSuccess) {
+      raw = node.getResponseBuffer(0);
+    }
+  if (result) delay(i*50); // increasing delay between failed attempts
+  }
   return result;
 }
 
@@ -524,27 +529,27 @@ int getLogItem(logItem &item, int idx) {   // idx starts at 0, returns 0 on succ
   debugMsgln(String(startReg,HEX),4);
   debugMsg(F("getLogItem, hourmeter="),4);
   debugMsgln(String(item.hourmeter),4); 
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint32_rev(startReg+2, item.alarm_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint32_rev(startReg+4, item.load_fault_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint32_rev(startReg+6, item.array_fault_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+8, item.Vb_min_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+9, item.Vb_max_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+10, item.Ahc_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+11, item.Ahl_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+12, item.Va_max_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+13, item.time_ab_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+14, item.time_eq_daily);
-  delay(1);
+  delayMicroseconds(1000);
   result += MBus_get_uint16(startReg+15, item.time_fl_daily);
   return result;
 }
@@ -823,22 +828,34 @@ String getModel() {
   return mod;
 }
 
+void PSopenLogFile(); // fwd dec
+void refreshCtlLogFile(){
+  PSopenLogFile();
+}
+
 void checkController() {
+  static long int lastFound = millis();
   String lastModel = model;
   bool lastState = noController;
-  model = getModel();
-  if (model == "") {
-    if (!lastState) debugMsgln(F("No controller found."),1);
-    noController = true;
-  } else {
-    if (lastState) {
-      debugMsg(F("Controller found:"),1);
-      debugMsgln(model,1);
-    }
-    if (lastModel != model) {             // model changed
-      noController = false;
-      void getFile(String model); // fwd declaration
-      getFile(model);
+  if (noController || lastFound + 60000 < millis()) {  // check if no controller, or it's been more than a minute
+    lastFound = millis();
+    model = getModel();
+    if (model == "") model = getModel(); // try again if not found
+    if (model == "") {
+      if (!lastState) debugMsgln(F("No controller found."),1);
+      noController = true;
+    } else {
+      if (lastState) {
+        debugMsg(F("Controller found:"),1);
+        debugMsgln(model,1);
+        noController = false;
+        refreshCtlLogFile();
+      }
+      if (lastModel != model) {             // model changed
+        void getFile(String model); // fwd declaration
+        getFile(model);
+        refreshCtlLogFile();
+      }
     }
   }
 }

@@ -28,6 +28,13 @@ MStar-WLAN.menu.PartitionScheme.default=Largest SPIFFS (~13 MB FS)
 MStar-WLAN.menu.PartitionScheme.default.build.partitions=largest_spiffs_16MB
 MStar-WLAN.menu.PartitionScheme.default.upload.maximum_size=1572864
 
+MStar-WLAN.menu.CPUFreq.240=240MHz (WiFi/BT)
+MStar-WLAN.menu.CPUFreq.240.build.f_cpu=240000000L
+MStar-WLAN.menu.CPUFreq.160=160MHz (WiFi/BT)
+MStar-WLAN.menu.CPUFreq.160.build.f_cpu=160000000L
+MStar-WLAN.menu.CPUFreq.80=80MHz (WiFi/BT)
+MStar-WLAN.menu.CPUFreq.80.build.f_cpu=80000000L
+
 MStar-WLAN.menu.FlashMode.qio=QIO
 MStar-WLAN.menu.FlashMode.qio.build.flash_mode=dio
 MStar-WLAN.menu.FlashMode.qio.build.boot=qio

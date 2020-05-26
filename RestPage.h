@@ -6,16 +6,16 @@
  *  
  */
 
-void jsonErr(String info, String message="bad request", int code=400) {
+void jsonErr(AsyncWebServerRequest *request, String info, String message="bad request", int code=400 ) {
   String response_message;
   response_message.reserve(1000);
   response_message = F("{\"error\": {\"code\":");
   response_message += String(code);
   response_message += ",\"message\":\""+message+"\",\"info\":\""+info+"\"}}";
-  server.send(code, F("application/json"), response_message); 
+  request->send(code, F("application/json"), response_message); 
 }
 
-void restPageHandler() {                          //  URI /rest
+void restPageHandler(AsyncWebServerRequest *request) {                          //  URI /rest
 /* example of use
  * http://192.168.168.151/rest?json={"addr":0,"cmd":"readHoldingRegisters","count":3}
  * err if the given address doesn't exist
@@ -23,43 +23,104 @@ void restPageHandler() {                          //  URI /rest
  * skipping unavailable ones.
 */
 
-  debugMsgln(F("Entering /rest page."),1);
+  debugMsgln(F("Entering /rest page."),2);
   bool ok = false;
-  if ( server.hasArg(F("json")) ) {  //Check if command received
-    StaticJsonBuffer<200> jsonInBuffer;
-    JsonObject& jsonIn = jsonInBuffer.parseObject(server.arg(F("json")).c_str());
+  if ( request->hasArg(F("json")) ) {  //Check if command received
+    DynamicJsonDocument jsonIn(2000);
+    DeserializationError jsonDesErr = deserializeJson(jsonIn, request->arg(F("json")).c_str() );
     String cmd = jsonIn[F("cmd")];
     String pass = jsonIn[F("pass")];
     #ifdef ARDUINO_ARCH_ESP8266
       StaticJsonBuffer<2200> jsonOutBuffer;    // on the edge, anymore than ~2400 and wdt resets
     #endif
     #ifdef ARDUINO_ARCH_ESP32
-      DynamicJsonBuffer jsonOutBuffer(96000);    // bigger is better 96000
+      #ifdef PS_RAM   // use PS-RAM if available
+        struct SpiRamAllocator {
+          void* allocate(size_t size) {
+            return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+          }
+          void deallocate(void* pointer) {
+            heap_caps_free(pointer);
+          }
+        };
+        using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;
+        SpiRamJsonDocument jsonOut(256000);
+        debugMsgln("REST SPIRAM free heap: "+ String(ESP.getFreePsram()),3);
+      #elif   
+        DynamicJsonDocument jsonOut(65536);    // bigger is better
+        debugMsgln("REST json free heap: "+String(ESP.getFreeHeap()),3);
+      #endif
     #endif
-    JsonObject& jsonOut = jsonOutBuffer.createObject();
-    if ( cmd == F("readHoldingRegisters") || cmd == F("readInputRegisters") || cmd == F("readInputRegister") ) {
+    if ( cmd == F("readRegs") ) {
+      int count = 0;
+      JsonArray arr = jsonIn["registers"];
+      if (!jsonDesErr) {
+        jsonOut[F("model")] = model;
+        jsonOut[F("api")] = json_version;
+        jsonOut[F("api_min")] = json_version_min;
+        count = arr.size();
+        JsonArray regArray = jsonOut.createNestedArray(F("registers"));
+        for (JsonVariant elem : arr ) {
+          int mbReg;
+          JsonVariant jsonReg = elem["register"];
+          if (jsonReg.is<int>()) {
+            mbReg = jsonReg.as<int>();
+          } else {
+            String regName = jsonReg.as<String>();
+            mbReg = findAddrByVar(regName);  // look up register number
+          }  
+
+          int mbRegIdx = getMbRegIndex(mbReg);
+          if ( mbRegIdx >= 0 ) {
+            String valu;
+            uint16_t raw;
+            JsonObject regO      = regArray.createNestedObject();
+            JsonObject registers = regO.createNestedObject(F("register"));
+            registers[F("addr")]     = mbReg;
+            registers[F("name")]     = mbRegVar[mbRegIdx];
+            registers[F("desc")]     = mbRegDesc[mbRegIdx];
+            MBus_get_reg(mbReg, valu); 
+            registers[F("valu")]     = valu;
+            registers[F("unit")]     = mbRegUnitName[mbRegUnit[mbRegIdx]];
+            registers[F("type")]     = mbRegTypeName[mbRegType[mbRegIdx]];
+            MBus_get_reg_raw(mbReg, raw);
+            if ( mbRegType[mbRegIdx] == dint || mbRegType[mbRegIdx] == dbitfield ||  mbRegType[mbRegIdx] == dn10 ) {  // only 32 bit datatypes ?
+              registers[F("vrhi")]   = "0x"+String(raw, HEX);      
+              MBus_get_reg_raw(mbReg+1, raw);
+              registers[F("vrlo")]   = "0x"+String(raw,HEX);
+            } else {
+              registers[F("vraw")]   = "0x"+String(raw,HEX);
+            }
+            ok = true;
+          }
+        }
+      } else { // parsing failed
+        { jsonErr(request, F("parsing failed"), F("parsing failed") , 413); return; }
+      }
+    } else if ( cmd == F("readHoldingRegisters") || cmd == F("readInputRegisters") || cmd == F("readInputRegister") ) {
       String address = jsonIn[F("addr")] | "-1";
       int mbReg = getDecInt(address);              // this covers all bases
       int count = jsonIn[F("count")] | 1;
       if ( cmd == "readInputRegister" ) { count = 1; };
+      debugMsgln("REST read register(s) "+address+"/"+String(count),3);
       #ifdef ARDUINO_ARCH_ESP8266
-        if ( count > 10 ) { jsonErr(F("count > 10"), F("request entity too large") , 413); return; }
+        if ( count > 10 ) { jsonErr(request, F("count > 10"), F("request entity too large") , 413); return; }
       #endif
       #ifdef ARDUINO_ARCH_ESP32
-        if ( count > 256 ) { jsonErr(F("count > 256"), F("request entity too large") , 413); return; }
+        if ( count > 256 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
       #endif
-      if ( getMbRegIndex(mbReg) < 0 ){ jsonErr(F("bad addr")); return; }
+      if ( getMbRegIndex(mbReg) < 0 ){ jsonErr(request, F("bad addr")); return; }
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version;
       jsonOut[F("api_min")] = json_version_min;
-      JsonArray &regArray = jsonOut.createNestedArray(F("registers"));
+      JsonArray regArray = jsonOut.createNestedArray(F("registers"));
       for (int i=0; i<count && mbReg <= mbRegMax; mbReg++ ) {
         int mbRegIdx = getMbRegIndex(mbReg);
         if ( mbRegIdx >= 0 ) {
           String valu;
           uint16_t raw;
-          JsonObject& regO      = regArray.createNestedObject();
-          JsonObject& registers = regO.createNestedObject(F("register"));
+          JsonObject regO      = regArray.createNestedObject();
+          JsonObject registers = regO.createNestedObject(F("register"));
           registers[F("addr")]     = mbReg;
           registers[F("name")]     = mbRegVar[mbRegIdx];
           registers[F("desc")]     = mbRegDesc[mbRegIdx];
@@ -87,18 +148,18 @@ void restPageHandler() {                          //  URI /rest
       String address = jsonIn[F("addr")] | "-1";
       int mbCoil = getDecInt(address);              // this covers all bases
       int count  = jsonIn[F("count")] | 1;
-      if ( count > 10 ) { jsonErr(F("count > 10"), F("request entity too large") , 413); return; }
-      if ( getCoilIndex(mbCoil) < 0 ){ jsonErr(F("bad addr")); return; }
+      if ( count > 10 ) { jsonErr(request, F("count > 10"), F("request entity too large") , 413); return; }
+      if ( getCoilIndex(mbCoil) < 0 ){ jsonErr(request, F("bad addr")); return; }
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version;
       jsonOut[F("api_min")] = json_version_min;
-      JsonArray &coilArray = jsonOut.createNestedArray(F("coils"));
+      JsonArray coilArray = jsonOut.createNestedArray(F("coils"));
       for (int i=0; i<count && mbCoil <= mbCoilMax; mbCoil++ ) {
         int coilIdx = getCoilIndex(mbCoil);
         bool state;
         if ( coilIdx >= 0 ) {
-          JsonObject& coilO  = coilArray.createNestedObject();
-          JsonObject& coils  = coilO.createNestedObject(F("coil"));
+          JsonObject coilO  = coilArray.createNestedObject();
+          JsonObject coils  = coilO.createNestedObject(F("coil"));
           coils[F("addr")]  = mbCoil;
           coils[F("name")]  = mbCoilVar[coilIdx];
           coils[F("desc")]  = mbCoilDesc[coilIdx];
@@ -114,19 +175,18 @@ void restPageHandler() {                          //  URI /rest
       int result;
       String address = jsonIn[F("addr")] | "-1";
       int mbReg = getDecInt(address);              // this covers all bases
-//      int mbReg = jsonIn[F("addr")] | -1;
       int mbRegIndex = getMbRegIndex(mbReg);
-      if ( !mbRegRW[mbRegIndex] ) { jsonErr(F("read only")); return; }
+      if ( !mbRegRW[mbRegIndex] ) { jsonErr(request, F("read only")); return; }
       valu = jsonIn[F("pass")] | "none";
-      if ( valu != json_password ){ jsonErr(F("no password")); return; }
-      if ( mbRegIndex < 0 ){ jsonErr(F("bad addr")); return; }
+      if ( valu != json_password ){ jsonErr(request, F("no password")); return; }
+      if ( mbRegIndex < 0 ){ jsonErr(request, F("bad addr")); return; }
       valu = jsonIn[F("valu")] | "none";
-      if ( valu == "none" ){ jsonErr(F("no value")); return; }
+      if ( valu == "none" ){ jsonErr(request, F("no value")); return; }
       result = MBus_write_reg(mbReg, valu);
       if ( !result ) {
         jsonOut[F("writeSingleRegister")] = F("OK");
       } else {
-        jsonErr("failure " + String(result)); return;
+        jsonErr(request, "failure " + String(result)); return;
       }
       ok = true;
 
@@ -140,9 +200,9 @@ void restPageHandler() {                          //  URI /rest
       int mbCoil = getDecInt(address);              // this covers all bases
       int mbCoilIndex = getCoilIndex(mbCoil);
       valu = jsonIn[F("pass")] | "none";
-      if ( valu != json_password ){ jsonErr(F("no password")); return; }
+      if ( valu != json_password ){ jsonErr(request, F("no password")); return; }
       bool force = (jsonIn[F("force")] == "true") | false;
-      if ( (mbCoilIndex < 0) && !force ){ jsonErr(F("bad addr")); return; }
+      if ( (mbCoilIndex < 0) && !force ){ jsonErr(request, F("bad addr")); return; }
       valu = jsonIn[F("valu")] | "none";
       if ( valu == "on" || valu == "true" ) {
         valu = F("on");
@@ -151,12 +211,12 @@ void restPageHandler() {                          //  URI /rest
       } else {
         valu = F("none");
       }
-      if ( valu == "none" ){ jsonErr(F("no value")); return; }
+      if ( valu == "none" ){ jsonErr(request, F("no value")); return; }
       result = MBus_write_coil(mbCoil, valu);
       if ( !result ) {
         jsonOut[F("writeSingleCoil")] = F("OK");
       } else {
-        jsonErr("failure " + String(result)); return;
+        jsonErr(request, "failure " + String(result)); return;
       }
       ok = true;
     } else if ( cmd == F("readRegRaw") ) {  
@@ -166,13 +226,13 @@ void restPageHandler() {                          //  URI /rest
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version;
       jsonOut[F("api_min")] = json_version_min;
-      JsonArray &regArray = jsonOut.createNestedArray(F("registers"));
+      JsonArray regArray = jsonOut.createNestedArray(F("registers"));
       String valu;
       uint16_t raw;
       int count  = jsonIn[F("count")] | 1;
       for (int i = 0 ; i < count ; i++) {
-        JsonObject& regO      = regArray.createNestedObject();
-        JsonObject& registers = regO.createNestedObject(F("register"));
+        JsonObject regO      = regArray.createNestedObject();
+        JsonObject registers = regO.createNestedObject(F("register"));
         result = MBus_get_reg_raw(mbReg+i, raw);
         registers[F("addr")]   = mbReg+i;
         registers[F("vraw")]   = result ? F("err") : String("0x"+String(raw,HEX));
@@ -188,25 +248,25 @@ void restPageHandler() {                          //  URI /rest
       int result;
       int count  = jsonIn[F("count")] | 1;
       #ifdef ARDUINO_ARCH_ESP8266
-        if ( count > 2 ) { jsonErr(F("count > 2"), F("request entity too large") , 413); return; }
+        if ( count > 2 ) { jsonErr(request, F("count > 2"), F("request entity too large") , 413); return; }
       #endif
       #ifdef ARDUINO_ARCH_ESP32
-        if ( count > 32 ) { jsonErr(F("count > 256"), F("request entity too large") , 413); return; }
+        if ( count > 32 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
       #endif
-      if ( idx < 0 || idx > 255 ) { jsonErr(F("bad addr")); return; };
+      if ( idx < 0 || idx > 255 ) { jsonErr(request, F("bad addr")); return; };
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version;
       jsonOut[F("api_min")] = json_version_min;
-      JsonArray &regArray = jsonOut.createNestedArray(F("log_items"));
+      JsonArray regArray = jsonOut.createNestedArray(F("log_items"));
       for (int i = 0 ; i < count && i < 256; i++) {
-        JsonObject& regO      = regArray.createNestedObject();
-        JsonObject& registers = regO.createNestedObject(F("log_item"));
-        if ( getLogItem(item, idx+i) ) { jsonErr(F("modbus error"), F("gateway timeout"), 504); return; }
+        JsonObject regO      = regArray.createNestedObject();
+        JsonObject registers = regO.createNestedObject(F("log_item"));
+        if ( getLogItem(item, idx+i) ) { jsonErr(request, F("modbus error"), F("gateway timeout"), 504); return; }
         registers[F("addr")]              = idx+i;
         registers[F("hourmeter")]         = String(item.hourmeter);
         registers[F("alarm_daily")]       = "0x"+String(item.alarm_daily, HEX);
         if ( item.alarm_daily != 0 ) {   
-          JsonObject& alarm      = registers.createNestedObject(F("alarms"));
+          JsonObject alarm      = registers.createNestedObject(F("alarms"));
           long int alarmbit = 1;
           int alarmNum = 1;
           for ( int i = 0 ;  i<32 ; i++ ) {
@@ -223,7 +283,7 @@ void restPageHandler() {                          //  URI /rest
         }  
         registers[F("load_fault_daily")]  = "0x"+String(item.load_fault_daily, HEX);
         if ( item.load_fault_daily != 0 ) {  
-          JsonObject& load      = registers.createNestedObject(F("load_faults"));
+          JsonObject load      = registers.createNestedObject(F("load_faults"));
           long int alarmbit = 1;
           int alarmNum = 1;
           for ( int i = 0 ;  i<32 ; i++ ) {
@@ -240,7 +300,7 @@ void restPageHandler() {                          //  URI /rest
         }
         registers[F("array_fault_daily")] = "0x"+String(item.array_fault_daily, HEX);
         if ( item.array_fault_daily != 0 ) {  
-          JsonObject& array      = registers.createNestedObject(F("array_faults"));
+          JsonObject array      = registers.createNestedObject(F("array_faults"));
           long int alarmbit = 1;
           int alarmNum = 1;
           for ( int i = 0 ;  i<32 ; i++ ) {
@@ -274,23 +334,25 @@ void restPageHandler() {                          //  URI /rest
         response_message.reserve(3000);
       #endif
       #ifdef ARDUINO_ARCH_ESP32
-        response_message.reserve(98000); //98000 
+        response_message.reserve(65536); //94000 
+        debugMsgln("REST2 json free heap: "+String(ESP.getFreeHeap()),3);
       #endif
       response_message = jsonIn[F("back")] | "false";
       if ( response_message != "true" ) {
+        debugMsgln(F("Sending json response"),3);
         response_message = "";
-        jsonOut.prettyPrintTo(response_message);
-        server.send(200, F("application/json"), response_message);
+        serializeJsonPretty(jsonOut,response_message);
+        request->send(200, F("application/json"), response_message);
       } else {
         response_message = getHTMLHead();
         response_message += wrapScript(F("goBack()"));
         response_message += getHTMLFoot();
-        server.send(200, F("text/html"), response_message);        
+        request->send(200, F("text/html"), response_message);        
       }
     } else {
-      jsonErr(F("general error"), F("server error"), 500);
+      jsonErr(request, F("general error"), F("server error"), 500);
     }
   } else {                                               // no json in request
-  server.send(400, F("text/html"), F("400 - Bad request"));
+  request->send(400, F("text/html"), F("400 - Bad request"));
   }
 }

@@ -3,96 +3,101 @@
 //------------------------- Page handlers  --------------------------
 //-------------------------------------------------------------------
 
-void statusPageHandler () {
+void statusPageHandler (AsyncWebServerRequest *request) {
 /*  
  *   Returns a page of basic controller status.
  */
-    debugMsgln(F("Entering /status page."),2);
   checkController();
   if (noController || model.startsWith("PS-")) {  // break out different controller families
-    psStatusPageHandler();
+    psStatusPageHandler(request);
   }
 }
 
-void setChargePageHandler() {
+void setChargePageHandler(AsyncWebServerRequest *request) {
 /*  
  *   Page to set controller charging settings.
  */
-  debugMsgln(F("Entering /setcharge page."),2);
   checkController();
   if (noController || model.startsWith("PS-")) {  // break out different controller families
-    psSetChargePageHandler();
+    psSetChargePageHandler(request);
   }
 }
 
-void setOtherPageHandler() {
+void setOtherPageHandler(AsyncWebServerRequest *request) {
 /*  
  *   Page to set settings other than charging.
  */
   int addr, result;
   String desc, val;
-  debugMsgln(F("Entering /setother page."),2);
   checkController();
   if (noController || model.startsWith("PS-")) {  // break out different controller families
-    psSetOtherPageHandler();
+    psSetOtherPageHandler(request);
   }
 }
 
-void cmdPageHandler() {                          
+void cmdPageHandler(AsyncWebServerRequest *request) {                          
 /*
  *  Handles POST requests made to /cmd
  *  Used by JavaScript
  */
-  int addr, offset, wlan, numArgs = server.args();
+  int addr, offset, wlan, numArgs = request->args();
   unsigned short int ntp_poll = -1;
-  String data, value, ssid, pass, response_message = F("OK"), rtcTime, ntp_item, ntp_svr = "", ntp_tz = "";
-  enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, set_rtc_ntp, cfg_ntp };
+  String data, value, ssid, pass, response_message = F("OK"), rtcTime, ntp_item, ntp_svr = "", ntp_tz = "", var = "";
+  enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, set_rtc_ntp, cfg_ntp, clr_dlog, clr_clog };
   commands cmd;
   debugMsg(F("SET args received:"),4);
   debugMsgln(String(numArgs),4);
   for (int i=0 ; i<numArgs ; i++) {
-    debugMsgln("SET arg#"+String(i)+", "+server.argName(i)+":"+server.arg(i),4);
-    if ( server.argName(i) == F("writereg") ) {
+    debugMsgln("SET arg#"+String(i)+", "+request->argName(i)+":"+request->arg(i),4);
+    if ( request->argName(i) == F("writereg") ) {
       cmd = write_reg;
-      addr = server.arg(i).toInt();
-    } else if ( server.argName(i) == F("readreg") ) {
+      addr = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("readreg") ) {
       cmd = read_reg;
-      addr = server.arg(i).toInt();
-    } else if ( server.argName(i) == F("writecoil") ) {
+      addr = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("writecoil") ) {
       cmd = write_coil;
-      addr = server.arg(i).toInt();
-    } else if ( server.argName(i) == F("readcoil") ) {
+      addr = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("readcoil") ) {
       cmd = read_coil;
-      addr = server.arg(i).toInt();
-    } else if ( server.argName(i) == F("setrtc") ) {
+      addr = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("clr_dlog") ) {
+      cmd = clr_dlog;
+    } else if ( request->argName(i) == F("clr_clog") ) {
+      cmd = clr_clog;
+    } else if ( request->argName(i) == F("setrtc") ) {
       cmd = set_rtc;
-      rtcTime = server.arg(i);
-    } else if ( server.argName(i) == F("setagingoffset") ) {
+      rtcTime = request->arg(i);
+    } else if ( request->argName(i) == F("setagingoffset") ) {
       cmd = set_aging;
-      offset = server.arg(i).toInt();
-    } else if ( server.argName(i) == F("setwlan") ) {
+      offset = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("setwlan") ) {
       cmd = set_wlan;
-      wlan = server.arg(i).toInt();
-    } else if ( server.argName(i) == F("data") ) {
-      data = server.arg(i);
-    } else if ( server.argName(i) == F("ssid") ) {
-      ssid = server.arg(i);
-    } else if ( server.argName(i) == F("pass") ) {
-      pass = server.arg(i);
-    } else if ( server.argName(i) == F("setrtcntp") ) {
+      wlan = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("data") ) {
+      data = request->arg(i);
+    } else if ( request->argName(i) == F("ssid") ) {
+      ssid = request->arg(i);
+    } else if ( request->argName(i) == F("pass") ) {
+      pass = request->arg(i);
+    } else if ( request->argName(i) == F("setrtcntp") ) {
       cmd = set_rtc_ntp;
-    } else if ( server.argName(i) == F("setntpcfg") ) {
+    } else if ( request->argName(i) == F("setntpcfg") ) {
       debugMsgln(F("/cmd, setntpcfg received"),2);
       cmd = cfg_ntp;
-      ntp_item = server.arg(i);
-    } else if ( server.argName(i) == F("ntp_svr") ) {
+      ntp_item = request->arg(i);
+    } else if ( request->argName(i) == F("ntp_svr") ) {
       debugMsg(F("/cmd, setntpcfg received server:"),2);
-      debugMsgln(server.arg(i),2);
-      ntp_svr = server.arg(i);
-    } else if ( server.argName(i) == F("ntp_poll") ) {
-      ntp_poll = server.arg(i).toInt();
-    } else if ( server.argName(i) == F("ntp_tz") ) {
-      ntp_tz = server.arg(i);
+      debugMsgln(request->arg(i),2);
+      ntp_svr = request->arg(i);
+    } else if ( request->argName(i) == F("ntp_poll") ) {
+      debugMsg(F("/cmd, setntpcfg received poll:"),2);
+      debugMsgln(request->arg(i),2);
+      ntp_poll = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("ntp_tz") ) {
+      debugMsg(F("/cmd, setntpcfg received tz:"),2);
+      debugMsgln(request->arg(i),2);
+      ntp_tz = request->arg(i);
     }
   }
   
@@ -108,6 +113,36 @@ void cmdPageHandler() {
                     response_message = value;
                     break;
     case write_coil: MBus_write_coil(addr, data);
+                    break;
+    case clr_clog:  if(sd_card_available) {
+                      debugMsgln(F("Clearing controller log"),1);
+                      if (SD.exists(ctlLogFileName)) {
+                        ctl_logFile.close();
+                        SD.remove(ctlLogFileName);
+                        refreshCtlLogFile();
+                        response_message = getHTMLHead();
+                        response_message += F("Controller log cleared<script>setTimeout(() => { history.back(); }, 1500);</script>");
+                        response_message += getHTMLFoot();
+                        request->send(200, F("text/html"), response_message);
+                        return;
+                      }
+                    }
+                    break;
+    case clr_dlog:  if(sd_card_available) {
+                      debugMsgln(F("Clearing debug log"),1);
+                      if (SD.exists(logFileName)) {
+                        logFile.close();
+                        SD.remove(logFileName);
+                        logFile = SD.open(logFileName,FILE_APPEND);
+                        debugMsgln(F("Debug log cleared"),1);
+                        logFile.flush();
+                        response_message = getHTMLHead();
+                        response_message += F("Debug log cleared<script>setTimeout(() => { history.back(); }, 1500);</script>");
+                        response_message += getHTMLFoot();
+                        request->send(200, F("text/html"), response_message);
+                        return;
+                      }
+                    }  
                     break;
     case set_rtc:   setRtcTime(rtcTime);
                     break;
@@ -139,10 +174,10 @@ void cmdPageHandler() {
                     break;
     default:        response_message = F("err");
   }
-  server.send(200, F("text/plain"), response_message);
+  request->send(200, F("text/plain"), response_message);
 }
 
-void platformPageHandler()
+void platformPageHandler(AsyncWebServerRequest *request)
 /*
  * Returns a page with info on the ESP platform.
  */
@@ -151,7 +186,7 @@ void platformPageHandler()
   checkController();
 
   String response_message;
-  response_message.reserve(5000);
+  response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
 
@@ -171,7 +206,7 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("WLAN MAC"), WiFi.macAddress());
     response_message += getTableRow2Col(F("WLAN SSID"), WiFi.SSID());
   }
-    response_message += getTableRow2Col(F("WLAN RSSI"), String(WiFi.RSSI()));
+    response_message += getTableRow2Col(F("WLAN RSSI"), String(WiFi.RSSI())+" dBm");
   if ( WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress softapip = WiFi.softAPIP();
     response_message += getTableRow2Col(F("AP IP"), formatIPAsString(softapip));
@@ -180,10 +215,12 @@ void platformPageHandler()
       response_message += getTableRow2Col(F("AP SSID"), WiFi.softAPSSID());                   
     #endif
     #ifdef ARDUINO_ARCH_ESP32
-      response_message += getTableRow2Col(F("AP SSID"), ap_ssid);          
+      response_message += getTableRow2Col(F("AP SSID"), ap_ssid);
     #endif
     response_message += getTableRow2Col(F("AP connections"),String(WiFi.softAPgetStationNum()));
   }
+  float pwr = WiFi.getTxPower()/4.0;
+  response_message += getTableRow2Col(F("Tx power"), String(pwr)+" dBm" );
 
   // Make the uptime readable
   long upSecs = millis() / 1000;
@@ -210,7 +247,6 @@ void platformPageHandler()
     String vccString = String(dtostrfbuffer);
   #endif
   
-  // ESP8266 Info table
   response_message += getTableHead2Col(F("Platform Information"), F("Name"), F("Value"));
   #ifdef ARDUINO_ARCH_ESP8266
     response_message += getTableRow2Col(F("Architecture"), F("ESP8266"));
@@ -221,10 +257,10 @@ void platformPageHandler()
   #endif
   response_message += getTableRow2Col(F("CPU Frequency (MHz)"), String(ESP.getCpuFreqMHz()));
   if (rtcPresent) {
-    response_message += getTableRow2Col(F("RTC Time"), myTZ.dateTime(getUnixTime(),RFC850));
-    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2));
+    response_message += getTableRow2Col(F("RTC Time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850));
+    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg;C");
   }
-  String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST");
+  String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST"); //myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850)
   response_message += getTableRow2Col(F("Compiled on"), myTZ.dateTime(compileTime(), RFC850));  //datetime);
   response_message += getTableRow2Col(F("Arduino IDE"), String(ARDUINO));
   response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
@@ -238,7 +274,7 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Free heap"), formatBytes(ESP.getFreeHeap()));
     response_message += getTableRow2Col(F("Heap fragmentation"), String(ESP.getHeapFragmentation())+" %");
     response_message += getTableRow2Col(F("Stack low watermark"), formatBytes(ESP.getFreeContStack()));
-  
+
     FSInfo fs_info;
     FILESYSTEM.info(fs_info);
     response_message += getTableRow2Col(fs_type + String(F(" size")), formatBytes(fs_info.totalBytes));
@@ -246,10 +282,11 @@ void platformPageHandler()
     response_message += getTableRow2Col(fs_type + String(F(" block size")), formatBytes(fs_info.blockSize));
     response_message += getTableRow2Col(fs_type + String(F(" page size")), formatBytes(fs_info.pageSize));
     response_message += getTableRow2Col(fs_type + String(F(" max open files")), String(fs_info.maxOpenFiles));
-    
+
     response_message += getTableRow2Col(F("Chip ID"), String(ESP.getChipId()));
     response_message += getTableRow2Col(F("Flash Chip ID"), "0x"+String(ESP.getFlashChipId(),HEX));
     response_message += getTableRow2Col(F("Flash size"), formatBytes(ESP.getFlashChipRealSize()));
+
     extern SpiFlashChip *flashchip;
 /* typedef struct{
         uint32  deviceId;
@@ -278,8 +315,14 @@ void platformPageHandler()
     if (sd_card_available) {
       response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
       response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
-      if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Log file name"), \
-        "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>");
+      if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Debug log file"), \
+        "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>" + \
+        "&nbsp;&nbsp;" + \
+        "<a href=\"/sd" + logFileName + "\" download>" + "(download)" + "</a>");
+      if (sd_card_log && sd_card_available && ctl_logFile) response_message += getTableRow2Col(F("Controller log file"), \
+        "<a href=\"/sd" + ctlLogFileName + "\" target=\"_blank\">" + "/sd" + ctlLogFileName + "</a>" + \
+        "&nbsp;&nbsp;" + \
+        "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
     }
     response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
     response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
@@ -289,7 +332,7 @@ void platformPageHandler()
     response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
     response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
   #endif
-  
+
   if (model.startsWith(F("PS-"))) {  // TODO make this universal
     float mbv = 0;
     if (model == "PS-MPPT") {
@@ -303,11 +346,25 @@ void platformPageHandler()
   response_message += getTableFoot();
 
   response_message += getHTMLFoot();
+  
+  debugMsg(F("response_message size:"),4);
+  debugMsgln(String(response_message.length()),4);
 
-  server.send(200, F("text/html"), response_message);
+  #ifdef ARDUINO_ARCH_ESP8266
+    // need to buffer in SPIFFs due to low memory on ESP8266
+    File tempFile = FILESYSTEM.open(F("/platform.html"), "w");
+    tempFile.print(response_message);
+    response_message = "";
+    tempFile.close();
+    request->send(FILESYSTEM, F("/platform.html"), F("text/html"));
+    FILESYSTEM.remove(F("/platform.html"));
+  #endif
+  #ifdef ARDUINO_ARCH_ESP32  
+    request->send(200, F("text/html"), response_message);
+  #endif
 }
 
-void allregsPageHandler()
+void allregsPageHandler(AsyncWebServerRequest *request)
 {
   debugMsgln(F("Entering /allregs page."),2);
   String response_message;
@@ -359,16 +416,27 @@ void allregsPageHandler()
       // TODO additional types (n673 onward)             
       default:           ;
     }
-    delay(1); // brief pause between reading registers works best
+    delayMicroseconds(1000); // brief pause between reading registers works best
   }
   response_message += getTableFoot();
 
   response_message += getHTMLFoot();
-  server.send(200, F("text/html"), response_message);
+  #ifdef ARDUINO_ARCH_ESP8266
+    // need to buffer in SPIFFs due to low memory on ESP8266
+    File tempFile = FILESYSTEM.open(F("/allregs.html"), "w");
+    tempFile.print(response_message);
+    response_message = "";
+    tempFile.close();
+    request->send(FILESYSTEM, "/allregs.html", F("text/html"));
+    //FILESYSTEM.remove(F("/allregs.html"));
+  #endif
+  #ifdef ARDUINO_ARCH_ESP32  
+    request->send(200, F("text/html"), response_message);
+  #endif
 }
 
 
-void allcoilsPageHandler() {
+void allcoilsPageHandler(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /allcoils page."),2);
   String response_message;
   response_message.reserve(3000);
@@ -393,32 +461,32 @@ void allcoilsPageHandler() {
     MBus_get_coil(mbCoilAddr[row], state);
     coilInfo = mbCoilDesc[row] + " [" + String(mbCoilAddr[row]) + "]" + " (" + mbCoilVar[row] + ")";
     response_message += getTableRow2Col(coilInfo, String(state));
-    delay(1);
+    delayMicroseconds(1000);
   }
   response_message += getTableFoot();
   
   response_message += getHTMLFoot();
-  server.send(200, F("text/html"), response_message);
+  request->send(200, F("text/html"), response_message);
 }
 
 /**
    WLAN page allows users to set the WiFi credentials
 */
-void wlanPageHandler()
+void wlanPageHandler(AsyncWebServerRequest *request)
 {
   String ssid, pass;
   debugMsgln(F("Entering /wlan_config page."),2);
 
   // Check if there are any GET parameters, if there are, we are configuring
-  if (server.hasArg(F("ssid"))) {
-      ssid = server.arg("ssid");
+  if (request->hasArg(F("ssid"))) {
+      ssid = request->arg("ssid");
       WiFi.persistent(true);
     debugMsgln(F("Configuring WiFi"),2);
     debugMsg(F("New SSID entered:"),2);
     debugMsgln(ssid,2);
     
-    if (server.hasArg(F("password")))  {
-      pass = server.arg(F("password"));
+    if (request->hasArg(F("password")))  {
+      pass = request->arg(F("password"));
       debugMsg(F("New PASSWORD entered:"),4);
       debugMsg(pass,9);
       debugMsgln("",4);
@@ -445,6 +513,10 @@ void wlanPageHandler()
     }
   } // end, got an SSID to configure
 
+  debugMsgln("Starting WiFi scan.",4);
+  // Get number of visible access points
+  int ap_count = WiFi.scanNetworks();
+
   String response_message;
   response_message.reserve(3000);
   response_message = getHTMLHead();
@@ -453,9 +525,6 @@ void wlanPageHandler()
   // form header
   response_message += getFormHead(F("Set Configuration"));
 
-  debugMsgln("Starting WiFi scan.",4);
-  // Get number of visible access points
-  int ap_count = WiFi.scanNetworks();
 
   response_message += getDropDownHeader(F("WiFi:"), F("ssid"), true);
 
@@ -516,14 +585,17 @@ void wlanPageHandler()
 */
   response_message += getHTMLFoot();
 
-  server.send(200, F("text/html"), response_message);
+  debugMsg(F("response_message size:"),4);
+  debugMsgln(String(response_message.length()),4);
+
+  request->send(200, F("text/html"), response_message);
 
 }
 
 /**
    Utility functions
 */
-void utilityPageHandler()
+void utilityPageHandler(AsyncWebServerRequest *request)
 {
   debugMsgln(F("Entering /utility page."),2);
 
@@ -541,40 +613,46 @@ void utilityPageHandler()
   response_message += F("<hr><a href=\"/wlan_config\">Wireless settings</a>");
   response_message += F("<hr><a href=\"/setTime\">Time settings</a>");
   response_message += F("<hr><a href=\"/documentation.htm\">Documentation</a>");
-  response_message += F("<hr><a href=\"/edit\">File edit/view/upload (ctrl-s saves file)</a>");
+//  response_message += F("<hr><a href=\"/edit\">File edit/view/upload (ctrl-s saves file)</a>");
   response_message += F("<hr><a href=\"/allregs\">Show all registers</a>");
   response_message += F("<hr><a href=\"/allcoils\">Show all coils</a>");
-  response_message += F("<hr><a href=\"/rest?json={%22addr%22:255,%22cmd%22:");
-  response_message += F("%22writeSingleCoil%22,%22valu%22:%22on%22,%22pass%22:%22");
+  response_message += F("<hr><a href=\"/rest?json={%22addr%22:255%2c%22cmd%22:");
+  response_message += F("%22writeSingleCoil%22%2c%22valu%22:%22on%22%2c%22pass%22:%22");
   response_message += json_password;
-  response_message += F("%22,%22back%22:%22true%22}\">Restart solar controller</a>");
+  response_message += F("%22%2c%22back%22:%22true%22}\">Restart solar controller</a>");
 
 
   response_message += F("<hr><a href=\"/getfile\">Check controller and reread files</a>");
   response_message += F("<hr><a href=\"/reset\">Restart WLAN module</a>");
   if ( largeFlash ) {
     response_message += F("<hr><a href=\"");
-    response_message += UPDATE_PATH;
+    response_message += update_path;
     response_message += F("\">Update WLAN module firmware</a>");
   }
 
   response_message += F("<hr><h3>Use with caution!</h3>");
-  
-  response_message += F("<hr><a href=\"/rest?json={%22addr%22:254,%22cmd%22:");
-  response_message += F("%22writeSingleCoil%22,%22valu%22:%22on%22,%22pass%22:%22");
+
+  response_message += F("<hr><a href=\"/cmd?clr_dlog\">Clear debug log</a>");
+  response_message += F("<hr><a href=\"/cmd?clr_clog\">Clear controller log</a>");
+  response_message += F("<hr><a href=\"/rest?json={%22addr%22:254%2c%22cmd%22:");
+  response_message += F("%22writeSingleCoil%22%2c%22valu%22:%22on%22%2c%22pass%22:%22");
   response_message += json_password;
-  response_message += F("%22,%22back%22:%22true%22}\">Reset solar controller to factory defaults</a>");
+  response_message += F("%22%2c%22back%22:%22true%22}\">Reset solar controller to factory defaults</a>");
   response_message += F("<hr><a href=\"/resetall\">Clear config and restart WLAN module</a>");
 
   response_message += F("</font></div>");
   response_message += getHTMLFoot();
-  server.send(200, F("text/html"), response_message);
+
+  debugMsg(F("response_message size:"),4);
+  debugMsgln(String(response_message.length()),4);
+
+  request->send(200, F("text/html"), response_message);
 }
 
 /**
    Reset the ESP card
 */
-void getfilePageHandler() {
+void getfilePageHandler(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /getfile page."),2);
 
   String response_message;
@@ -599,14 +677,14 @@ void getfilePageHandler() {
   getFile(model);
   response_message += F("<script> var timer = setTimeout(function() {window.location='/'}, 3000);</script>");  
   response_message += getHTMLFoot();
-  server.send(200, F("text/html"), response_message);
+  request->send(200, F("text/html"), response_message);
 }
 
 
 /**
    Reset the EEPROM and stored values
 */
-void resetAllPageHandler() {
+void resetAllPageHandler(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /resetall page."),2);
 
   String response_message;
@@ -627,20 +705,17 @@ void resetAllPageHandler() {
    */
   system_restore(); // this wipes ESP saved wifi stuff
   
-  server.send(200, F("text/html"), response_message);
+  request->send(200, F("text/html"), response_message);
   for ( int i = 0; i < 1000 ; i++ ) {
-    server.handleClient();
-    delay(1);    // wait to deliver response
+//    server.handleClient();
+    delayMicroseconds(1000);    // wait to deliver response
     yield();
   }
   WiFi.disconnect();
   reboot();
 }
 
-/**
-   Reset the ESP card
-*/
-void resetPageHandler() {
+void resetPageHandler(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /reset page."),2);
 
   String response_message;
@@ -650,24 +725,24 @@ void resetPageHandler() {
   response_message += F("<div class=\"alert alert-success fade in\"><strong>Attempting a restart.</strong>");
   response_message += F("<script> var timer = setTimeout(function() {window.location='/'}, 12000);</script>");  
   response_message += getHTMLFoot();
-  server.send(200, F("text/html"), response_message);
+  request->send(200, F("text/html"), response_message);
   for ( int i = 0; i < 1000 ; i++ ) {
-    server.handleClient();
-    delay(1);    // wait to deliver response
+//    server.handleClient();
+    delayMicroseconds(1000);    // wait to deliver response
     yield();
   }
   reboot();
 }
 
-void setTimePageHandler() {
+void setTimePageHandler(AsyncWebServerRequest *request) {
  //   Page to set RTC.
   debugMsgln(F("Entering /setTime page."),2);
   String serverArg = "";
 
-  if (server.hasArg("tzname")) {          // for POSIX lookup
-    serverArg = String(server.arg("tzname").c_str());
+  if (request->hasArg("tzname")) {          // for POSIX lookup
+    serverArg = String(request->arg("tzname").c_str());
     if ( serverArg.length() > 3 && serverArg.length() < 64 ) {
-      tzName = server.arg("tzname").c_str();
+      tzName = request->arg("tzname").c_str();
       if (myTZ.setLocation(tzName)) {  // also sets TZ string, so we restore after
         tzPosix = myTZ.getPosix();
         myTZ.setPosix(ntpTZ);          // restore the existing string
@@ -690,9 +765,9 @@ void setTimePageHandler() {
   response_message += F("NTP (Network Time Protocol) can retrieve the current time if a connection to the Internet is available. <br><br>");
   
   if (rtcPresent) {  
-    response_message += getTextInput(F("Current RTC time"), F("rtc_time"), myTZ.dateTime(getUnixTime(),RFC850), true);
+    response_message += getTextInput(F("Current RTC time"), F("rtc_time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850), true);
     response_message += F("<br><br>");
-    response_message += getTextInput(F("RTC last set"), F("rtc_lastset"), myTZ.dateTime(getRtcLastSetTime(),RFC850), true);
+    response_message += getTextInput(F("RTC last set"), F("rtc_lastset"), myTZ.dateTime(getRtcLastSetTime(), UTC_TIME, RFC850), true);
     response_message += F("<br><br>");
   } else {
     response_message += getTextInput(F("RTC not available"), F("rtc_avail"), "", true);
@@ -786,16 +861,33 @@ void setTimePageHandler() {
   response_message += getSubmitButton(F("Lookup"));
   response_message += F("<br><hr/>");
   response_message += F("<a href=\"http://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html\" target=\"_blank\">");
-  response_message += F("POSIX time zone string reference,</a> e.g. US Eastern is <b>EST5EDT,M3.2.0,M11.1.0</b>. ");
+  response_message += F("POSIX time zone string reference,</a> e.g. US Eastern is <b>EST+5EDT,M3.2.0/2,M11.1.0/2</b>. ");
   response_message += F("<br><hr/>");
   response_message += getFormFoot();
   
   response_message += getHTMLFoot();
-  server.send(200, F("text/html"), response_message);
+
+  debugMsg(F("response_message size:"),4);
+  debugMsgln(String(response_message.length()),4);
+
+  #ifdef ARDUINO_ARCH_ESP8266
+    // need to buffer in SPIFFs due to low memory on ESP8266
+    File tempFile = FILESYSTEM.open(F("/setTime.htm"), "w");
+    tempFile.print(response_message);
+    response_message = "";
+    tempFile.close();
+    request->send(FILESYSTEM, F("/setTime.htm"), F("text/html"));
+    FILESYSTEM.remove(F("/setTime.htm"));
+  #endif
+  #ifdef ARDUINO_ARCH_ESP32  
+    request->send(200, F("text/html"), response_message);
+  #endif
+
 }
 
 #ifdef ARDUINO_ARCH_ESP32
-  bool loadFromSdCard(String path) {
+  bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
+    debugMsgln("loadFromSdCard, file:"+path,4);
     String dataType = "text/plain";
     if (path.endsWith("/")) {
       path += "index.htm";
@@ -839,23 +931,24 @@ void setTimePageHandler() {
     }
   
     if (!dataFile) {
+      debugMsgln("File not found",4);
       return false;
     }
   
-    if (server.hasArg("download")) {
+    if (request->hasArg("download")) {
       dataType = "application/octet-stream";
     }
-    if (server.streamFile(dataFile, dataType) != dataFile.size()) {
-    debugMsgln(F("Sent less data than expected!"),4);
-    }
+    debugMsgln("Sending file",4);
+    request->send(SD, path, dataType);
   
     dataFile.close();
     return true;
   }
   
-  void sdPageHandler(String URI){
-    debugMsgln("sdPageHandler URI:/sd/"+URI,4);
-    String relative_uri = "/"+URI;
+  void sdPageHandler(String URI, AsyncWebServerRequest *request ){
+    debugMsgln("sdPageHandler URI:"+URI,4);
+    String relative_uri = URI;
+    relative_uri.replace("/sd/","/");
   /*  checkController();
     String response_message;
     response_message.reserve(4000);
@@ -869,25 +962,25 @@ void setTimePageHandler() {
   
     response_message += getFormFoot();
     response_message += getHTMLFoot();
-    server.send(200, F("text/html"), response_message);
+    request->send(200, F("text/html"), response_message);
   */
-    if (sd_card_available && loadFromSdCard(relative_uri)) {
+    if (sd_card_available && loadFromSdCard(relative_uri, request)) {
       return;
     }
     String message = "SDCARD Not Detected\n\n";
     message += "URI: ";
-    message += server.uri();
+    message += request->url();
     message += "\nrelative URI: ";
     message += relative_uri;
     message += "\nMethod: ";
-    message += (server.method() == HTTP_GET) ? "GET" : "POST";
+    message += (request->method() == HTTP_GET) ? "GET" : "POST";
     message += "\nArguments: ";
-    message += server.args();
+    message += request->args();
     message += "\n";
-    for (uint8_t i = 0; i < server.args(); i++) {
-      message += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
+    for (uint8_t i = 0; i < request->args(); i++) {
+      message += " NAME:" + request->argName(i) + "\n VALUE:" + request->arg(i) + "\n";
     }
-    server.send(404, "text/plain", message);
+    request->send(404, "text/plain", message);
     debugMsgln(message,5);
   }
 #endif //esp32

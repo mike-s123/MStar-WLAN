@@ -11,9 +11,9 @@ void setupComms() {
      */
     Serial.swap();  //
     #ifdef DEBUG_ON
-      delay(100);
+      delay(10);
       setupDebug();
-      delay(100);
+      delay(10);
       debugMsg(F("Debug on, level "),1);
       debugMsgln(String(debug_level),1);
     #else
@@ -35,7 +35,7 @@ void setupComms() {
       debugMsgln(String(debug_level),1);
     #endif
     pinMode(RX_PIN, INPUT);
-    delay(100);
+    delay(10);
     mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);    
 //    pinMatrixOutAttach(TX_PIN, U1TXD_OUT_IDX, true, false);
 //    pinMatrixInAttach(RX_PIN, U1RXD_IN_IDX, true);
@@ -85,17 +85,14 @@ void setupWLAN() {
     WiFi.mode(WIFI_STA);
     char __hostname[sizeof(my_hostname)+1];
     my_hostname.toCharArray(__hostname, sizeof(__hostname));
-    // __hostname[sizeof(my_hostname)] = '\0';
-    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     WiFi.setHostname(__hostname);             // TODO not working
   }
   #endif
   
   debugMsg(F("Using hostname: "),1);
   debugMsgln(my_hostname,1);
-  debugMsgln(F("Trying to connect to WLAN."),1);
   
-  wlanConnected = connectToWLAN();    // try to connect as STA
+  wlanConnected = connectToWLAN();    // try to connect
   lastWLANtry = millis();
 }
 
@@ -129,18 +126,16 @@ void setupModbus() {
   }
 }
 
-
 #ifdef ARDUINO_ARCH_ESP32
-
-  bool checkSDCard(int cardNum = 0) {
+  void checkSDCard(int cardNum = 0) {
     int csPin = SD_CARD0_CS; 
     if (cardNum == 1 ) csPin = SD_CARD1_CS;    
     sd_card_available = SD.begin(csPin);
     if(!sd_card_available){
       debugMsgln("SD card mount failed",1);
     } else { // SD card mounted
+      refreshCtlLogFile(); // opens log, name based on controller s/n
       logFile = SD.open(logFileName,FILE_APPEND);
-      ctl_logFile = SD.open(CTL_LOGFILE,FILE_APPEND);
       #ifdef EZT_DEBUG
         ezt_logFile = SD.open(EZT_LOGFILE,FILE_APPEND);
       #endif
@@ -151,6 +146,9 @@ void setupModbus() {
         debugMsgln(get_reset_reason(0),1);
         debugMsg(F("Reset reason CPU 1:"),1);
         debugMsgln(get_reset_reason(1),1);
+        const char *sv = SOFTWARE_VERSION;
+        String svs = sv;  // butt ugly
+        debugMsgln("Version " + svs + " (" + UTC.dateTime(compileTime(), "Y-m-d~TH:i:s") + ")", 1);
         #ifdef EZT_DEBUG
           if (ezt_logFile) ezt_logFile.println(F("***********eztime.log opened***********"));
         #endif
@@ -160,7 +158,7 @@ void setupModbus() {
                           break;
         case CARD_MMC:    debugMsgln(F("MMC card available"),1);
                           break;
-        case CARD_SD:     debugMsgln(F("SD card availaable"),1);
+        case CARD_SD:     debugMsgln(F("SD card available"),1);
                           break;
         case CARD_SDHC:   debugMsgln(F("SDHC card available"),1);
                           break;
@@ -174,14 +172,16 @@ void setupModbus() {
     sd_card_changed = true;
   }
 
-  void setupSDCard(){
+  void attachSDCardIRQ(){
     pinMode(SD_DETECT, INPUT_PULLUP);  // only for SDCard0
-    attachInterrupt(digitalPinToInterrupt(SD_DETECT), SDCardIRQ, CHANGE); 
+    attachInterrupt(digitalPinToInterrupt(SD_DETECT), SDCardIRQ, CHANGE); // gets IRQ when card inserted or removed
   }
 
   void changeSDCard(){
     delay(100); // debounce
     if (digitalRead(SD_DETECT)) { // sd card removed
+      ctl_logFile.close(); // release hooks and buffers
+      logFile.close();
       SD.end();
       sd_card_available = false;
       debugMsgln(F("SD card removed"),1);
@@ -189,6 +189,7 @@ void setupModbus() {
       delay(100);
       if (!digitalRead(SD_DETECT)) {
         debugMsgln(F("SD card inserted"),1);
+        SD.end(); // fix issue with pointers?
         checkSDCard(0);
       }
     }
@@ -197,53 +198,10 @@ void setupModbus() {
 
 #endif //esp32
 
-
-/* playing with SdFat.h
-#ifdef ARDUINO_ARCH_ESP32
-  bool checkSDCard(int cardNum = 0) {
-    int csPin = SD_CARD0_CS; 
-    pinMode(SD_DETECT, INPUT_PULLUP);  // TODO future hardware, only for SDCard0
-    if (cardNum == 1 ) csPin = SD_CARD1_CS;
-    SdFile::dateTimeCallback(sdDateTime);
-    sd_card_available = SD.begin(csPin);
-    if(!sd_card_available){
-      debugMsgln("SD card mount failed",1);
-    } else {
-      if (sd_card_log) {
-//          String lfn = "/"+ my_hostname + ".log";
-//          File logFile = SD.open(lfn,FILE_WRITE); // starts new log
-//          if (logFile) {
-//            logFile.print(myTZ.dateTime(ATOM)+" ");
-//            logFile.println(F("Log cleared"));
-//          }
-        debugMsgln("",1);
-        debugMsgln(F("***********BOOTED***********"),1);
-        debugMsg(F("Reset reason CPU 0:"),1);
-        debugMsgln(get_reset_reason(0),1);
-        debugMsg(F("Reset reason CPU 1:"),1);
-        debugMsgln(get_reset_reason(1),1);
-      }
-      switch (SD.cardType()) { 
-        case CARD_NONE:   debugMsgln(F("No SD card attached"),1);
-                          break;
-        case CARD_MMC:    debugMsgln(F("MMC card attached"),1);
-                          break;
-        case CARD_SD:     debugMsgln(F("SD card attached"),1);
-                          break;
-        case CARD_SDHC:   debugMsgln(F("SDHC card attached"),1);
-                          break;
-        default:          debugMsgln(F("SD card unknown"),1);
-                          break;
-      }
-    } 
-  }
-#endif //esp32
-*/
-
 void setupFS() {
   
   debugMsg(fs_type,1);
-  debugMsgln(F(" Starting"),1);
+  debugMsgln(F(" starting"),1);
   #ifdef ARDUINO_ARCH_ESP8266
     #ifdef FS_LITTLEFS
       LittleFSConfig cfg;

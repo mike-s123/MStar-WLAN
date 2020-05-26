@@ -4,176 +4,269 @@
  * 
  */
 
+// OTA update functions, from https://github.com/lbernstone/asyncUpdate
+void handleUpdate(AsyncWebServerRequest *request) {
+  debugMsgln(F("Entering /update page."),2);
+  checkController();
+
+  String response_message;
+  response_message.reserve(1000);
+  response_message = getHTMLHead();
+  response_message += getNavBar();
+  response_message += "<script> \
+    function notify_update() {document.getElementById(\"update\").innerHTML = \"<h2>Updating...</h2>\"\; } \
+    </script>";
+  response_message += "Firmware = *.esp32.bin<br>SPIFFS = *.spiffs.bin<br> \
+  <form method='POST' action='/doUpdate' enctype='multipart/form-data' target='_self' onsubmit='notify_update()'> \
+  <input type='file' name='update'><br> \
+  <input type='submit' value='Do update'></form> \
+  <div id=\"update\"></div> \
+  ";
+  response_message += getHTMLFoot();
+  request->send(200, "text/html", response_message);
+};
+
+void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+  if (!index){
+    size_t content_len;  
+    debugMsgln(F("OTA Updating"),1);
+    logFile.flush();
+    content_len = request->contentLength();
+    // if filename includes spiffs or mklittlefs, update the fs partition
+#ifdef ARDUINO_ARCH_ESP8266
+    int cmd = (filename.indexOf(F(".spiffs.bin")) > -1 || filename.indexOf(F(".mklittlefs.bin")) > -1 ) ? U_FS : U_FLASH;
+    if (cmd == U_FLASH && filename.indexOf(F("esp32.bin")) > -1 ) return; // wrong image for ESP8266
+#endif
+#ifdef ARDUINO_ARCH_ESP32
+    int cmd = (filename.indexOf(F(".spiffs.bin")) > -1 ) ? U_SPIFFS : U_FLASH;
+    if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) return; // wrong image for ESP32
+#endif
+#ifdef ARDUINO_ARCH_ESP8266
+    Update.runAsync(true);
+    if (!Update.begin(content_len, cmd)) {
+#endif
+#ifdef ARDUINO_ARCH_ESP32
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+#endif
+      Update.printError(DEBUG_ESP_PORT);
+    }
+  }
+
+  if (Update.write(data, len) != len) {
+    Update.printError(DEBUG_ESP_PORT);
+  }
+
+  if (final) {    
+    if (!Update.end(true)){
+      Update.printError(DEBUG_ESP_PORT);
+    } else {
+      String response_message;
+      response_message.reserve(1000);
+      response_message = getHTMLHead();
+      response_message += "<h2>Please wait while the device reboots</h2> \
+      <meta http-equiv=\"refresh\" content=\"20;url=/\" />";
+      response_message += getHTMLFoot();
+      AsyncWebServerResponse *response = request->beginResponse(200, "text/html", response_message);
+      response->addHeader("Refresh", "20");  
+      response->addHeader("Location", "/");
+      request->send(response);    
+      debugMsgln("Update complete, rebooting",1);
+      if (logFile) logFile.flush();
+      delay(100);
+      ESP.restart();
+    }
+  }
+}
+
+
+bool serveFile(String path, AsyncWebServerRequest *request) {
+  
+  String dataType = "text/plain";
+  if (path.endsWith("/")) {
+    path += "index.htm";
+  }
+  if (path.endsWith(".src")) {
+    path = path.substring(0, path.lastIndexOf("."));
+  } else if (path.endsWith(".htm") || path.endsWith(".html")) {
+    dataType = "text/html";
+  } else if (path.endsWith(".css")) {
+    dataType = "text/css";
+  } else if (path.endsWith(".js")) {
+    dataType = "application/javascript";
+  } else if (path.endsWith(".png")) {
+    dataType = "image/png";
+  } else if (path.endsWith(".gif")) {
+    dataType = "image/gif";
+  } else if (path.endsWith(".jpg")) {
+    dataType = "image/jpeg";
+  } else if (path.endsWith(".ico")) {
+    dataType = "image/x-icon";
+  } else if (path.endsWith(".xml")) {
+    dataType = "text/xml";
+  } else if (path.endsWith(".pdf")) {
+    dataType = "application/pdf";
+  } else if (path.endsWith(".zip")) {
+    dataType = "application/zip";
+  }
+      
+  File dataFile = FILESYSTEM.open(path, "r");
+  if (dataFile.isDirectory()) {
+    path += "/index.htm";
+    dataType = "text/html";
+    dataFile = FILESYSTEM.open(path, "r");
+  }
+
+  if (!dataFile) return false;
+  dataFile.close();
+
+  if (request->hasArg("download")) {
+    dataType = "application/octet-stream";
+  }
+  request->send(FILESYSTEM, path, dataType);
+  return true;
+}
+
 void startWeb() { 
-  server.on("/",               statusPageHandler);
-  server.on("/status",      statusPageHandler);
-  
-  server.on("/platform", platformPageHandler);
-
-  server.on("/setTime", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return setTimePageHandler();
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    statusPageHandler(request);
   });
 
-  server.on("/cmd", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return cmdPageHandler();
-  });
-
-  server.on("/setcharge", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return setChargePageHandler();
-  });
-
-  server.on("/setother", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return setOtherPageHandler();
-  });
-
-  server.on("/rest", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return restPageHandler();
-  });
-
-  server.on("/allregs",      allregsPageHandler);
-  server.on("/allcoils",     allcoilsPageHandler);
-
-  server.on("/wlan_config", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return wlanPageHandler();
-  });
-  server.on("/utility", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return utilityPageHandler();
-  });
-
-  server.on("/getfile",   getfilePageHandler);
-
-  server.on("/reset", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return resetPageHandler();
-  });
-
-  server.on("/resetall", []() {
-    if (!server.authenticate(web_username, web_password)) {
-      return server.requestAuthentication();
-    }
-    return resetAllPageHandler();
-  });
-
-  server.on("/list", HTTP_GET, handleFileList);
-  //load editor
-
-  server.on("/edit", HTTP_GET, []() {
-    if (!handleFileRead("/edit.htm")) {
-      server.send(404, "text/plain", "FileNotFound");
-    }
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
+    statusPageHandler(request);
   });
   
-  //create file
-  server.on("/edit", HTTP_PUT, handleFileCreate);
-  
-  //delete file
-  server.on("/edit", HTTP_DELETE, handleFileDelete);
-  
-  //first callback is called after the request has ended with all parsed arguments
-  //second callback handles file uploads at that location
-  server.on("/edit", HTTP_POST, []() {
-    server.send(200, "text/plain", "");
-  }, handleFileUpload);
-
-  server.onNotFound([]() {                              // If the client requests any URI
-    debugMsgln("server.onNotFound:" + server.uri(),3);
-    if (!handleFileRead(server.uri()))                  // send it if it exists
-      server.send(404, F("text/plain"), F("404: Not Found")); // otherwise, respond with a 404 (Not Found) error
+  server.on("/platform", HTTP_GET, [](AsyncWebServerRequest *request){
+    return platformPageHandler(request);
   });
   
-  // static for 12 hours.
-  server.serveStatic("/ctl/PS-PWM.png",       FILESYSTEM, "/ctl/PS-PWM.png",        "max-age=43200");
-  server.serveStatic("/ctl/PS-MPPT.png",      FILESYSTEM, "/ctl/PS-MPPT.png",       "max-age=43200"); 
-  server.serveStatic("/ctl/SSDuo.png",        FILESYSTEM, "/ctl/SSDuo.png",         "max-age=43200"); 
-  server.serveStatic("/ctl/SS-MPPT.png",      FILESYSTEM, "/ctl/SS-MPPT.png",       "max-age=43200"); 
-  server.serveStatic("/ctl/TS.png",           FILESYSTEM, "/ctl/TS.png",            "max-age=43200"); 
-  server.serveStatic("/ctl/TS-MPPT.png",      FILESYSTEM, "/ctl/TS-MPPT.png",       "max-age=43200"); 
-  server.serveStatic("/ctl/TS-600.png",       FILESYSTEM, "/ctl/TS-600.png",        "max-age=43200"); 
-  server.serveStatic("/ctl/Nocontroller.png", FILESYSTEM, "/ctl/Nocontroller.png",  "max-age=43200"); 
-  #ifndef DEBUG_JS
-    server.serveStatic("/local.js",             FILESYSTEM, "/local.js",              "max-age=43200");
-  #endif 
-  #ifndef DEBUG_CSS
-    server.serveStatic("/local.css",            FILESYSTEM, "/local.css",             "max-age=43200");
-  #endif
-  server.serveStatic("/img/charging.png",     FILESYSTEM, "/img/charging.png",      "max-age=43200");
-  server.serveStatic("/img/otherset.png",     FILESYSTEM, "/img/otherset.png",      "max-age=43200");
-  server.serveStatic("/img/wrover.png",       FILESYSTEM, "/img/wrover.png",        "max-age=43200");
-  server.serveStatic("/img/wemos.png",        FILESYSTEM, "/img/wemos.png",         "max-age=43200");
-  server.serveStatic("/img/utility.png",      FILESYSTEM, "/img/utility.png",       "max-age=43200");
-  server.serveStatic("/img/setTime.png",      FILESYSTEM, "/img/setTime.png",       "max-age=43200");
-  server.serveStatic("/ace.js",               FILESYSTEM, "/ace.js",                "max-age=43200");
-  server.serveStatic("/jquery.min.js",        FILESYSTEM, "/jquery.min.js",         "max-age=43200");
-  server.serveStatic("/mode-html.js",         FILESYSTEM, "/mode-html.js",          "max-age=43200");
+  server.on("/setTime", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    return setTimePageHandler(request);
+  });
+
+  server.on("/cmd", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    return cmdPageHandler(request);
+  });
+
+  server.on("/setcharge", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    return setChargePageHandler(request);
+  });
+
+  server.on("/setother", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    setOtherPageHandler(request);
+  });
+
+  server.on("/rest", [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    restPageHandler(request);
+  });
+
+  server.on("/allregs", HTTP_GET, [](AsyncWebServerRequest *request){
+    allregsPageHandler(request);
+  });
+  
+  server.on("/allcoils", HTTP_GET, [](AsyncWebServerRequest *request){
+    allcoilsPageHandler(request);
+  });
+
+  server.on("/wlan_config", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    return wlanPageHandler(request);
+  });
+
+  server.on("/utility", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    return utilityPageHandler(request);
+  });
+
+  server.on("/getfile", HTTP_GET, [](AsyncWebServerRequest *request){
+    getfilePageHandler(request);
+  });
+
+  server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    return resetPageHandler(request);
+  });
+
+  server.on("/resetall", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(web_username, web_password)) {
+      return request->requestAuthentication();
+    }
+    return resetAllPageHandler(request);
+  });
+
+  server.onNotFound([](AsyncWebServerRequest *request) {  // If the client requests any URI
+    debugMsgln("server.onNotFound:" + request->url(),3);
+    #ifdef ARDUINO_ARCH_ESP32
+      if (request->url().startsWith("/sd/")) {              // if on sd card
+        debugMsgln("server.on(/sd/):" + request->url(),3);
+        sdPageHandler(request->url(), request);
+        return;
+      }
+    #endif
+    if (!serveFile(request->url(),request))                  // send it if it exists
+      request->send(404, F("text/plain"), F("404: Not Found")); // otherwise, respond with a 404 (Not Found) error
+  });
+
+  // cache for 12 hours.
+  server.serveStatic("/ctl/",       FILESYSTEM, "/ctl/",        "max-age=43200");
+  server.serveStatic("/img/",       FILESYSTEM, "/img/",        "max-age=43200");
+  server.serveStatic("/local.js",             FILESYSTEM, "/local.js",              "max-age=43200");
+  server.serveStatic("/local.css",            FILESYSTEM, "/local.css",             "max-age=43200");
+//  server.serveStatic("/ace.js",               FILESYSTEM, "/ace.js",                "max-age=43200");
+//  server.serveStatic("/jquery.min.js",        FILESYSTEM, "/jquery.min.js",         "max-age=43200");
+//  server.serveStatic("/mode-html.js",         FILESYSTEM, "/mode-html.js",          "max-age=43200");
   server.serveStatic("/favicon.ico",          FILESYSTEM, "/favicon.ico",           "max-age=43200");
 
+  server.serveStatic("/",FILESYSTEM,"/"); // everything else in flash
 
   #ifdef ARDUINO_ARCH_ESP32
     debugMsgln("ESP32 server.ons",1);
-    #include <uri/UriBraces.h>
-    server.on(UriBraces("/sd/{}"), []() {
-      sdPageHandler(server.pathArg(0));
+
+    server.on("/sd/", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      debugMsgln("server.on(/sd/):" + request->url(),3);
+      sdPageHandler(request->url(), request);
     });
 
-  /*handling uploading firmware file */
-    server.on(update_path, HTTP_GET, []() {
-    if (!server.authenticate(update_username, update_password)) {
-      return server.requestAuthentication();
-    }
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", serverIndex);
-  });
-  /*handling uploading firmware file */
-  server.on("/update", HTTP_POST, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-    ESP.restart();
-  }, []() {
-    HTTPUpload& upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-      Serial.printf("Update: %s\n", upload.filename.c_str());
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-      /* flashing firmware to ESP*/
-      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_END) {
-      if (Update.end(true)) { //true to set the size to the current progress
-        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-      } else {
-        Update.printError(Serial);
-      }
-    }
-  });
-
 #endif // ARDUINO_ARCH_ESP32
+
+  server.on(update_path, HTTP_GET, [](AsyncWebServerRequest *request){
+    if (!request->authenticate(update_username, update_password)) {
+      return request->requestAuthentication();
+    }
+    handleUpdate(request);}
+  );
   
+  server.on("/doUpdate", HTTP_POST,
+    [](AsyncWebServerRequest *request) {},
+    [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+    if (!request->authenticate(update_username, update_password)) {
+      return request->requestAuthentication();
+    }
+    handleDoUpdate(request, filename, index, data, len, final);}
+  );
+  
+//  Update.onProgress(printProgress);
+
   server.begin();
   debugMsgln(F("HTTP server started"),1);
 
