@@ -331,6 +331,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
     response_message += getTableRow2Col(F("Flash chip speed"), String(ESP.getFlashChipSpeed()));
     response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
     response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
+    response_message += getTableRow2Col(F("Hall sensor"), String(hallRead()));
   #endif
 
   if (model.startsWith(F("PS-"))) {  // TODO make this universal

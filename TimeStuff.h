@@ -40,7 +40,7 @@ unsigned short int getNtpPollFromEEPROM();
 #define RtcEepromMinute 6
 #define RtcEepromSecond 7
 #define RtcEepromLastSetTime 8
-#define RTC_DRIFT_FACTOR 0.9      // multiply drift offset correction by this
+#define RTC_DRIFT_FACTOR 1.0      // multiply drift offset correction by this
 
 #define NTP_DEFAULT_TZ "EST+5EDT,M3.2.0/2,M11.1.0/2"   // full POSIX format
 #define NTP_DEFAULT_INTERVAL 7207                 // seconds, best if not a multiple of 60
@@ -341,10 +341,11 @@ float getRtcppm() {
 }
 
 void checkClocks(int32_t rtc_diff_filtered) {  
-  debugMsgln(F("checkClocks"),3);
-  if (rtcPresent && !rtcNeedsTime) {
+  debugMsgln(F("checkClocks"),3);  
+  if (rtcPresent && !rtcNeedsTime && (WiFi.getStatusBits() & (STA_HAS_IP_BIT | STA_HAS_IP6_BIT)) ) {
     if (timeStatus() != timeSet) { // ntp went away
         // TODO retry NTP
+        debugMsgln(F("Setting time from RTC"),3);
         UTC.setTime(getUnixTime());    // from RTC to eztime
     } else {
       uint32_t howlong;
@@ -352,7 +353,7 @@ void checkClocks(int32_t rtc_diff_filtered) {
       int new_offset; 
       if (abs(rtc_diff_filtered) >= rtc_max_unsync) {     // only adjust if we're off by so much 
         debugMsgln(F("RTC/NTP out of sync"),3);
-        if (now() - lastNtpUpdateTime() > 120) {          // first make sure local drift isn't the issue
+        if ((now() - lastNtpUpdateTime() > 120) ) {          // first make sure local drift isn't the issue
           debugMsgln(F("Poll NTP"),3);
           updateNTP(); 
           return;                                         // we'll be back in a minute if it's still off
@@ -372,13 +373,13 @@ void checkClocks(int32_t rtc_diff_filtered) {
             debugMsg(F("Changing RTC offset, drift:"),1);
             debugMsg(String(rtc_diff_filtered),1);
             debugMsg(F(" ms, ppm:"),1);
-            debugMsg(String(drift/10.0),1); 
+            debugMsg(String(drift/10.0,3),1); 
             debugMsg(", old offset:" + String(getAgingOffset()),1);
             debugMsgln(", new offset:" + String(new_offset),1);
             setAgingOffset(new_offset);
-          } else {
-            setRtcTimeNTP(); // offset at max, just sync
-          }
+          } 
+        } else {
+          debugMsgln("RTC drift of " + String(drift/10.0,3) + "ppm within limit",2);
         }
         setRtcTimeNTP(); //resync
       }

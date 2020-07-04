@@ -32,14 +32,14 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v2.200525"
+#define SOFTWARE_VERSION "v2.200628"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "Platform logging to SD card. Change for /sd/ wildcard. Controller<br>\
                      logging to SD Card. ESPAsyncWebServer. ESP8266 support gone. Keep RTC<br>\
                      in UTC. Dynamic updates of /status page. Some changes for small flash.<br>\
                      Change to ArduinoJSON 6, using PS_RAM."
 
-#define DEBUG_ON 1                // enable debugging output. If defined, debug_level can be changed during runtime.
+#define DEBUG_ON 3                // enable debugging output. If defined, debug_level can be changed during runtime.
                                   // 0 off, 1 least detail, 8 most detail, 9 includes passwords
 
 #ifdef DEBUG_ON

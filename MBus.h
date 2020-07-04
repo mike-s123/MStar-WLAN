@@ -820,10 +820,10 @@ String getModel() {
   } else if (productCode.startsWith(F("TS-"))) {
                                                         mod = "TS"; 
   }
-  debugMsg(F("getModel received:"),3);
-  debugMsgln(productCode,3);
-  debugMsg(F("getModel selected:"),3);
-  debugMsgln(mod,3);
+  debugMsg(F("getModel received:"),4);
+  debugMsgln(productCode,4);
+  debugMsg(F("getModel selected:"),4);
+  debugMsgln(mod,4);
   fullModel = productCode;
   return mod;
 }
