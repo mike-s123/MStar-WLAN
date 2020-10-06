@@ -108,23 +108,23 @@ void tryWLAN() {
     debugMsgln(F("Trying WLAN connection"),2);
     int retries=0;
     #ifndef WIFI_MODE_AP_STA                       // we're in AP mode, switch to try
-      debugMsgln(F("WLAN switching to STA"),1);
+      debugMsgln(F("WLAN switching to STA"),2);
       WiFi.mode(WIFI_STA);
     #endif
   
-    debugMsg(F("Trying to connect to WLAN ("),1);
-    debugMsg(String(wlan_count),1);
-    debugMsg(")",1);  
+    debugMsg(F("Trying to connect to WLAN ("),2);
+    debugMsg(String(wlan_count),2);
+    debugMsg(")",2);  
     
     while ( wifiMulti.run() != WL_CONNECTED ) {
       delay(500);
-      debugMsg(".",1);
+      debugMsg(".",2);
       retries++;
       if (retries > 5) {   // try for a while
-        debugMsgln("",1);
-        debugMsgln(F("Failed to connect"),1);
+        debugMsgln("",2);
+        debugMsgln(F("Failed to connect"),2);
         #ifndef WIFI_MODE_AP_STA                       // go back to AP mode so users can connect
-          debugMsgln(F("WLAN switching back to AP"),1);
+          debugMsgln(F("WLAN switching back to AP"),2);
           startAP(ap_ssid, ap_password);
         #endif
         return;
