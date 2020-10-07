@@ -1,2 +1,2 @@
-# don't count js files
-(\.|-)(js|css)$ linguist-vendored
+# don't count js and css files
+**/*.js **/*.css linguist-vendored
