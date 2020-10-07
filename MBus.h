@@ -840,7 +840,10 @@ void checkController() {
   if (noController || lastFound + 60000 < millis()) {  // check if no controller, or it's been more than a minute
     lastFound = millis();
     model = getModel();
-    if (model == "") model = getModel(); // try again if not found
+    if (model == "") {
+      delay(1000);
+      model = getModel(); // try again if not found
+    }
     if (model == "") {
       if (!lastState) debugMsgln(F("No controller found."),1);
       noController = true;
