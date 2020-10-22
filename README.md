@@ -77,7 +77,7 @@ The hardware supports one of the cheap Chinese DS3231 Real Time Clock boards. Th
 
 ## Important future directions
 
-Possible additions: Include support for additional controllers (if someone has a broken one which might still talk MODBUS, feel free to donate). Allow changing user/pass for config and update. Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). <s>Logging/</s>graphing (anyone good at jquery?). Support for simultaneous connection to multiple controllers. <s>Async web server.</s> Chunked responses. Provide "one click" charging settings for different batteries. Backup/restore settings. <s>Support connection to multiple, alternate SSIDs</s> (done). MQTT. SNMP. Serial passthrough, to allow a direct MS-View connection and firmware upgrades via USB. Move large files to SD card. ???.
+Possible additions: Include support for additional controllers (if someone has a broken one which might still talk MODBUS, feel free to donate). <s>Allow changing user/pass for config and update.</s> Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). <s>Logging/</s>graphing (anyone good at jquery?). Support for simultaneous connection to multiple controllers. <s>Async web server.</s> Chunked responses. Provide "one click" charging settings for different batteries. Backup/restore settings. <s>Support connection to multiple, alternate SSIDs</s> (done). MQTT. SNMP. Serial passthrough, to allow a direct MS-View connection and firmware upgrades via USB. Move large files to SD card. ???.
  
 ## Author
 
