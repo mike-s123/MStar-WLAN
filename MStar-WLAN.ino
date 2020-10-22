@@ -32,14 +32,14 @@
  *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
  */
 
-#define SOFTWARE_VERSION "v2.201006"
+using namespace std; 
+#define SOFTWARE_VERSION "v2.201022"
 #define SERIAL_NUMBER "000001"
-#define BUILD_NOTES "Platform logging to SD card. Change for /sd/ wildcard. Controller<br>\
-                     logging to SD Card. ESPAsyncWebServer. ESP8266 support gone. Keep RTC<br>\
-                     in UTC. Dynamic updates of /status page. Some changes for small flash.<br>\
-                     Change to ArduinoJSON 6, using PS_RAM."
+#define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
+                     Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
+                     Allow WLAN and security settings."
 
-#define DEBUG_ON 1                // enable debugging output. If defined, debug_level can be changed during runtime.
+#define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                   // 0 off, 1 least detail, 8 most detail, 9 includes passwords
 
 #ifdef DEBUG_ON
@@ -197,17 +197,26 @@
 // GPIO 2 for WROVER-B board
 #define WLAN_PIN 2
 
-#define EEPROM_SIZE 512  // ESP "eeprom"
+#define EEPROM_SIZE 1024  // ESP "eeprom"
 #define EEPROM_SIG "mjs!"
 /*
  * "EEPROM" on ESP
  * 0-127   (4x32) WLAN SSID
  * 128-255 (4x32) WLAN password
- * 256-272 (16) Controller model
+ * 256-271 (16) Controller model
  * 272-303 (32) ntp server
  * 304-305 (2)  ntp poll interval (uint_t 16)
  * 306-369 (64) ntp POSIX timestring
- * 508-511 (4)  Valid signature (EEPROM_SIG)
+ * 370-401 (32) AP SSID
+ * 402-433 (32) AP PSK
+ * 434-449 (16) Admin name
+ * 450-465 (16) Admin password
+ * 466-481 (16) Upgrade name
+ * 482-497 (16) Upgrade password
+ * 498-513 (16) JSON password
+ * 514-517 (4) Serial number
+ * 514-1019  unused    
+ * 1020-1023 (4)  Valid signature (EEPROM_SIG)
  */
 #define eeWLANSSID 0
 #define eeWLANPASS 128
@@ -215,6 +224,14 @@
 #define eeNtpServer 272
 #define eeNtpPoll 304
 #define eeNtpTZ 306
+#define eeAPSSID 370
+#define eeAPPSK 402
+#define eeAdminName 434
+#define eeAdminPass 450
+#define eeUpgradeName 466
+#define eeUpgradePass 482
+#define eeJsonPass 498
+#define eeSerialNum
 
 #ifdef ARDUINO_ARCH_ESP8266
   #define RX_ENABLE_PIN 12  // GPIO 12 (D6) on Wemos
@@ -262,20 +279,18 @@
 #else
   int debug_level = 0;
 #endif
-const char *web_username = WEB_USERNAME;
-const char *web_password = WEB_PASSWORD;
-const char *json_password = JSON_PASSWORD;
-const char *json_version = JSON_VERSION;
-const char *json_version_min = JSON_VERSION_MIN;
-const char *ap_ssid = AP_SSID;
-const char *ap_password = AP_PSK;
-std::string ap_SSID(AP_SSID);      //this is butt-ugly. see below. Someone else can do better.
-
+string web_username = WEB_USERNAME;
+string web_password = WEB_PASSWORD;
+string json_password = JSON_PASSWORD;
+string json_version = JSON_VERSION;
+string json_version_min = JSON_VERSION_MIN;
+string ap_ssid = AP_SSID;
+string ap_password = AP_PSK;
+string ap_SSID = AP_SSID;
+string root_username = UPDATE_USERNAME;
+string root_password = UPDATE_PASSWORD;
+string serialNumber = SERIAL_NUMBER;
 const char *update_path = UPDATE_PATH;
-const char *update_username = UPDATE_USERNAME;
-const char *update_password = UPDATE_PASSWORD;
-const char *serialNumber = SERIAL_NUMBER;
-
 const char *fs_type = FS_TYPE;
 
 String esid[4];
@@ -365,13 +380,13 @@ void setup() {
   }
   if ( largeFlash ) {
     #ifdef ARDUINO_ARCH_ESP8266
-//      httpUpdater.setup(&server, update_path, update_username, update_password);
+//      httpUpdater.setup(&server, update_path, root_username, root_password);
     #endif
   }
 
   EEPROM.begin(EEPROM_SIZE);
   delay(10);
-  if (checkEEPROM() != EEPROM_SIG) { delay(10); }
+  getEeConfig(); // load config from eeprom
   getWLANsFromEEPROM();
   setupWLAN();
   setupClocks();

@@ -38,11 +38,50 @@ function writeReg ( addr, value, vari ) {
   xhr.send() ;
 }
 
-function setWLAN ( ssid, pass, vari ) {
-  var theUrl = "/cmd?setwlan=" + vari + "&ssid=" + encodeURIComponent(ssid) + "&pass" + encodeURIComponent(pass) + "&version=" + Math.random() ;
+function setWlanSsid ( slot, ssid ) {
+  var theUrl = "/cmd?setwlan=" + slot + "&ssid=" + encodeURIComponent(ssid) + "&version=" + Math.random() ;
   var xhr = new XMLHttpRequest() ;
-  document.getElementById("ssid"+vari).innerHTML = ssid;
-  document.getElementById("pass"+vari).innerHTML = pass;
+  document.getElementById("ssid"+slot).innerHTML = ssid;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
+function setWlanPsk ( slot, psk ) {
+  var theUrl = "/cmd?setwlan=" + slot + "&psk=" + encodeURIComponent(psk) + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("psk"+slot).innerHTML = psk;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
+function setApSSID ( ssid ) {
+  var theUrl = "/cmd?setapssid=" + encodeURIComponent(ssid) + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("apSSID").innerHTML = ssid;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
+function setApPSK ( pass ) {
+  var theUrl = "/cmd?setappsk=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("appsk").innerHTML = pass;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+function setJSONpass ( pass ) {
+  var theUrl = "/cmd?setjsonpass=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("jsonpass").innerHTML = pass;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
+function setCred ( where, user, pass ) {
+  var theUrl = "/cmd?setcred=" + where + "&user=" + encodeURIComponent(user) + "&pass=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  if ( user.length > 0 ) { document.getElementById(where + "user").innerHTML = user; } ;
+  if ( pass.length > 0 ) { document.getElementById(where + "pass").innerHTML = pass; } ;
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;
 }

@@ -163,5 +163,5 @@ Writes: (will probably change):
 
 ===========
 Setting WLAN
-/cmd?setwlan=[0-3]&ssid=xxxx&pass=yyyy
+/cmd?setwlan=[0-3]&ssid=xxxx&psk=yyyy
 

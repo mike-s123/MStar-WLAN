@@ -68,10 +68,6 @@ void setupWLAN() {
  * WiFi setup
  */
 
-  #ifdef AP_SSID_UNIQ
-    ap_SSID.append("-");
-    ap_SSID.append(my_MAC.c_str());
-  #endif
   ap_ssid = ap_SSID.c_str();
   //ap_password = AP_PSK;
 

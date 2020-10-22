@@ -35,8 +35,8 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
       JsonArray arr = jsonIn["registers"];
       if (!jsonDesErr) {
         jsonOut[F("model")] = model;
-        jsonOut[F("api")] = json_version;
-        jsonOut[F("api_min")] = json_version_min;
+        jsonOut[F("api")] = json_version.c_str();
+        jsonOut[F("api_min")] = json_version_min.c_str();
         count = arr.size();
         JsonArray regArray = jsonOut.createNestedArray(F("registers"));
         for (JsonVariant elem : arr ) {

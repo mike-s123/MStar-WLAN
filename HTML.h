@@ -75,11 +75,11 @@ String getFormHead(String formTitle) {
 /**
    Get the header for an input form
 */
-  String tableHead = F("<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">");
-  tableHead += formTitle;
-  tableHead += F("</h3><form class=\"form-horizontal\">");
+  String formHead = F("<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">");
+  formHead += formTitle;
+  formHead += F("</h3><form class=\"form-horizontal\">");
 
-  return tableHead;
+  return formHead;
 }
 
 String getFormFoot() {
@@ -357,7 +357,6 @@ String getJsButton(String buttonText, String onClick) {
   String result = F("<form><input type=\"button\" value=\"");
   result += buttonText;
   result += F("\" onclick=\"");
-  result += onClick + F("\"></form>");
   return result;
 }
 

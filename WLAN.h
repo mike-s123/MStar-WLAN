@@ -33,7 +33,9 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
 
   WiFi.persistent(true);
   if (strlen(ssid)>0) {         // here we try to connect using the info passed to us
-    wlan_count++ ;
+    debugMsg(F("clearing wifiMulti"),3);
+    wifiMulti.~WiFiMulti(); // clear
+    wlan_count = 1 ;
     if (password && strlen(password) > 0 ) {
       debugMsg(F("wifiMulti adding SSID:"),3);
       debugMsgln(ssid,3);
@@ -73,10 +75,10 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
   
   #ifdef WIFI_MODE_AP_STA           // mode controlled by #define
     WiFi.mode(WIFI_AP_STA);
-    if (strlen(ap_password) > 0) {
-      WiFi.softAP(ap_ssid, ap_password, 6, false, 8);
+    if (strlen(ap_password.c_str()) > 0) {
+      WiFi.softAP(ap_ssid.c_str(), ap_password.c_str(), 6, false, 8);
     } else {
-      WiFi.softAP(ap_ssid);
+      WiFi.softAP(ap_ssid.c_str());
     }
   #else
     WiFi.mode(WIFI_STA);
@@ -125,7 +127,7 @@ void tryWLAN() {
         debugMsgln(F("Failed to connect"),2);
         #ifndef WIFI_MODE_AP_STA                       // go back to AP mode so users can connect
           debugMsgln(F("WLAN switching back to AP"),2);
-          startAP(ap_ssid, ap_password);
+          startAP(ap_ssid.c_str(), ap_password.c_str());
         #endif
         return;
       }

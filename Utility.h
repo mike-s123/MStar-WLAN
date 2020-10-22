@@ -150,28 +150,34 @@ String formatIPAsString(IPAddress ip) {
 /*
  *  This stores WLAN credentials in the first slot [0]
  */
-void storeWLANsInEEPROM(String qsid, String qpass, int idx=0) {
-  debugMsgln("Writing eeprom "+String(idx)+" SSID " + qsid,1);
-  if (idx < 0 || idx > 3) return;
-  wlanRead = false;                   // now needs to be re-read
-  for (int i = 0; i < 32; i++) {
-    if (i < qsid.length()) {
-      EEPROM.write(eeWLANSSID + (32*idx) + i, qsid[i]);
-      debugMsgln("Wrote: " + String(qsid[i]),5);
-    } else {
-      EEPROM.write(eeWLANSSID + (32*idx) + i, 0);
+void storeWLANsInEEPROM(String qsid, String qpass, int idx=0, bool wlanSsid=false, bool wlanPsk=false) {
+  if (wlanSsid) { // true if we will write SSID
+    debugMsgln("Writing eeprom slot "+String(idx)+" SSID " + qsid,3);
+    if (idx < 0 || idx > 3) return;
+    wlanRead = false;                   // now needs to be re-read
+    for (int i = 0; i < 32; i++) {
+      if (i < qsid.length()) {
+        EEPROM.write(eeWLANSSID + (32*idx) + i, qsid[i]);
+        debugMsgln("Wrote: " + String(qsid[i]),5);
+      } else {
+        EEPROM.write(eeWLANSSID + (32*idx) + i, 0);
+      }
     }
+    esid[idx] = qsid; // update running config
   }
-  debugMsg("writing eeprom "+String(idx)+" pass ",3);
-  debugMsg(qpass,9);
-  debugMsgln("",3);
-  for (int i = 0; i < 32; i++) {
-    if ( i < qpass.length()) {
-      EEPROM.write(eeWLANPASS + (32*idx) + i, qpass[i]);
-      debugMsgln("Wrote: " + String(qpass[i]),9);
-    } else {
-      EEPROM.write(eeWLANPASS + (32*idx) + i, 0);
+  if (wlanPsk) { // true if we will write psk
+    debugMsg("Writing eeprom slot "+String(idx)+" psk ",3);
+    debugMsg(qpass,9);
+    debugMsgln("",3);
+    for (int i = 0; i < 32; i++) {
+      if ( i < qpass.length()) {
+        EEPROM.write(eeWLANPASS + (32*idx) + i, qpass[i]);
+        debugMsgln("Wrote: " + String(qpass[i]),9);
+      } else {
+        EEPROM.write(eeWLANPASS + (32*idx) + i, 0);
+      }
     }
+    epass[idx]=qpass; // update running config
   }
   EEPROM.commit();
 }
@@ -207,10 +213,43 @@ void getWLANsFromEEPROM() {
       }
       epass[j] += char(readByte);
     }
-    debugMsg("Read password:",3);
+    debugMsg("Read password:",9);
     debugMsg(epass[j],9); // only show password debug level 9+
     debugMsgln("",3);
   }
+}
+
+int storeStringInEEPROM(String str, int address, int maxlen) {
+  debugMsgln("writing string to EEPROM address " + String(address),3);
+  for (int i = 0; i < maxlen; i++) {
+    if (i < str.length()) {
+      EEPROM.write(i+address, str[i]);
+    } else {
+      EEPROM.write(i+address, 0);
+    }
+  }
+  debugMsg("Wrote EEPROM string, addr: " +String(address),3);
+  debugMsg(" str:" + str,5);
+  debugMsgln("",3);
+  EEPROM.commit();
+}
+
+String getStringFromEEPROM(int address, int maxlen){ // note: std::string
+  String str = "";
+  byte readByte;
+  for (int i = 0; i < maxlen; i++) {
+    readByte = EEPROM.read(i+address);
+    if (readByte == 0) {
+      break;
+    } else if ((readByte < 32) || (readByte > 126)) { // no special chars
+      continue;
+    }
+    str += char(readByte);
+  }
+  debugMsg("Read EEPROM string, addr: " +String(address),3);
+  debugMsg(" str:" + str,5);
+  debugMsgln("",3);
+  return str;
 }
 
 void storeModelInEEPROM(String model) {
@@ -334,12 +373,24 @@ void resetEEPROM() {
   wipeEEPROM();
   debugMsgln(F("Resetting EEPROM."),1);
   for (int i = 0; i<=3 ; i++) {
-    storeWLANsInEEPROM("", "", i);
+    storeWLANsInEEPROM("", "", i, true, true);
   }
   storeModelInEEPROM(F("PS-PWM"));
   storeNtpServerInEEPROM(F(NTP_DEFAULT_SERVER));
   storeNtpPollInEEPROM(NTP_DEFAULT_INTERVAL);
   storeNtpTZInEEPROM(F(NTP_DEFAULT_TZ));
+  std::string ap_SSID(AP_SSID);
+#ifdef AP_SSID_UNIQ
+  ap_SSID.append("-");
+  ap_SSID.append(my_MAC.c_str());
+#endif
+  storeStringInEEPROM(ap_SSID.c_str(), eeAPSSID, 32);
+  storeStringInEEPROM(F(AP_PSK), eeAPPSK, 32);
+  storeStringInEEPROM(F(WEB_USERNAME), eeAdminName, 16);
+  storeStringInEEPROM(F(WEB_PASSWORD), eeAdminPass, 16);
+  storeStringInEEPROM(F(UPDATE_USERNAME), eeUpgradeName, 16);
+  storeStringInEEPROM(F(UPDATE_PASSWORD), eeUpgradePass, 16);
+  storeStringInEEPROM(F(JSON_PASSWORD), eeJsonPass, 16);
   String chkstr = F(EEPROM_SIG);
   for (int i = 0; i<=3 ; i++) {
     EEPROM.write(i + EEPROM_SIZE -4, chkstr[i]);
@@ -366,6 +417,16 @@ String checkEEPROM() {
   return chkstr;
 }
 
+void getEeConfig(){
+  checkEEPROM();
+  ap_SSID = getStringFromEEPROM(eeAPSSID,32).c_str();
+  ap_password = getStringFromEEPROM(eeAPPSK,32).c_str();
+  web_username = getStringFromEEPROM(eeAdminName,16).c_str();
+  web_password = getStringFromEEPROM(eeAdminPass,16).c_str();
+  root_username = getStringFromEEPROM(eeUpgradeName,16).c_str();
+  root_password = getStringFromEEPROM(eeUpgradePass,16).c_str();
+  json_password = getStringFromEEPROM(eeJsonPass,16).c_str();
+}
 
 class IEEEf16  // Convert between float32 (IEEE754 Single precision binary32) and float16 (IEEE754 half precision binary16)
 /*

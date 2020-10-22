@@ -56,8 +56,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       JsonArray arr = jsonIn["registers"];
       if (!jsonDesErr) {
         jsonOut[F("model")] = model;
-        jsonOut[F("api")] = json_version;
-        jsonOut[F("api_min")] = json_version_min;
+        jsonOut[F("api")] = json_version.c_str();
+        jsonOut[F("api_min")] = json_version_min.c_str();
         count = arr.size();
         JsonArray regArray = jsonOut.createNestedArray(F("registers"));
         for (JsonVariant elem : arr ) {
@@ -111,8 +111,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       #endif
       if ( getMbRegIndex(mbReg) < 0 ){ jsonErr(request, F("bad addr")); return; }
       jsonOut[F("model")] = model;
-      jsonOut[F("api")] = json_version;
-      jsonOut[F("api_min")] = json_version_min;
+      jsonOut[F("api")] = json_version.c_str();
+      jsonOut[F("api_min")] = json_version_min.c_str();
       JsonArray regArray = jsonOut.createNestedArray(F("registers"));
       for (int i=0; i<count && mbReg <= mbRegMax; mbReg++ ) {
         int mbRegIdx = getMbRegIndex(mbReg);
@@ -151,8 +151,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       if ( count > 10 ) { jsonErr(request, F("count > 10"), F("request entity too large") , 413); return; }
       if ( getCoilIndex(mbCoil) < 0 ){ jsonErr(request, F("bad addr")); return; }
       jsonOut[F("model")] = model;
-      jsonOut[F("api")] = json_version;
-      jsonOut[F("api_min")] = json_version_min;
+      jsonOut[F("api")] = json_version.c_str();
+      jsonOut[F("api_min")] = json_version_min.c_str();
       JsonArray coilArray = jsonOut.createNestedArray(F("coils"));
       for (int i=0; i<count && mbCoil <= mbCoilMax; mbCoil++ ) {
         int coilIdx = getCoilIndex(mbCoil);
@@ -178,7 +178,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       int mbRegIndex = getMbRegIndex(mbReg);
       if ( !mbRegRW[mbRegIndex] ) { jsonErr(request, F("read only")); return; }
       valu = jsonIn[F("pass")] | "none";
-      if ( valu != json_password ){ jsonErr(request, F("no password")); return; }
+      if ( valu != json_password.c_str() ){ jsonErr(request, F("no password")); return; }
       if ( mbRegIndex < 0 ){ jsonErr(request, F("bad addr")); return; }
       valu = jsonIn[F("valu")] | "none";
       if ( valu == "none" ){ jsonErr(request, F("no value")); return; }
@@ -200,7 +200,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       int mbCoil = getDecInt(address);              // this covers all bases
       int mbCoilIndex = getCoilIndex(mbCoil);
       valu = jsonIn[F("pass")] | "none";
-      if ( valu != json_password ){ jsonErr(request, F("no password")); return; }
+      if ( valu != json_password.c_str() ){ jsonErr(request, F("no password")); return; }
       bool force = (jsonIn[F("force")] == "true") | false;
       if ( (mbCoilIndex < 0) && !force ){ jsonErr(request, F("bad addr")); return; }
       valu = jsonIn[F("valu")] | "none";
@@ -224,8 +224,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       int mbReg = getDecInt(address);              // this covers all bases
       int result;
       jsonOut[F("model")] = model;
-      jsonOut[F("api")] = json_version;
-      jsonOut[F("api_min")] = json_version_min;
+      jsonOut[F("api")] = json_version.c_str();
+      jsonOut[F("api_min")] = json_version_min.c_str();
       JsonArray regArray = jsonOut.createNestedArray(F("registers"));
       String valu;
       uint16_t raw;
@@ -255,8 +255,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       #endif
       if ( idx < 0 || idx > 255 ) { jsonErr(request, F("bad addr")); return; };
       jsonOut[F("model")] = model;
-      jsonOut[F("api")] = json_version;
-      jsonOut[F("api_min")] = json_version_min;
+      jsonOut[F("api")] = json_version.c_str();
+      jsonOut[F("api_min")] = json_version_min.c_str();
       JsonArray regArray = jsonOut.createNestedArray(F("log_items"));
       for (int i = 0 ; i < count && i < 256; i++) {
         JsonObject regO      = regArray.createNestedObject();

@@ -40,10 +40,14 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
  *  Handles POST requests made to /cmd
  *  Used by JavaScript
  */
-  int addr, offset, wlan, numArgs = request->args();
+  int addr, offset, slot, numArgs = request->args();
   unsigned short int ntp_poll = -1;
-  String data, value, ssid, pass, response_message = F("OK"), rtcTime, ntp_item, ntp_svr = "", ntp_tz = "", var = "";
-  enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, set_rtc_ntp, cfg_ntp, clr_dlog, clr_clog };
+  String data, value, ssid, psk, response_message = F("OK"), rtcTime, ntp_item, \
+          ntp_svr = "", ntp_tz = "", var = "", where, user, pass;
+  bool wlanPsk=false, wlanSsid=false;
+  enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, \
+                  set_rtc_ntp, cfg_ntp, clr_dlog, clr_clog, set_apssid, set_cred, set_jsonpass, \
+                  set_appsk};
   commands cmd;
   debugMsg(F("SET args received:"),4);
   debugMsgln(String(numArgs),4);
@@ -73,11 +77,29 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
       offset = request->arg(i).toInt();
     } else if ( request->argName(i) == F("setwlan") ) {
       cmd = set_wlan;
-      wlan = request->arg(i).toInt();
+      slot = request->arg(i).toInt();
+    } else if ( request->argName(i) == F("setapssid") ) {
+      cmd = set_apssid;
+      ssid = request->arg(i);
+    } else if ( request->argName(i) == F("setappsk") ) {
+      cmd = set_appsk;
+      pass = request->arg(i);
+    } else if ( request->argName(i) == F("setjsonpass") ) {
+      cmd = set_jsonpass;
+      pass = request->arg(i);
     } else if ( request->argName(i) == F("data") ) {
       data = request->arg(i);
     } else if ( request->argName(i) == F("ssid") ) {
+      wlanSsid = true;
       ssid = request->arg(i);
+    } else if ( request->argName(i) == F("psk") ) {
+      wlanPsk = true;
+      psk = request->arg(i);
+    } else if ( request->argName(i) == F("setcred") ) {  //setcred=[web|secure]&user=xxxx&pass=xxxx
+      cmd = set_cred;
+      where = request->arg(i);
+    } else if ( request->argName(i) == F("user") ) {
+      user = request->arg(i);
     } else if ( request->argName(i) == F("pass") ) {
       pass = request->arg(i);
     } else if ( request->argName(i) == F("setrtcntp") ) {
@@ -148,7 +170,38 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
                     break;
     case set_aging: setAgingOffset(offset);
                     break;
-    case set_wlan:  storeWLANsInEEPROM(ssid, pass, wlan); // /cmd?setwlan=[0-3]&ssid=xxxx&pass=yyyy
+    case set_wlan:  storeWLANsInEEPROM(ssid, psk, slot, wlanSsid, wlanPsk); // /cmd?setwlan=[0-3]&ssid=xxxx&psk=yyyy
+                    break;
+    case set_apssid: ap_SSID = ssid.c_str();
+                    storeStringInEEPROM(ap_SSID.c_str(), eeAPSSID, 32);
+                    break;
+    case set_appsk: ap_password = pass.c_str();
+                    storeStringInEEPROM(ap_password.c_str(), eeAPPSK, 32);
+                    break;
+    case set_jsonpass: json_password = pass.c_str();
+                    storeStringInEEPROM(pass, eeJsonPass, 16);
+                    break;
+    case set_cred:  if (where == "root") {
+                      debugMsgln(F("set_cred root"),5);
+                      if (user.length() > 0) {
+                        root_username = user.c_str();
+                        storeStringInEEPROM(user, eeUpgradeName, 16);
+                      }
+                      if (pass.length() > 0) {
+                        root_password = pass.c_str();
+                        storeStringInEEPROM(pass, eeUpgradePass, 16);
+                      }
+                    } else if (where == "web") {
+                      debugMsgln(F("set_cred web"),5);
+                      if (user.length() > 0) {
+                        web_username = user.c_str();
+                        storeStringInEEPROM(user, eeAdminName, 16);
+                      }
+                      if (pass.length() > 0) {
+                        web_password = pass.c_str();
+                        storeStringInEEPROM(pass, eeAdminPass, 16);
+                      }                
+                    }
                     break;
     case set_rtc_ntp: setRtcTimeNTP();
                     break;
@@ -215,7 +268,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
       response_message += getTableRow2Col(F("AP SSID"), WiFi.softAPSSID());                   
     #endif
     #ifdef ARDUINO_ARCH_ESP32
-      response_message += getTableRow2Col(F("AP SSID"), ap_ssid);
+      response_message += getTableRow2Col(F("AP SSID"), ap_ssid.c_str());
     #endif
     response_message += getTableRow2Col(F("AP connections"),String(WiFi.softAPgetStationNum()));
   }
@@ -232,7 +285,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
 
   response_message += getTableRow2Col(F("Uptime"), uptimeString);
   response_message += getTableRow2Col(F("Version"), SOFTWARE_VERSION);
-  response_message += getTableRow2Col(F("Serial Number"), serialNumber);
+  response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
 
   response_message += getTableFoot();
 
@@ -470,12 +523,64 @@ void allcoilsPageHandler(AsyncWebServerRequest *request) {
   request->send(200, F("text/html"), response_message);
 }
 
+void securityPageHandler(AsyncWebServerRequest *request) {
+  debugMsgln(F("Entering /security_config page."),2);
+  String response_message;
+  response_message.reserve(30000);
+  response_message = getHTMLHead();
+  response_message += getNavBar();
+  
+  response_message += getFormHead("&nbsp;");
+  response_message += getTableHead2Col(F("Admin Account"), F("Name"), F("Password"));
+  String webuser,webpass,adminuser,adminpass,userbox,passbox;
+  userbox = "<input type=\"text\" id=\"webuser\" size=\"16\" value=\"";
+  userbox += web_username.c_str();
+  userbox += "\" onchange=\"setCred(\'web\',this.value,\'\')\">";  
+  passbox = "<input type=\"text\" id=\"webpass\" size=\"16\" value=\"";
+  passbox += web_password.c_str();
+  passbox += "\" onchange=\"setCred(\'web\',\'\',this.value))\">";  
+  response_message += getTableRow2Col(userbox.c_str(), passbox.c_str() );
+  response_message += getTableFoot();
+  response_message += getFormFoot(); 
+
+  response_message += getFormHead("&nbsp;");
+  response_message += getTableHead2Col(F("Root (update/security) Account"), F("Name"), F("Password"));
+  userbox = "<input type=\"text\" id=\"rootuser\" size=\"16\" value=\"";
+  userbox += root_username.c_str();
+  userbox += "\" onchange=\"setCred(\'root\',this.value,\'\')\">";  
+  passbox = "<input type=\"text\" id=\"rootpass\" size=\"16\" value=\"";
+  passbox += root_password.c_str();
+  passbox += "\" onchange=\"setCred(\'root\',\'\',this.value)\">";  
+  response_message += getTableRow2Col(userbox.c_str(), passbox.c_str() );
+  response_message += getTableFoot();
+  response_message += getFormFoot(); 
+
+  response_message += getFormHead("JSON password");
+  response_message += "<label for=\"jsonpass\">JSON password:</label>";
+  response_message += "<input type=\"text\" id=\"jsonpass\" name=\"jsonpass\" size=\"32\" value=\"";
+  response_message += json_password.c_str();
+  response_message += "\" onchange=\"setJSONpass(this.value)\">";
+  response_message += getFormFoot();
+
+  response_message += getFormHead("AP PSK");
+  response_message += "<label for=\"appsk\">AP PSK:</label>";
+  response_message += "<input type=\"text\" id=\"appsk\" name=\"appsk\" size=\"32\" value=\"";
+  response_message += ap_password.c_str();
+  response_message += "\" onchange=\"setApPSK(this.value)\">";
+  response_message += getFormFoot();
+
+  debugMsg(F("response_message size:"),4);
+  debugMsgln(String(response_message.length()),4);
+
+  request->send(200, F("text/html"), response_message);
+}
+
 /**
    WLAN page allows users to set the WiFi credentials
 */
 void wlanPageHandler(AsyncWebServerRequest *request)
 {
-  String ssid, pass;
+  String ssid, psk;
   debugMsgln(F("Entering /wlan_config page."),2);
 
   // Check if there are any GET parameters, if there are, we are configuring
@@ -486,20 +591,26 @@ void wlanPageHandler(AsyncWebServerRequest *request)
     debugMsg(F("New SSID entered:"),2);
     debugMsgln(ssid,2);
     
-    if (request->hasArg(F("password")))  {
-      pass = request->arg(F("password"));
-      debugMsg(F("New PASSWORD entered:"),4);
-      debugMsg(pass,9);
+    if (request->hasArg(F("psk")))  {
+      psk = request->arg(F("psk"));
+      debugMsg(F("New PSK entered:"),4);
+      debugMsg(psk,9);
       debugMsgln("",4);
     }
 
     debugMsg("ssid length:",2);
     debugMsgln(String(strlen(ssid.c_str())),2);
-    debugMsg("pass length:",2);
-    debugMsgln(String(strlen(pass.c_str())),2);
+    debugMsg("psk length:",2);
+    debugMsgln(String(strlen(psk.c_str())),2);
     
-    if (connectToWLAN(ssid.c_str(), pass.c_str())) {                // try to connect
-      storeWLANsInEEPROM(ssid, pass, 0);                      //save in slot 0 if we did
+    if (connectToWLAN(ssid.c_str(), psk.c_str())) {                // try to connect
+      debugMsgln(F("Pushing old SSIDs"),3);
+      for (int i=3; i>0; i--) {                                          // push older networks
+        debugMsgln("copying ssid " + esid[i-1] + " to slot " + String(i),5);
+        storeWLANsInEEPROM(esid[i-1], epass[i-1], i, true, true);
+      }
+       
+      storeWLANsInEEPROM(ssid, psk, 0, true, true);                      //save in slot 0 if we did
       debugMsgln("",2);
       debugMsgln(F("WiFi connected"),1);
       debugMsg(F("IP address: "),1);
@@ -519,14 +630,13 @@ void wlanPageHandler(AsyncWebServerRequest *request)
   int ap_count = WiFi.scanNetworks();
 
   String response_message;
-  response_message.reserve(3000);
+  response_message.reserve(30000);
   response_message = getHTMLHead();
   response_message += getNavBar();
 
   // form header
-  response_message += getFormHead(F("Set Configuration"));
-
-
+  response_message += getFormHead(F("Scan results"));
+  response_message += F("<div><center>(If connection is successful, pushed onto top of list below)</center></div><br/>");
   response_message += getDropDownHeader(F("WiFi:"), F("ssid"), true);
 
   if (ap_count == 0)
@@ -552,38 +662,60 @@ void wlanPageHandler(AsyncWebServerRequest *request)
 
       debugMsg(F("Found ssid: "),3);
       debugMsgln(WiFi.SSID(ap_idx),3);
-      if ((esid[0] == ssid)) {                             //TODO multiwifi, push like stack (discard oldest)
+      if ((esid[0] == ssid)) {
       } else {
         debugMsgln(F("IsCurrent: N"),3);
       }
-      
       response_message += getDropDownOption(ssid, wlanId, (esid[0] == ssid));
     }
 
     response_message += getDropDownFooter();
-
-    response_message += getTextInput(F("WiFi password (if required)"), F("password"), "", false);
+    response_message += getTextInput(F("WiFi password (if required)"), F("psk"), "", false);
     response_message += getSubmitButton(F("Set"));
-
-    response_message += getFormFoot();
   }
+  response_message += getFormFoot();
+  response_message += "<br/>";
+  
+  response_message += getFormHead("&nbsp;");
+  response_message += getTableHead2Col(F("WLAN"), F("SSID"), F("PSK (password)"));
+  for (int i = 0 ; i < 4 ; i++ ) { 
+      String esidvar[4];
+      String epasvar[4];
+      esidvar[i] = "<input type=\"text\" id=\"ssid";
+      esidvar[i] += String(i);
+      esidvar[i] += "\" size=\"32\" value=\"";
+      esidvar[i] += esid[i];
+      esidvar[i] += "\" onchange=\"setWlanSsid(";                   //storeWLANsInEEPROM
+      esidvar[i] += String(i);
+      esidvar[i] += ", this.value";  
+      esidvar[i] += ")\">&nbsp;";
+      String tpass = "";
+      if (epass[i].length() > 0 ) {
+        for (int idx=1; idx<epass[i].length(); idx++ ) {
+          tpass += "&#x25cf;";
+        }
+      }
+      epasvar[i] = "<input type=\"password\" id=\"psk";
+      epasvar[i] += String(i);
+      epasvar[i] += "\" size=\"32\" value=\"";
+      epasvar[i] += tpass;
+      epasvar[i] += "\" onchange=\"setWlanPsk(";                   //storeWLANsInEEPROM
+      epasvar[i] += String(i);
+      epasvar[i] += ", this.value";  
+      epasvar[i] += ")\">&nbsp;";
 
-/*  //TODO - input for 4 SSIDs, but maybe just keep 4 most recents
-  for (int i = 0 ; i < 3 ; i++ ) { 
-      String esidvar[3];
-      String epasvar[3];
-      esidvar[i] = "<input type=\"number\" id=\"ssid";
-      esidvar += String(i);
-      esidvar += "\" size=\"9\" value=\"";
-      esidvar += esid[i];                                                       // needs work on local.js
-      esidvar += "\" onchange=\"setwlan('";                   //storeWLANsInEEPROM
-      esidvar += "this.value, '";
-      
-      esidvar += String(i);
-      esidvar += ")\">&nbsp";
-      response_message += getTableRow2Col(esidvar[i], "........" );
+      response_message += getTableRow2Col(esidvar[i], epasvar[i] );
   }
-*/
+  response_message += getTableFoot();
+  response_message += getFormFoot(); 
+
+  response_message += getFormHead("SSID when AP");
+  response_message += "<label for=\"apSSID\">SSID:</label>";
+  response_message += "<input type=\"text\" id=\"apSSID\" name=\"apSSID\" size=\"32\" value=\"";
+  response_message += ap_SSID.c_str();
+  response_message += "\" onchange=\"setApSSID(this.value)\">";
+  response_message += getFormFoot();
+
   response_message += getHTMLFoot();
 
   debugMsg(F("response_message size:"),4);
@@ -612,6 +744,7 @@ void utilityPageHandler(AsyncWebServerRequest *request)
   response_message += F("<font size=\"4\">");
 
   response_message += F("<hr><a href=\"/wlan_config\">Wireless settings</a>");
+  response_message += F("<hr><a href=\"/security_config\">Security settings</a>");
   response_message += F("<hr><a href=\"/setTime\">Time settings</a>");
   response_message += F("<hr><a href=\"/documentation.htm\">Documentation</a>");
 //  response_message += F("<hr><a href=\"/edit\">File edit/view/upload (ctrl-s saves file)</a>");
@@ -619,7 +752,7 @@ void utilityPageHandler(AsyncWebServerRequest *request)
   response_message += F("<hr><a href=\"/allcoils\">Show all coils</a>");
   response_message += F("<hr><a href=\"/rest?json={%22addr%22:255%2c%22cmd%22:");
   response_message += F("%22writeSingleCoil%22%2c%22valu%22:%22on%22%2c%22pass%22:%22");
-  response_message += json_password;
+  response_message += json_password.c_str();
   response_message += F("%22%2c%22back%22:%22true%22}\">Restart solar controller</a>");
 
 
@@ -637,7 +770,7 @@ void utilityPageHandler(AsyncWebServerRequest *request)
   response_message += F("<hr><a href=\"/cmd?clr_clog\">Clear controller log</a>");
   response_message += F("<hr><a href=\"/rest?json={%22addr%22:254%2c%22cmd%22:");
   response_message += F("%22writeSingleCoil%22%2c%22valu%22:%22on%22%2c%22pass%22:%22");
-  response_message += json_password;
+  response_message += json_password.c_str();
   response_message += F("%22%2c%22back%22:%22true%22}\">Reset solar controller to factory defaults</a>");
   response_message += F("<hr><a href=\"/resetall\">Clear config and restart WLAN module</a>");
 
@@ -695,7 +828,7 @@ void resetAllPageHandler(AsyncWebServerRequest *request) {
   response_message += F("<div class=\"alert alert-success fade in\"><strong>Success!</strong> Reset done.</div>");
   response_message += F("<div class=\"alert alert-success fade in\">Attempting reboot, but power cycle if needed. ");
   response_message += F("You will then need to connect to the <b>"); 
-  response_message += String(ap_ssid);
+  response_message += String(ap_ssid.c_str());
   response_message += F("</b> SSID and open <b>http://192.168.4.1</b> in a web browser to reconfigure.</div></div>");
   response_message += getHTMLFoot();
   resetEEPROM();

@@ -140,35 +140,40 @@ void startWeb() {
   });
   
   server.on("/setTime", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return setTimePageHandler(request);
   });
 
   server.on("/cmd", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return cmdPageHandler(request);
   });
 
   server.on("/setcharge", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return setChargePageHandler(request);
   });
 
   server.on("/setother", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     setOtherPageHandler(request);
   });
 
   server.on("/rest", [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     restPageHandler(request);
@@ -183,14 +188,23 @@ void startWeb() {
   });
 
   server.on("/wlan_config", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return wlanPageHandler(request);
   });
 
+  server.on("/security_config", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate(root_username.c_str(), root_password.c_str())) {
+      return request->requestAuthentication();
+    }
+    return securityPageHandler(request);
+  });
+
   server.on("/utility", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return utilityPageHandler(request);
@@ -201,14 +215,16 @@ void startWeb() {
   });
 
   server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return resetPageHandler(request);
   });
 
   server.on("/resetall", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (!request->authenticate(web_username, web_password)) {
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return resetAllPageHandler(request);
@@ -250,7 +266,7 @@ void startWeb() {
 #endif // ARDUINO_ARCH_ESP32
 
   server.on(update_path, HTTP_GET, [](AsyncWebServerRequest *request){
-    if (!request->authenticate(update_username, update_password)) {
+    if (!request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     handleUpdate(request);}
@@ -259,7 +275,7 @@ void startWeb() {
   server.on("/doUpdate", HTTP_POST,
     [](AsyncWebServerRequest *request) {},
     [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
-    if (!request->authenticate(update_username, update_password)) {
+    if (!request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     handleDoUpdate(request, filename, index, data, len, final);}
