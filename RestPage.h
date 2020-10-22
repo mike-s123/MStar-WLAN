@@ -30,26 +30,21 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
     DeserializationError jsonDesErr = deserializeJson(jsonIn, request->arg(F("json")).c_str() );
     String cmd = jsonIn[F("cmd")];
     String pass = jsonIn[F("pass")];
-    #ifdef ARDUINO_ARCH_ESP8266
-      StaticJsonBuffer<2200> jsonOutBuffer;    // on the edge, anymore than ~2400 and wdt resets
-    #endif
-    #ifdef ARDUINO_ARCH_ESP32
-      #ifdef PS_RAM   // use PS-RAM if available
-        struct SpiRamAllocator {
-          void* allocate(size_t size) {
-            return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
-          }
-          void deallocate(void* pointer) {
-            heap_caps_free(pointer);
-          }
-        };
-        using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;
-        SpiRamJsonDocument jsonOut(256000);
-        debugMsgln("REST SPIRAM free heap: "+ String(ESP.getFreePsram()),3);
-      #elif   
-        DynamicJsonDocument jsonOut(65536);    // bigger is better
-        debugMsgln("REST json free heap: "+String(ESP.getFreeHeap()),3);
-      #endif
+    #ifdef PS_RAM   // use PS-RAM if available
+      struct SpiRamAllocator {
+        void* allocate(size_t size) {
+          return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+        }
+        void deallocate(void* pointer) {
+          heap_caps_free(pointer);
+        }
+      };
+      using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;
+      SpiRamJsonDocument jsonOut(256000);
+      debugMsgln("REST SPIRAM free heap: "+ String(ESP.getFreePsram()),3);
+    #elif   
+      DynamicJsonDocument jsonOut(65536);    // bigger is better
+      debugMsgln("REST json free heap: "+String(ESP.getFreeHeap()),3);
     #endif
     if ( cmd == F("readRegs") ) {
       int count = 0;
@@ -103,12 +98,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       int count = jsonIn[F("count")] | 1;
       if ( cmd == "readInputRegister" ) { count = 1; };
       debugMsgln("REST read register(s) "+address+"/"+String(count),3);
-      #ifdef ARDUINO_ARCH_ESP8266
-        if ( count > 10 ) { jsonErr(request, F("count > 10"), F("request entity too large") , 413); return; }
-      #endif
-      #ifdef ARDUINO_ARCH_ESP32
-        if ( count > 256 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
-      #endif
+      if ( count > 256 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
       if ( getMbRegIndex(mbReg) < 0 ){ jsonErr(request, F("bad addr")); return; }
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version.c_str();
@@ -247,12 +237,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       logItem item;
       int result;
       int count  = jsonIn[F("count")] | 1;
-      #ifdef ARDUINO_ARCH_ESP8266
-        if ( count > 2 ) { jsonErr(request, F("count > 2"), F("request entity too large") , 413); return; }
-      #endif
-      #ifdef ARDUINO_ARCH_ESP32
-        if ( count > 32 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
-      #endif
+      if ( count > 32 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
       if ( idx < 0 || idx > 255 ) { jsonErr(request, F("bad addr")); return; };
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version.c_str();
@@ -330,13 +315,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
 
     if (ok) {  
       String response_message;
-      #ifdef ARDUINO_ARCH_ESP8266
-        response_message.reserve(3000);
-      #endif
-      #ifdef ARDUINO_ARCH_ESP32
-        response_message.reserve(65536); //94000 
-        debugMsgln("REST2 json free heap: "+String(ESP.getFreeHeap()),3);
-      #endif
+      response_message.reserve(65536); //94000 
+      debugMsgln("REST2 json free heap: "+String(ESP.getFreeHeap()),3);
       response_message = jsonIn[F("back")] | "false";
       if ( response_message != "true" ) {
         debugMsgln(F("Sending json response"),3);

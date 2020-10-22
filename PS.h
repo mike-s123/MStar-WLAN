@@ -237,23 +237,9 @@ void psSetChargePageHandler(AsyncWebServerRequest *request) {
 
   response_message += getTableFoot();
   response_message += getHTMLFoot();
-
   debugMsg(F("response_message size:"),4);
   debugMsgln(String(response_message.length()),4);
-
-  #ifdef ARDUINO_ARCH_ESP8266
-    // need to buffer in SPIFFs due to low memory on ESP8266
-    File tempFile = FILESYSTEM.open(F("/setcharge.html"), "w");
-    tempFile.print(response_message);
-    response_message = "";
-    tempFile.close();
-    request->send(FILESYSTEM, F("/setcharge.html"), F("text/html"));
-    FILESYSTEM.remove(F("/setcharge.html"));
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32  
-    request->send(200, F("text/html"), response_message);
-  #endif
-
+  request->send(200, F("text/html"), response_message);
 }
 
 void psSetOtherPageHandler(AsyncWebServerRequest *request) {

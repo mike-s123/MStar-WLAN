@@ -33,29 +33,15 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     logFile.flush();
     content_len = request->contentLength();
     // if filename includes spiffs or mklittlefs, update the fs partition
-#ifdef ARDUINO_ARCH_ESP8266
-    int cmd = (filename.indexOf(F(".spiffs.bin")) > -1 || filename.indexOf(F(".mklittlefs.bin")) > -1 ) ? U_FS : U_FLASH;
-    if (cmd == U_FLASH && filename.indexOf(F("esp32.bin")) > -1 ) return; // wrong image for ESP8266
-#endif
-#ifdef ARDUINO_ARCH_ESP32
     int cmd = (filename.indexOf(F(".spiffs.bin")) > -1 ) ? U_SPIFFS : U_FLASH;
     if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) return; // wrong image for ESP32
-#endif
-#ifdef ARDUINO_ARCH_ESP8266
-    Update.runAsync(true);
-    if (!Update.begin(content_len, cmd)) {
-#endif
-#ifdef ARDUINO_ARCH_ESP32
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
-#endif
       Update.printError(DEBUG_ESP_PORT);
     }
   }
-
   if (Update.write(data, len) != len) {
     Update.printError(DEBUG_ESP_PORT);
   }
-
   if (final) {    
     if (!Update.end(true)){
       Update.printError(DEBUG_ESP_PORT);
@@ -64,10 +50,10 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
       response_message.reserve(1000);
       response_message = getHTMLHead();
       response_message += "<h2>Please wait while the device reboots</h2> \
-      <meta http-equiv=\"refresh\" content=\"20;url=/\" />";
+      <meta http-equiv=\"refresh\" content=\"30;url=/\" />";
       response_message += getHTMLFoot();
       AsyncWebServerResponse *response = request->beginResponse(200, "text/html", response_message);
-      response->addHeader("Refresh", "20");  
+      response->addHeader("Refresh", "30");  
       response->addHeader("Location", "/");
       request->send(response);    
       debugMsgln("Update complete, rebooting",1);
@@ -78,9 +64,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
   }
 }
 
-
-bool serveFile(String path, AsyncWebServerRequest *request) {
-  
+bool serveFile(String path, AsyncWebServerRequest *request) {  
   String dataType = "text/plain";
   if (path.endsWith("/")) {
     path += "index.htm";
@@ -108,17 +92,14 @@ bool serveFile(String path, AsyncWebServerRequest *request) {
   } else if (path.endsWith(".zip")) {
     dataType = "application/zip";
   }
-      
   File dataFile = FILESYSTEM.open(path, "r");
   if (dataFile.isDirectory()) {
     path += "/index.htm";
     dataType = "text/html";
     dataFile = FILESYSTEM.open(path, "r");
   }
-
   if (!dataFile) return false;
   dataFile.close();
-
   if (request->hasArg("download")) {
     dataType = "application/octet-stream";
   }

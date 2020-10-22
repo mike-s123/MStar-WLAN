@@ -92,12 +92,7 @@ logItem mbLog[256];
 int mbGetFullReg(fullReg &myReg, int address); // forward declaration
 
 void rxEnable(bool state) {                                   // high = enabled = true
-  #ifdef ARDUINO_ARCH_ESP8266
-    state ? GPOS = 1 << RX_ENABLE_PIN : GPOC = 1 << RX_ENABLE_PIN;  // faster than digitalWrite
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    state ? REG_WRITE(GPIO_OUT_W1TS_REG, 1 << RX_ENABLE_PIN) : REG_WRITE(GPIO_OUT_W1TC_REG, 1 << RX_ENABLE_PIN); // faster than digitalWrite
-  #endif
+  state ? REG_WRITE(GPIO_OUT_W1TS_REG, 1 << RX_ENABLE_PIN) : REG_WRITE(GPIO_OUT_W1TC_REG, 1 << RX_ENABLE_PIN); // faster than digitalWrite
 //  digitalWrite(RX_ENABLE_PIN, state);
 }
 
@@ -591,22 +586,9 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
 
   preTransmission();
   
-  #ifdef ARDUINO_ARCH_ESP8266
-    while (Serial.read() != -1);      // flush receive buffer before transmitting request
-    count = Serial.write(query, 7);   // send the request
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    while (mbSerial.read() != -1);
-    count = mbSerial.write(query, 7);
-  #endif
-
-  //TODO is flush different? TX on 8266, RX on 32???
-  #ifdef ARDUINO_ARCH_ESP8266
-    Serial.flush();
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    mbSerial.flush();
-  #endif
+  while (mbSerial.read() != -1);
+  count = mbSerial.write(query, 7);
+  mbSerial.flush();
   postTransmission();
   int startwait = 300; // up to 300 ms for start of a response.
   int charwait = 10;   // no more than 10 ms between chars, should come ~1 ms apart
@@ -615,16 +597,10 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   bool done = false;
   count = 0;
   while ( !done ) {
-    #ifdef ARDUINO_ARCH_ESP8266
-      if (Serial.available()) {
-        response[count++] = Serial.read();
-    #endif
-    #ifdef ARDUINO_ARCH_ESP32
-      if (mbSerial.available()) {
-        response[count++] = mbSerial.read();
-    #endif
-        doneTime = millis() + charwait; 
-      }  //matches xx.available
+    if (mbSerial.available()) {
+      response[count++] = mbSerial.read();
+      doneTime = millis() + charwait; 
+    }  //matches xx.available
     if (doneTime < millis()) { done = true; }  // no response or didn't get a char for a while
   } // while() - done getting response
 

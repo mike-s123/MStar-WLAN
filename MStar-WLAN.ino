@@ -1,39 +1,28 @@
  /*
  * MStar-WLAN 2020 mjs
  * 
- * ESP32 or ESP8266
+ * ESP32
  *   
  *  ESP32 - WROVER-B, custom partitions (WROVER 16 MB w/13M FS with modified files)
  *   lwIP: v2 higher bandwidth
  *   vTables: IRAM
  *   240 MHz
  *   
- *  ESP32 - WROOM (4 MB), 
+ *  ESP32 - WROOM (4 MB), use "data-small" folder for SPIFFS, put other files on SD-Card.
  *    -ESP32 Dev Module
  *    -Default 4 MB w/SPIFFS (1.2 MB APP/1.5MB SPIFFS)
  *    or
  *    -Minimal (1.3 MB APP/700kB SPIFFS)
  *  
- *  ESP8266 - DEPRECATED, NO LONGER WORKING (WiFi scan broke with change to asynch webserver)
- *    Lolin D1 Mini Pro (deprecated - WiFi scanning doesn't work since 
- *    changing to asynch webserver - probably a memory shortage issue. #ifdefs are still here
- *    if someone wants to work on it. Future direction is ESP32.)
- *   -Upload: 921600
- *   -CPU: 160MHz
- *   -Flash: 16MB (FS:14MB...)
- *   -Debug: disabled
- *   -IwIP: v2 Higher bandwidth
- *   -vtables: IRAM
-
  *   Original work, License CC BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  *   All rights reserved.
  *   some parts subject to other licenses as noted.
  *   
- *   Using Arduino IDE 1.8.10, ESP8266 Arduino 2.6.2, ESP32 Arduino 1.0.4
+ *   Using Arduino IDE 1.8.10, ESP32 Arduino 1.0.4
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201022"
+#define SOFTWARE_VERSION "v2.201022a"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -45,13 +34,7 @@ using namespace std;
 #ifdef DEBUG_ON
   #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
                                     // because we're swapping the UART to new ones
-  #ifdef ARDUINO_ARCH_ESP8266
-    #define DEBUG_ESP_PORT logger
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    #define DEBUG_ESP_PORT Serial
-  #endif
-  
+  #define DEBUG_ESP_PORT Serial
   //#define DEBUG_ESP_HTTP_SERVER
   //#define DEBUG_ESP_CORE
   //#define EZT_DEBUG DEBUG           // for EZTime
@@ -73,76 +56,34 @@ using namespace std;
 
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
-#ifdef ARDUINO_ARCH_ESP8266
-  #include <SoftwareSerial.h>
-  ADC_MODE(ADC_VCC);
-  #ifdef DEBUG_ON
-      SoftwareSerial logger(3, 1); // RX, TX
-  #else
-//    SoftwareSerial* cSerial = nullptr;  
-  #endif
-
-//  #define FS_SPIFFS
-  #define FS_LITTLEFS
-  #ifdef FS_SPIFFS
-    #define FILESYSTEM SPIFFS
-    #define FS_TYPE "SPIFFS"
-//    #include <SPIFFS.h>
-  #endif
-  #ifdef FS_LITTLEFS
-    #define FILESYSTEM LittleFS
-    #define FS_TYPE "LittleFS"
-    #include <LittleFS.h>
-  #endif
-  #include <ESP8266WiFi.h>
-  #include <ESP8266WiFiAP.h>
-  #include <ESP8266WiFiGeneric.h>
-  #include <ESP8266WiFiMulti.h>
-  #include <ESP8266WiFiScan.h>
-  #include <ESP8266WiFiSTA.h>
-  #include <ESP8266WiFiType.h>
-//  #include <ESP8266WebServer.h>
-//#include <ESP8266WebServerSecure.h>
-//#include <ESP8266WebServerSecureAxTLS.h>
-//#include <ESP8266WebServerSecureBearSSL.h>
-#include <ESP8266mDNS.h>  //not working, comment out to not use
-  /* This will compile in OTA support - need at least 1 MB for OTA updates.
-     we check available space at runtime before allowing it.
-  */
-//  #include <ESP8266HTTPUpdateServer.h>
-  #include <Updater.h>
-  #include "ESPAsyncTCP.h"  //https://github.com/me-no-dev/ESPAsyncTCP
-#endif
 
 #include "ESPAsyncWebServer.h" 
 
-#ifdef ARDUINO_ARCH_ESP32
-  #include <WiFi.h>
-  #include <WiFiMulti.h>
-  //#include <WebServer.h>
-  #include <AsyncTCP.h>
-  #include "ESPAsyncWebServer.h"
-  #include <ESPmDNS.h>
-  #include <Update.h>
-  #include <FS.h>
-  #define FS_SPIFFS
-  #define FILESYSTEM SPIFFS
-  #define FS_TYPE "SPIFFS"
-  #include <SPIFFS.h>
-  #include <SD.h>
-  #include <SPI.h>
-  #include <sys/time.h>
+#include <WiFi.h>
+#include <WiFiMulti.h>
+//#include <WebServer.h>
+#include <AsyncTCP.h>
+#include "ESPAsyncWebServer.h"
+#include <ESPmDNS.h>
+#include <Update.h>
+#include <FS.h>
+#define FS_SPIFFS
+#define FILESYSTEM SPIFFS
+#define FS_TYPE "SPIFFS"
+#include <SPIFFS.h>
+#include <SD.h>
+#include <SPI.h>
+#include <sys/time.h>
 //  #include "SdFat.h"
-  #include <HardwareSerial.h>
-  File logFile;                         // platform log file
-  String logFileName;
-  File ctl_logFile;                     // controller log file
-  #define CTL_LOGFILE "/ctl.log"        // default, must start with /
-  String ctlLogFileName = CTL_LOGFILE;
-  #ifdef EZT_DEBUG
-    File ezt_logFile;                   // ez-time log file
-    #define EZT_LOGFILE "/eztime.log"   // must start with /
-  #endif
+#include <HardwareSerial.h>
+File logFile;                         // platform log file
+String logFileName;
+File ctl_logFile;                     // controller log file
+#define CTL_LOGFILE "/ctl.log"        // default, must start with /
+String ctlLogFileName = CTL_LOGFILE;
+#ifdef EZT_DEBUG
+  File ezt_logFile;                   // ez-time log file
+  #define EZT_LOGFILE "/eztime.log"   // must start with /
 #endif
 
 #include <ArduinoJson.h>   // Benoit Blanchon 6.15.2, via IDE
@@ -233,33 +174,25 @@ using namespace std;
 #define eeJsonPass 498
 #define eeSerialNum
 
-#ifdef ARDUINO_ARCH_ESP8266
-  #define RX_ENABLE_PIN 12  // GPIO 12 (D6) on Wemos
-  #define SDA_PIN 4         // GPIO 4 (D2) I2C SDA
-  #define SCL_PIN 5         // GPIO 5 (D1) I2C SCL
-  #define SELF_RST_PIN 16   // GPIO 16 (D0) self-reset
-//  #define I2C_SDA_RESET     // No pin available on 8266
-#endif
-#ifdef ARDUINO_ARCH_ESP32
-  #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10
-  #define RX_PIN 27         // RxD to IO27, pin 12
-  #define TX_PIN 4          // Txd to IO4, pin 26
-  #define SDA_PIN 15        // GPIO 15  I2C SDA
-  #define SCL_PIN 13        // GPIO 13  I2C SCL
-  #define SPI_SCLK 18       // these are default pins for VSPI
-  #define SPI_MISO 19       // just here for documentation
-  #define SPI_MOSI 23
-  #define SD_CARD0_CS 5        // CS for SDCard0
-  #define SD_CARD1_CS 32 // for SDCard1, connected to header
-  #define SD_CARD_TO_USE 0  // Which SD card to use
-  #define SD_DETECT 26    // SD card inserted, only for SDCard0
-  #define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
-  #define SD_CARD_LOG true //log to SD card
-  bool sd_card_log = SD_CARD_LOG;
-  bool sd_card_available = false;
-  volatile bool sd_card_changed = false;
-  bool needLogTime = true;  // whether we need to print time to the log
-#endif
+#define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10
+#define RX_PIN 27         // RxD to IO27, pin 12
+#define TX_PIN 4          // Txd to IO4, pin 26
+#define SDA_PIN 15        // GPIO 15  I2C SDA
+#define SCL_PIN 13        // GPIO 13  I2C SCL
+#define SPI_SCLK 18       // these are default pins for VSPI
+#define SPI_MISO 19       // just here for documentation
+#define SPI_MOSI 23
+#define SD_CARD0_CS 5        // CS for SDCard0
+#define SD_CARD1_CS 32 // for SDCard1, connected to header
+#define SD_CARD_TO_USE 0  // Which SD card to use
+#define SD_DETECT 26    // SD card inserted, only for SDCard0
+#define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
+#define SD_CARD_LOG true //log to SD card
+bool sd_card_log = SD_CARD_LOG;
+bool sd_card_available = false;
+volatile bool sd_card_changed = false;
+bool needLogTime = true;  // whether we need to print time to the log
+
 // MBus slave id of controller
 #define mbusSlave 1
 
@@ -323,22 +256,12 @@ File fsUploadFile;              // a File object to temporarily store the receiv
 
 String referrer; 
 ModbusMaster node;
-
-#ifdef ARDUINO_ARCH_ESP8266
-  ESP8266WiFiMulti wifiMulti;
-//  ESP8266WebServer server(80);
-//  ESP8266HTTPUpdateServer httpUpdater;
-#endif
 WiFiServer modbusTCP(502);
 WiFiClient modbusClient;
-
 AsyncWebServer server(80);
-
-#ifdef ARDUINO_ARCH_ESP32
-  WiFiMulti wifiMulti;
+WiFiMulti wifiMulti;
 //  WebServer server(80);
-  HardwareSerial mbSerial(1);
-#endif
+HardwareSerial mbSerial(1);
 
 //order here is important
 #include "TimeStuff.h"
@@ -355,33 +278,19 @@ AsyncWebServer server(80);
 #include "Web.h"                // starts up web server
 
 void setup() {
-  #ifdef ARDUINO_ARCH_ESP32
-    pinMode(I2C_SDA_RESET ,INPUT);
-    attachSDCardIRQ();
-  #endif
-  
-  #ifdef ARDUINO_ARCH_ESP8266
-    digitalWrite(SELF_RST_PIN, HIGH); // So board can do a hardware reset of itself
-    pinMode(SELF_RST_PIN, OUTPUT);
-  #endif
-  
+  pinMode(I2C_SDA_RESET ,INPUT);
+  attachSDCardIRQ();
+    
   WiFi.macAddress(mac);
   my_MAC =  String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
   my_hostname = HOSTNAME + String("-") + my_MAC;
-  #ifdef ARDUINO_ARCH_ESP32
-    logFileName = "/"+ my_hostname + ".log";
-  #endif
+  logFileName = "/"+ my_hostname + ".log";
   setupRtcSQW();  // real time clock
   setupComms();   // serial port stuff
   setupFS();      // filesystems
 
   if ( ESP.getSketchSize() + 4096 < ESP.getFreeSketchSpace() ) {
     largeFlash = true;
-  }
-  if ( largeFlash ) {
-    #ifdef ARDUINO_ARCH_ESP8266
-//      httpUpdater.setup(&server, update_path, root_username, root_password);
-    #endif
   }
 
   EEPROM.begin(EEPROM_SIZE);
@@ -437,36 +346,10 @@ void setup() {
 } // setup()
 
 void loop() {
-  
-  #ifdef ARDUINO_ARCH_ESP8266
-    ESP.wdtFeed();
-  #endif
 
-  #ifdef MDNS_H // ESP8266
-    MDNS.update();
-  #endif
-
-events(); // for EZTime
-/*  if (!mytz2skip || millis() > mytz2skipMillis + 180000) {   // don't do events around 0200 local, test
-    unsigned long int tempmillis=0;
-    if (mytz2skip) tempmillis = millis();
-    events(); // for EZTime
-    if (tempmillis > 0) {
-      debugMsgln("event millis:"+String(millis()-tempmillis),1);
-      if (logFile) logFile.flush();
-      WiFi.setTxPower(WIFI_POWER_15dBm);
-      mytz2skip = false;
-    }
-  }
-*/
-  
+  events(); // for EZTime  
   checkNtp();
-//  server.handleClient();
-
-  #ifdef ARDUINO_ARCH_ESP32
-    if (sd_card_changed) changeSDCard();
-  #endif
-  
+  if (sd_card_changed) changeSDCard();
   #ifndef DEBUG_ON
     serialPassthrough();
   #endif

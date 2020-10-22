@@ -1,45 +1,15 @@
 
 void setupComms() {
-    #ifdef ARDUINO_ARCH_ESP8266
-    Serial.begin(9600, SERIAL_8N2);
-    U0C0 = BIT(UCRXI) | BIT(UCTXI) | BIT(UCBN) | BIT(UCBN + 1) | BIT(UCSBN) | BIT(UCSBN + 1); // Inverse RX & TX, 8N2
-    /*
-     * Here we swap to the alternate UART pins, so they're now GPIO15(D8,TX) and GPIO13(D7,RX)
-     * This is so we can use the more reliable hardware UART to talk to MODBUS
-     * We'll then use softwareserial to send debug messages out the old UART
-     * pins (which go to the USB/serial chip).
-     */
-    Serial.swap();  //
-    #ifdef DEBUG_ON
-      delay(10);
-      setupDebug();
-      delay(10);
-      debugMsg(F("Debug on, level "),1);
-      debugMsgln(String(debug_level),1);
-    #else
-//     cSerial = new SoftwareSerial(3, 1);
-//      setupPassthru();
-//      delay(100);
-//      cSerial->println(F("cSerial setup"));
-    #endif
+  #ifdef DEBUG_ON
+    setupDebug();
+    debugMsg(F("Debug on, level "),1);
+    debugMsgln(String(debug_level),1);
   #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    /* remap UART1 
-     *  
-     *  pinMatrixOutAttach(uint8_t pin, uint8_t function, bool invertOut, bool invertEnable);
-     *  pinMatrixInAttach(uint8_t pin, uint8_t signal, bool inverted);
-    */
-    #ifdef DEBUG_ON
-      setupDebug();
-      debugMsg(F("Debug on, level "),1);
-      debugMsgln(String(debug_level),1);
-    #endif
-    pinMode(RX_PIN, INPUT);
-    delay(10);
-    mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);    
+  pinMode(RX_PIN, INPUT);
+  delay(10);
+  mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);    
 //    pinMatrixOutAttach(TX_PIN, U1TXD_OUT_IDX, true, false);
 //    pinMatrixInAttach(RX_PIN, U1RXD_IN_IDX, true);
-  #endif
 
   int rtn = I2C_ClearBus(); // clear the I2C bus first before calling Wire.begin()
   if (rtn != 0) {
@@ -67,23 +37,14 @@ void setupWLAN() {
   /*
  * WiFi setup
  */
-
   ap_ssid = ap_SSID.c_str();
   //ap_password = AP_PSK;
 
   WiFi.persistent(true);
-  #ifdef ARDUINO_ARCH_ESP8266
-    WiFi.hostname(my_hostname);
-  #endif
-  
-  #ifdef ARDUINO_ARCH_ESP32
-  {
-    WiFi.mode(WIFI_STA);
-    char __hostname[sizeof(my_hostname)+1];
-    my_hostname.toCharArray(__hostname, sizeof(__hostname));
-    WiFi.setHostname(__hostname);             // TODO not working
-  }
-  #endif
+  WiFi.mode(WIFI_STA);
+  char __hostname[sizeof(my_hostname)+1];
+  my_hostname.toCharArray(__hostname, sizeof(__hostname));
+  WiFi.setHostname(__hostname);             // TODO not working
   
   debugMsg(F("Using hostname: "),1);
   debugMsgln(my_hostname,1);
@@ -94,12 +55,7 @@ void setupWLAN() {
 
 void setupModbus() {
   debugMsgln(F("MODBUS Starting"),1);
-  #ifdef ARDUINO_ARCH_ESP8266
-    node.begin(mbAddr, Serial);
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    node.begin(mbAddr, mbSerial);
-  #endif
+  node.begin(mbAddr, mbSerial);
   // Callbacks allow us to do half duplex without receiving our own transmissions
   // needed for Morningstar 6P6C connections, which are half-duplex
   node.preTransmission(preTransmission);
@@ -198,16 +154,6 @@ void setupFS() {
   
   debugMsg(fs_type,1);
   debugMsgln(F(" starting"),1);
-  #ifdef ARDUINO_ARCH_ESP8266
-    #ifdef FS_LITTLEFS
-      LittleFSConfig cfg;
-    #endif
-    #ifdef FS_SPIFFS
-      SPIFFSConfig cfg;
-    #endif
-    cfg.setAutoFormat(false);
-    FILESYSTEM.setConfig(cfg);
-  #endif
   if ( FILESYSTEM.begin() ) {
     debugMsg(FS_TYPE,1);
     debugMsgln(F(" opened"),1);
@@ -215,7 +161,5 @@ void setupFS() {
     debugMsg(FS_TYPE,1);
     debugMsgln(F(" failed to open"),1);
   }
-  #ifdef ARDUINO_ARCH_ESP32
-    checkSDCard(SD_CARD_TO_USE);
-  #endif  //esp32
+  checkSDCard(SD_CARD_TO_USE);
 }

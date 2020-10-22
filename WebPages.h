@@ -242,13 +242,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-
-  #ifdef ARDUINO_ARCH_ESP8266
-    response_message += F("<center><img src=\"/img/wemos.png\"></center>");
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    response_message += F("<center><img src=\"/img/wrover.png\"></center>");
-  #endif
+  response_message += F("<center><img src=\"/img/wrover.png\"></center>");
   
   // Status table
   response_message += getTableHead2Col(F("WLAN Status"), F("Name"), F("Value"));
@@ -264,12 +258,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
     IPAddress softapip = WiFi.softAPIP();
     response_message += getTableRow2Col(F("AP IP"), formatIPAsString(softapip));
     response_message += getTableRow2Col(F("AP MAC"), WiFi.softAPmacAddress());
-    #ifdef ARDUINO_ARCH_ESP8266
-      response_message += getTableRow2Col(F("AP SSID"), WiFi.softAPSSID());                   
-    #endif
-    #ifdef ARDUINO_ARCH_ESP32
-      response_message += getTableRow2Col(F("AP SSID"), ap_ssid.c_str());
-    #endif
+    response_message += getTableRow2Col(F("AP SSID"), ap_ssid.c_str());
     response_message += getTableRow2Col(F("AP connections"),String(WiFi.softAPgetStationNum()));
   }
   float pwr = WiFi.getTxPower()/4.0;
@@ -282,32 +271,14 @@ void platformPageHandler(AsyncWebServerRequest *request)
   long upMins = (upSecs - (upDays * 86400) - (upHours * 3600)) / 60;
   upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
   String uptimeString = ""; uptimeString += upDays; uptimeString += F(" days, "); uptimeString += upHours, uptimeString += F(" hours, "); uptimeString += upMins; uptimeString += F(" mins, "); uptimeString += upSecs; uptimeString += F(" secs");
-
   response_message += getTableRow2Col(F("Uptime"), uptimeString);
   response_message += getTableRow2Col(F("Version"), SOFTWARE_VERSION);
   response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
-
   response_message += getTableFoot();
-
-  #ifdef ARDUINO_ARCH_ESP8266
-    float voltage = ((float)ESP.getVcc() / (float)913) + .005;
-    // 895.21 corrects for external 100K pulldown on NodeMCU ADC pin
-    // internal voltage divider seems to be about 48.25K / 15.6K
-    // this gets to 1% accuracy 2.9-3.5V on test unit
-    // varies by unit, 890-920?
-    char dtostrfbuffer[15];
-    dtostrf(voltage, 7, 2, dtostrfbuffer);
-    String vccString = String(dtostrfbuffer);
-  #endif
   
   response_message += getTableHead2Col(F("Platform Information"), F("Name"), F("Value"));
-  #ifdef ARDUINO_ARCH_ESP8266
-    response_message += getTableRow2Col(F("Architecture"), F("ESP8266"));
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32
-    response_message += getTableRow2Col(F("Architecture"), F("ESP32"));
-    response_message += getTableRow2Col(F("Chip revision"), String(ESP.getChipRevision()));
-  #endif
+  response_message += getTableRow2Col(F("Architecture"), F("ESP32"));
+  response_message += getTableRow2Col(F("Chip revision"), String(ESP.getChipRevision()));
   response_message += getTableRow2Col(F("CPU Frequency (MHz)"), String(ESP.getCpuFreqMHz()));
   if (rtcPresent) {
     response_message += getTableRow2Col(F("RTC Time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850));
@@ -321,71 +292,32 @@ void platformPageHandler(AsyncWebServerRequest *request)
   String ota = formatBytes(ESP.getFreeSketchSpace());
   if ( largeFlash ) { ota += F(" (OTA update capable)"); }
   response_message += getTableRow2Col(F("Free sketch size"), ota);
-  
-  #ifdef ARDUINO_ARCH_ESP8266
-    response_message += getTableRow2Col(F("ESP version"), ESP.getFullVersion());
-    response_message += getTableRow2Col(F("Free heap"), formatBytes(ESP.getFreeHeap()));
-    response_message += getTableRow2Col(F("Heap fragmentation"), String(ESP.getHeapFragmentation())+" %");
-    response_message += getTableRow2Col(F("Stack low watermark"), formatBytes(ESP.getFreeContStack()));
-
-    FSInfo fs_info;
-    FILESYSTEM.info(fs_info);
-    response_message += getTableRow2Col(fs_type + String(F(" size")), formatBytes(fs_info.totalBytes));
-    response_message += getTableRow2Col(fs_type + String(F(" used")), formatBytes(fs_info.usedBytes));
-    response_message += getTableRow2Col(fs_type + String(F(" block size")), formatBytes(fs_info.blockSize));
-    response_message += getTableRow2Col(fs_type + String(F(" page size")), formatBytes(fs_info.pageSize));
-    response_message += getTableRow2Col(fs_type + String(F(" max open files")), String(fs_info.maxOpenFiles));
-
-    response_message += getTableRow2Col(F("Chip ID"), String(ESP.getChipId()));
-    response_message += getTableRow2Col(F("Flash Chip ID"), "0x"+String(ESP.getFlashChipId(),HEX));
-    response_message += getTableRow2Col(F("Flash size"), formatBytes(ESP.getFlashChipRealSize()));
-
-    extern SpiFlashChip *flashchip;
-/* typedef struct{
-        uint32  deviceId;
-        uint32  chip_size;    // chip size in byte
-        uint32  block_size;
-        uint32  sector_size;
-        uint32  page_size;
-        uint32  status_mask;
-   } SpiFlashChip;
-*/
-    response_message += getTableRow2Col(F("Flash block size"), formatBytes(flashchip->block_size));
-    response_message += getTableRow2Col(F("Flash sector size"), formatBytes(flashchip->sector_size));
-    response_message += getTableRow2Col(F("Flash page size"), formatBytes(flashchip->page_size));
-
-    response_message += getTableRow2Col(F("Last reset reason"), String(ESP.getResetReason()));
-    response_message += getTableRow2Col(F("Vcc"), vccString);
-  #endif
-
-  #ifdef ARDUINO_ARCH_ESP32
-    response_message += getTableRow2Col(F("SDK version"), String(ESP.getSdkVersion()));
-    response_message += getTableRow2Col(F("Internal total heap"), String(ESP.getHeapSize()));
-    response_message += getTableRow2Col(F("Internal free heap"), String(ESP.getFreeHeap()));
-    response_message += getTableRow2Col(F("Internal min free heap"), String(ESP.getMinFreeHeap()));
-    response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
-    response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
-    if (sd_card_available) {
-      response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
-      response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
-      if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Debug log file"), \
-        "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>" + \
-        "&nbsp;&nbsp;" + \
-        "<a href=\"/sd" + logFileName + "\" download>" + "(download)" + "</a>");
-      if (sd_card_log && sd_card_available && ctl_logFile) response_message += getTableRow2Col(F("Controller log file"), \
-        "<a href=\"/sd" + ctlLogFileName + "\" target=\"_blank\">" + "/sd" + ctlLogFileName + "</a>" + \
-        "&nbsp;&nbsp;" + \
-        "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
-    }
-    response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
-    response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
-    response_message += getTableRow2Col(F("SPIRAM min free heap"), String(ESP.getMinFreePsram()));
-    response_message += getTableRow2Col(F("Flash chip size"), "0x"+String(ESP.getFlashChipSize(),HEX));
-    response_message += getTableRow2Col(F("Flash chip speed"), String(ESP.getFlashChipSpeed()));
-    response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
-    response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
-    response_message += getTableRow2Col(F("Hall sensor"), String(hallRead()));
-  #endif
+  response_message += getTableRow2Col(F("SDK version"), String(ESP.getSdkVersion()));
+  response_message += getTableRow2Col(F("Internal total heap"), String(ESP.getHeapSize()));
+  response_message += getTableRow2Col(F("Internal free heap"), String(ESP.getFreeHeap()));
+  response_message += getTableRow2Col(F("Internal min free heap"), String(ESP.getMinFreeHeap()));
+  response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
+  response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
+  if (sd_card_available) {
+    response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
+    response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
+    if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Debug log file"), \
+      "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>" + \
+      "&nbsp;&nbsp;" + \
+      "<a href=\"/sd" + logFileName + "\" download>" + "(download)" + "</a>");
+    if (sd_card_log && sd_card_available && ctl_logFile) response_message += getTableRow2Col(F("Controller log file"), \
+      "<a href=\"/sd" + ctlLogFileName + "\" target=\"_blank\">" + "/sd" + ctlLogFileName + "</a>" + \
+      "&nbsp;&nbsp;" + \
+      "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
+  }
+  response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
+  response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
+  response_message += getTableRow2Col(F("SPIRAM min free heap"), String(ESP.getMinFreePsram()));
+  response_message += getTableRow2Col(F("Flash chip size"), "0x"+String(ESP.getFlashChipSize(),HEX));
+  response_message += getTableRow2Col(F("Flash chip speed"), String(ESP.getFlashChipSpeed()));
+  response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
+  response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
+  response_message += getTableRow2Col(F("Hall sensor"), String(hallRead()));
 
   if (model.startsWith(F("PS-"))) {  // TODO make this universal
     float mbv = 0;
@@ -403,19 +335,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   
   debugMsg(F("response_message size:"),4);
   debugMsgln(String(response_message.length()),4);
-
-  #ifdef ARDUINO_ARCH_ESP8266
-    // need to buffer in SPIFFs due to low memory on ESP8266
-    File tempFile = FILESYSTEM.open(F("/platform.html"), "w");
-    tempFile.print(response_message);
-    response_message = "";
-    tempFile.close();
-    request->send(FILESYSTEM, F("/platform.html"), F("text/html"));
-    FILESYSTEM.remove(F("/platform.html"));
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32  
-    request->send(200, F("text/html"), response_message);
-  #endif
+  request->send(200, F("text/html"), response_message);
 }
 
 void allregsPageHandler(AsyncWebServerRequest *request)
@@ -473,22 +393,9 @@ void allregsPageHandler(AsyncWebServerRequest *request)
     delayMicroseconds(1000); // brief pause between reading registers works best
   }
   response_message += getTableFoot();
-
   response_message += getHTMLFoot();
-  #ifdef ARDUINO_ARCH_ESP8266
-    // need to buffer in SPIFFs due to low memory on ESP8266
-    File tempFile = FILESYSTEM.open(F("/allregs.html"), "w");
-    tempFile.print(response_message);
-    response_message = "";
-    tempFile.close();
-    request->send(FILESYSTEM, "/allregs.html", F("text/html"));
-    //FILESYSTEM.remove(F("/allregs.html"));
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32  
-    request->send(200, F("text/html"), response_message);
-  #endif
+  request->send(200, F("text/html"), response_message);
 }
-
 
 void allcoilsPageHandler(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /allcoils page."),2);
@@ -650,12 +557,7 @@ void wlanPageHandler(AsyncWebServerRequest *request)
     {
       String ssid = String(WiFi.SSID(ap_idx));
       String wlanId = String(WiFi.SSID(ap_idx));
-      #ifdef ARDUINO_ARCH_ESP8266      
-        (WiFi.encryptionType(ap_idx) == ENC_TYPE_NONE) ? wlanId += "" : wlanId += F(" (requires password)");
-      #endif 
-      #ifdef ARDUINO_ARCH_ESP32
-        (WiFi.encryptionType(ap_idx) == WIFI_AUTH_OPEN) ? wlanId += "" : wlanId += F(" (requires password)");
-      #endif 
+      (WiFi.encryptionType(ap_idx) == WIFI_AUTH_OPEN) ? wlanId += "" : wlanId += F(" (requires password)");
       wlanId += F(" (RSSI: ");
       wlanId += String(WiFi.RSSI(ap_idx));
       wlanId += F(")");
@@ -1003,118 +905,99 @@ void setTimePageHandler(AsyncWebServerRequest *request) {
 
   debugMsg(F("response_message size:"),4);
   debugMsgln(String(response_message.length()),4);
-
-  #ifdef ARDUINO_ARCH_ESP8266
-    // need to buffer in SPIFFs due to low memory on ESP8266
-    File tempFile = FILESYSTEM.open(F("/setTime.htm"), "w");
-    tempFile.print(response_message);
-    response_message = "";
-    tempFile.close();
-    request->send(FILESYSTEM, F("/setTime.htm"), F("text/html"));
-    FILESYSTEM.remove(F("/setTime.htm"));
-  #endif
-  #ifdef ARDUINO_ARCH_ESP32  
-    request->send(200, F("text/html"), response_message);
-  #endif
-
+  request->send(200, F("text/html"), response_message);
 }
 
-#ifdef ARDUINO_ARCH_ESP32
-  bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
-    debugMsgln("loadFromSdCard, file:"+path,4);
-    String dataType = "text/plain";
-    if (path.endsWith("/")) {
-      path += "index.htm";
-    }
-  
-    if (path.endsWith(".src")) {
-      path = path.substring(0, path.lastIndexOf("."));
-    } else if (path.endsWith(".htm")) {
-      dataType = "text/html";
-    } else if (path.endsWith(".css")) {
-      dataType = "text/css";
-    } else if (path.endsWith(".js")) {
-      dataType = "application/javascript";
-    } else if (path.endsWith(".png")) {
-      dataType = "image/png";
-    } else if (path.endsWith(".gif")) {
-      dataType = "image/gif";
-    } else if (path.endsWith(".jpg")) {
-      dataType = "image/jpeg";
-    } else if (path.endsWith(".ico")) {
-      dataType = "image/x-icon";
-    } else if (path.endsWith(".xml")) {
-      dataType = "text/xml";
-    } else if (path.endsWith(".pdf")) {
-      dataType = "application/pdf";
-    } else if (path.endsWith(".zip")) {
-      dataType = "application/zip";
-    }
-
-    if (logFile) logFile.flush();      // flush logs
-    if (ctl_logFile) ctl_logFile.flush();
-    #ifdef EZT_DEBUG
-      if (ezt_logFile) ezt_logFile.flush();
-    #endif
-
-    File dataFile = SD.open(path.c_str());
-    if (dataFile.isDirectory()) {
-      path += "/index.htm";
-      dataType = "text/html";
-      dataFile = SD.open(path.c_str());
-    }
-  
-    if (!dataFile) {
-      debugMsgln("File not found",4);
-      return false;
-    }
-  
-    if (request->hasArg("download")) {
-      dataType = "application/octet-stream";
-    }
-    debugMsgln("Sending file",4);
-    request->send(SD, path, dataType);
-  
-    dataFile.close();
-    return true;
+bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
+  debugMsgln("loadFromSdCard, file:"+path,4);
+  String dataType = "text/plain";
+  if (path.endsWith("/")) {
+    path += "index.htm";
   }
-  
-  void sdPageHandler(String URI, AsyncWebServerRequest *request ){
-    debugMsgln("sdPageHandler URI:"+URI,4);
-    String relative_uri = URI;
-    relative_uri.replace("/sd/","/");
-  /*  checkController();
-    String response_message;
-    response_message.reserve(4000);
-    response_message = getHTMLHead();
-    response_message += getNavBar();
-    response_message += getFormHead(F("SD"));
-  
-    response_message += "<div>";  
-    response_message += "sdPageHandler requested URI:/sd"+relative_uri;
-    response_message += "</div>";
-  
-    response_message += getFormFoot();
-    response_message += getHTMLFoot();
-    request->send(200, F("text/html"), response_message);
-  */
-    if (sd_card_available && loadFromSdCard(relative_uri, request)) {
-      return;
-    }
-    String message = "SDCARD Not Detected\n\n";
-    message += "URI: ";
-    message += request->url();
-    message += "\nrelative URI: ";
-    message += relative_uri;
-    message += "\nMethod: ";
-    message += (request->method() == HTTP_GET) ? "GET" : "POST";
-    message += "\nArguments: ";
-    message += request->args();
-    message += "\n";
-    for (uint8_t i = 0; i < request->args(); i++) {
-      message += " NAME:" + request->argName(i) + "\n VALUE:" + request->arg(i) + "\n";
-    }
-    request->send(404, "text/plain", message);
-    debugMsgln(message,5);
+
+  if (path.endsWith(".src")) {
+    path = path.substring(0, path.lastIndexOf("."));
+  } else if (path.endsWith(".htm")) {
+    dataType = "text/html";
+  } else if (path.endsWith(".css")) {
+    dataType = "text/css";
+  } else if (path.endsWith(".js")) {
+    dataType = "application/javascript";
+  } else if (path.endsWith(".png")) {
+    dataType = "image/png";
+  } else if (path.endsWith(".gif")) {
+    dataType = "image/gif";
+  } else if (path.endsWith(".jpg")) {
+    dataType = "image/jpeg";
+  } else if (path.endsWith(".ico")) {
+    dataType = "image/x-icon";
+  } else if (path.endsWith(".xml")) {
+    dataType = "text/xml";
+  } else if (path.endsWith(".pdf")) {
+    dataType = "application/pdf";
+  } else if (path.endsWith(".zip")) {
+    dataType = "application/zip";
   }
-#endif //esp32
+
+  if (logFile) logFile.flush();      // flush logs
+  if (ctl_logFile) ctl_logFile.flush();
+  #ifdef EZT_DEBUG
+    if (ezt_logFile) ezt_logFile.flush();
+  #endif
+  File dataFile = SD.open(path.c_str());
+  if (dataFile.isDirectory()) {
+    path += "/index.htm";
+    dataType = "text/html";
+    dataFile = SD.open(path.c_str());
+  }
+  if (!dataFile) {
+    debugMsgln("File not found",4);
+    return false;
+  }
+  if (request->hasArg("download")) {
+    dataType = "application/octet-stream";
+  }
+  debugMsgln("Sending file",4);
+  request->send(SD, path, dataType);
+  dataFile.close();
+  return true;
+}
+
+void sdPageHandler(String URI, AsyncWebServerRequest *request ){
+  debugMsgln("sdPageHandler URI:"+URI,4);
+  String relative_uri = URI;
+  relative_uri.replace("/sd/","/");
+/*  checkController();
+  String response_message;
+  response_message.reserve(4000);
+  response_message = getHTMLHead();
+  response_message += getNavBar();
+  response_message += getFormHead(F("SD"));
+
+  response_message += "<div>";  
+  response_message += "sdPageHandler requested URI:/sd"+relative_uri;
+  response_message += "</div>";
+
+  response_message += getFormFoot();
+  response_message += getHTMLFoot();
+  request->send(200, F("text/html"), response_message);
+*/
+  if (sd_card_available && loadFromSdCard(relative_uri, request)) {
+    return;
+  }
+  String message = "SDCARD Not Detected\n\n";
+  message += "URI: ";
+  message += request->url();
+  message += "\nrelative URI: ";
+  message += relative_uri;
+  message += "\nMethod: ";
+  message += (request->method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += request->args();
+  message += "\n";
+  for (uint8_t i = 0; i < request->args(); i++) {
+    message += " NAME:" + request->argName(i) + "\n VALUE:" + request->arg(i) + "\n";
+  }
+  request->send(404, "text/plain", message);
+  debugMsgln(message,5);
+}

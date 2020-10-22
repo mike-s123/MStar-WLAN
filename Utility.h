@@ -10,17 +10,12 @@ void psLog();
 void debugMsgln(String msg, int level) {
   #ifdef DEBUG_ON
     if (level <= debug_level) {
-      #ifdef ARDUINO_ARCH_ESP8266
-        logger.println(msg);
-      #endif
-      #ifdef ARDUINO_ARCH_ESP32
-        Serial.println(msg);
-        if (sd_card_available && logFile) {
-          if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
-          logFile.println(msg);
-          needLogTime = true;
-        } 
-      #endif //ESP32
+      Serial.println(msg);
+      if (sd_card_available && logFile) {
+        if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
+        logFile.println(msg);
+        needLogTime = true;
+      } 
     } // level
   #endif
 }
@@ -28,37 +23,23 @@ void debugMsgln(String msg, int level) {
 void debugMsg(String msg,int level) {
   #ifdef DEBUG_ON
     if (level <= debug_level) {
-      #ifdef ARDUINO_ARCH_ESP8266
-        logger.print(msg);
-      #endif
-      #ifdef ARDUINO_ARCH_ESP32
-        Serial.print(msg);
-        if (sd_card_available && logFile) {
-          if (needLogTime) {
-            logFile.print(myTZ.dateTime(ATOM)+" ");
-            needLogTime = false;
-          }
-          logFile.print(msg);
+      Serial.print(msg);
+      if (sd_card_available && logFile) {
+        if (needLogTime) {
+          logFile.print(myTZ.dateTime(ATOM)+" ");
+          needLogTime = false;
         }
-      #endif //ESP32
+        logFile.print(msg);
+      }
     } // level
   #endif
 }
 
 void setupDebug() {
   #ifdef DEBUG_ON
-    #ifdef ARDUINO_ARCH_ESP8266
-      logger.begin(BAUD_LOGGER);
-      #ifdef EZT_DEBUG
-        setDebug(EZT_DEBUG,logger);
-      #endif
-    #endif
-    #ifdef ARDUINO_ARCH_ESP32
-      Serial.begin(BAUD_LOGGER);
-      #ifdef EZT_DEBUG
-        setDebug(EZT_DEBUG,ezt_logFile);
-      #endif
-
+    Serial.begin(BAUD_LOGGER);
+    #ifdef EZT_DEBUG
+      setDebug(EZT_DEBUG,ezt_logFile);
     #endif
     debugMsgln("",1);
     debugMsgln(F("Starting debug session"),1);
@@ -507,42 +488,34 @@ public:
 
 void reboot() {
   debugMsgln(F("Doing ESP.restart()"),1);
-  #ifdef ARDUINO_ARCH_ESP8266
-    digitalWrite(SELF_RST_PIN, LOW); // this should do a hard reset.
-    delay(50);
-  #endif
   ESP.restart();         // if not, this should do a soft reboot.
 }
 
-#ifdef ARDUINO_ARCH_ESP32
-  #include <rom/rtc.h>
-  String get_reset_reason(int cpu)
-  { 
-    RESET_REASON reason;
-    String reasonString;
-    reason = rtc_get_reset_reason(cpu);
-    switch ( reason)
-    {
-      case 1  : reasonString = F("Vbat power on reset");break;
-      case 3  : reasonString = F("Software reset digital core");break;
-      case 4  : reasonString = F("Legacy watch dog reset digital core");break;
-      case 5  : reasonString = F("Deep Sleep reset digital core");break;
-      case 6  : reasonString = F("Reset by SLC module, reset digital core");break;
-      case 7  : reasonString = F("Timer Group0 Watch dog reset digital core");break;
-      case 8  : reasonString = F("Timer Group1 Watch dog reset digital core");break;
-      case 9  : reasonString = F("RTC Watch dog Reset digital core");break;
-      case 10 : reasonString = F("Instrusion tested to reset CPU");break;
-      case 11 : reasonString = F("Time Group reset CPU");break;
-      case 12 : reasonString = F("Software reset CPU");break;
-      case 13 : reasonString = F("RTC Watch dog Reset CPU");break;
-      case 14 : reasonString = F("for APP CPU, reset by PRO CPU");break;
-      case 15 : reasonString = F("Reset when the vdd voltage is not stable");break;
-      case 16 : reasonString = F("RTC Watch dog reset digital core and rtc module");break;
-      default : reasonString = F("unknown");
-    }
-    return reasonString;
+#include <rom/rtc.h>
+String get_reset_reason(int cpu) {
+  RESET_REASON reason;
+  String reasonString;
+  reason = rtc_get_reset_reason(cpu);
+  switch (reason)  {
+    case 1  : reasonString = F("Vbat power on reset");break;
+    case 3  : reasonString = F("Software reset digital core");break;
+    case 4  : reasonString = F("Legacy watch dog reset digital core");break;
+    case 5  : reasonString = F("Deep Sleep reset digital core");break;
+    case 6  : reasonString = F("Reset by SLC module, reset digital core");break;
+    case 7  : reasonString = F("Timer Group0 Watch dog reset digital core");break;
+    case 8  : reasonString = F("Timer Group1 Watch dog reset digital core");break;
+    case 9  : reasonString = F("RTC Watch dog Reset digital core");break;
+    case 10 : reasonString = F("Instrusion tested to reset CPU");break;
+    case 11 : reasonString = F("Time Group reset CPU");break;
+    case 12 : reasonString = F("Software reset CPU");break;
+    case 13 : reasonString = F("RTC Watch dog Reset CPU");break;
+    case 14 : reasonString = F("for APP CPU, reset by PRO CPU");break;
+    case 15 : reasonString = F("Reset when the vdd voltage is not stable");break;
+    case 16 : reasonString = F("RTC Watch dog reset digital core and rtc module");break;
+    default : reasonString = F("unknown");
   }
-#endif
+  return reasonString;
+}
 
 String getJsButton(String buttonText, String onClick); // fwd declaration
 

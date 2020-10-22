@@ -3,9 +3,6 @@ void startAP(const char* ssid, const char* password) {
 /*
  * This starts AP only, probably because we had no stored STA info.
  */
-  #ifdef ARDUINO_ARCH_ESP8266
-    WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
-  #endif
   WiFi.mode(WIFI_AP);
   debugMsg(F("Starting AP, SSID \""),1);
   debugMsg(String(ssid),1);
@@ -27,10 +24,6 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
  *  if we can't get in. Returns connected status.
 */
   int retries = 0;
-  #ifdef ARDUINO_ARCH_ESP8266
-    WiFi.setSleepMode(WIFI_NONE_SLEEP,0);  // needs 2.5.0
-  #endif
-
   WiFi.persistent(true);
   if (strlen(ssid)>0) {         // here we try to connect using the info passed to us
     debugMsg(F("clearing wifiMulti"),3);
