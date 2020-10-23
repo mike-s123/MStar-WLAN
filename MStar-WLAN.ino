@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201022a"
+#define SOFTWARE_VERSION "v2.201023"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -75,7 +75,7 @@ using namespace std;
 #include <sys/time.h>
 //  #include "SdFat.h"
 #include <HardwareSerial.h>
-#include "StreamUtils.h"              //https://github.com/bblanchon/ArduinoStreamUtils
+#include "StreamUtils.h"              // https://github.com/bblanchon/ArduinoStreamUtils (MIT License)
 File logFile;                         // platform log file
 String logFileName;
 File ctl_logFile;                     // controller log file
