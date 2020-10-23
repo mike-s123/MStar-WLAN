@@ -90,7 +90,7 @@ First up - if you clone/fork this, please let me know. It's not a requirement, j
 
 * Original work copyright by Mike Sauve, License [CC BY-NC](https://creativecommons.org/licenses/by-nc/4.0/legalcode)
 
-* See [LICENSES.MD](https://github.com/mike-s123/MStar-WLAN/blob/master/LICENSE.md) for more detail.
+* See [LICENSE.MD](https://github.com/mike-s123/MStar-WLAN/blob/master/LICENSE.md) for more detail.
 
 * Hardware datasheets (in the hardware directory) are copyrighted by the manufacturers. They were all pulled off public websites. I believe it is fair use to have them here, where they're doing what they were intended to do - support the associated devices. If any complain, I'll remove them.
 

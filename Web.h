@@ -39,18 +39,24 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
       return; // wrong image for ESP32
     }
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
-      Update.printError(DEBUG_ESP_PORT);
-      debugMsgln("OTA .begin error",1);
+      StringPrint stream;
+      Update.printError(stream);
+      debugMsg("OTA .begin error:"+stream.str(),1);
+      needLogTime = true;
     }
   }
   if (Update.write(data, len) != len) {
-    Update.printError(DEBUG_ESP_PORT);
-    debugMsgln("OTA .write len error",1);
+      StringPrint stream;
+      Update.printError(stream);
+      debugMsg("OTA .write len error:"+stream.str(),1);
+      needLogTime = true;
   }
   if (final) {    
     if (!Update.end(true)){
-      Update.printError(DEBUG_ESP_PORT);
-      debugMsgln("OTA .end error",1);
+      StringPrint stream;
+      Update.printError(stream);
+      debugMsg("OTA .end error:"+stream.str(),1);
+      needLogTime = true;
     } else {
       String response_message;
       response_message = getHTMLHead();

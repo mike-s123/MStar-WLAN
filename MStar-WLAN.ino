@@ -34,7 +34,6 @@ using namespace std;
 #ifdef DEBUG_ON
   #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
                                     // because we're swapping the UART to new ones
-  #define DEBUG_ESP_PORT Serial
   //#define DEBUG_ESP_HTTP_SERVER
   //#define DEBUG_ESP_CORE
   //#define EZT_DEBUG DEBUG           // for EZTime
@@ -76,6 +75,7 @@ using namespace std;
 #include <sys/time.h>
 //  #include "SdFat.h"
 #include <HardwareSerial.h>
+#include "StreamUtils.h"              //https://github.com/bblanchon/ArduinoStreamUtils
 File logFile;                         // platform log file
 String logFileName;
 File ctl_logFile;                     // controller log file
@@ -300,26 +300,6 @@ void setup() {
   getWLANsFromEEPROM();
   setupWLAN();
   setupClocks();
-/*  
-  #ifndef WIFI_MODE_AP_STA
-    if (!wlanConnected) {             // If can't connect in STA mode, switch to AP mode
-      startAP(ap_ssid, ap_password);
-    }
-  #endif
-  
-  IPAddress apIP = WiFi.softAPIP();
-  IPAddress myIP = WiFi.localIP();
-
-  if (WiFi.getMode() == WIFI_MODE_AP || WiFi.getMode() == WIFI_MODE_APSTA) {
-    debugMsg(F("AP IP address:"),1);
-    debugMsgln(formatIPAsString(apIP),1);
-  }
-  if (wlanConnected) {
-    debugMsg(F("WLAN IP address:"),1);
-    debugMsgln(formatIPAsString(myIP),1);
-    debugMsgln("Connected to:" + String(WiFi.SSID()),1);
-  }
-*/
   setupModbus();
   server.begin();
   startWeb();
@@ -332,7 +312,7 @@ void setup() {
     MDNS.addService("http", "tcp", 80);
     debugMsgln(F("mDNS responder started"),1);
   }
-
+  
   debugMsgln("Getting modbus info for " + model,1);
   getFile(model);
   #ifdef ARDUINO_ARCH_ESP32

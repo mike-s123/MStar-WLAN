@@ -14,9 +14,11 @@ jquery [Copyright JS Foundation and other contributors](https://js.foundation/) 
 
 Chart.js [Copyright (c) 2018 Chart.js Contributors](https://github.com/chartjs/Chart.js) [MIT](https://github.com/chartjs/Chart.js/blob/master/LICENSE.md)
 
-ModbusMaster [Apache 2.0](https://github.com/4-20ma/ModbusMaster/blob/master/LICENSE)
+ModbusMaster [Copyright:: 2009-2016 Doc Walker](https://github.com/4-20ma/ModbusMaster) [Apache 2.0](https://github.com/4-20ma/ModbusMaster/blob/master/LICENSE)
 
-EZTime (c) 2018 [Rop Gonggrijp](https://github.com/ropg/ezTime) [MIT](https://github.com/ropg/ezTime/blob/master/LICENSE) license.
+EZTime [(c) 2018 Rop Gonggrijp](https://github.com/ropg/ezTime) [MIT](https://github.com/ropg/ezTime/blob/master/LICENSE) license.
+
+ArduinoStreamUtils [Copyright (c) 2019 Benoit BLANCHON](https://github.com/bblanchon/ArduinoStreamUtils) [MIT](https://github.com/bblanchon/ArduinoStreamUtils/blob/master/LICENSE.md)
 
 ---
 D3 Copyright 2010-2017 [Mike Bostock](https://github.com/d3/d3) All rights reserved.
