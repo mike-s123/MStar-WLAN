@@ -469,6 +469,13 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   response_message += "\" onchange=\"setJSONpass(this.value)\">";
   response_message += getFormFoot();
 
+  response_message += getFormHead("AP SSID");
+  response_message += "<label for=\"apSSID\">SSID:</label>";
+  response_message += "<input type=\"text\" id=\"apSSID\" name=\"apSSID\" size=\"32\" value=\"";
+  response_message += ap_SSID.c_str();
+  response_message += "\" onchange=\"setApSSID(this.value)\">";
+  response_message += getFormFoot();
+
   response_message += getFormHead("AP PSK");
   response_message += "<label for=\"appsk\">AP PSK:</label>";
   response_message += "<input type=\"text\" id=\"appsk\" name=\"appsk\" size=\"32\" value=\"";
@@ -610,14 +617,6 @@ void wlanPageHandler(AsyncWebServerRequest *request)
   }
   response_message += getTableFoot();
   response_message += getFormFoot(); 
-
-  response_message += getFormHead("SSID when AP");
-  response_message += "<label for=\"apSSID\">SSID:</label>";
-  response_message += "<input type=\"text\" id=\"apSSID\" name=\"apSSID\" size=\"32\" value=\"";
-  response_message += ap_SSID.c_str();
-  response_message += "\" onchange=\"setApSSID(this.value)\">";
-  response_message += getFormFoot();
-
   response_message += getHTMLFoot();
 
   debugMsg(F("response_message size:"),4);
