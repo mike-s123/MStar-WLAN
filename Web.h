@@ -32,22 +32,27 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     debugMsgln(F("OTA Updating"),1);
     logFile.flush();
     content_len = request->contentLength();
-    // if filename includes spiffs or mklittlefs, update the fs partition
+    // if filename includes spiffs, update the fs partition
     int cmd = (filename.indexOf(F(".spiffs.bin")) > -1 ) ? U_SPIFFS : U_FLASH;
-    if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) return; // wrong image for ESP32
+    if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) {
+      debugMsgln("OTA bad filename",1);
+      return; // wrong image for ESP32
+    }
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
       Update.printError(DEBUG_ESP_PORT);
+      debugMsgln("OTA .begin error",1);
     }
   }
   if (Update.write(data, len) != len) {
     Update.printError(DEBUG_ESP_PORT);
+    debugMsgln("OTA .write len error",1);
   }
   if (final) {    
     if (!Update.end(true)){
       Update.printError(DEBUG_ESP_PORT);
+      debugMsgln("OTA .end error",1);
     } else {
       String response_message;
-      response_message.reserve(1000);
       response_message = getHTMLHead();
       response_message += "<h2>Please wait while the device reboots</h2> \
       <meta http-equiv=\"refresh\" content=\"30;url=/\" />";

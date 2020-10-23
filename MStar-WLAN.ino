@@ -172,7 +172,7 @@ String ctlLogFileName = CTL_LOGFILE;
 #define eeUpgradeName 466
 #define eeUpgradePass 482
 #define eeJsonPass 498
-#define eeSerialNum
+#define eeSerialNum 514
 
 #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10
 #define RX_PIN 27         // RxD to IO27, pin 12
@@ -249,6 +249,7 @@ int mbAddr = mbusSlave;
 String model = MODEL;
 String fullModel = MODEL;
 String ctlSerialNum = "00000000";
+unsigned long mbustries, mbuserrs;
 byte mac[6];
 String my_MAC;
 String my_hostname;

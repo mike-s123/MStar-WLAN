@@ -245,7 +245,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += F("<center><img src=\"/img/wrover.png\"></center>");
   
   // Status table
-  response_message += getTableHead2Col(F("WLAN Status"), F("Name"), F("Value"));
+  response_message += getTableHead2Col(F("Status"), F("Name"), F("Value"));
   if ( WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress ip = WiFi.localIP();
     response_message += getTableRow2Col(F("hostname"), my_hostname);
@@ -272,6 +272,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
   String uptimeString = ""; uptimeString += upDays; uptimeString += F(" days, "); uptimeString += upHours, uptimeString += F(" hours, "); uptimeString += upMins; uptimeString += F(" mins, "); uptimeString += upSecs; uptimeString += F(" secs");
   response_message += getTableRow2Col(F("Uptime"), uptimeString);
+  response_message += getTableRow2Col(F("Modbus errors/tries"), String(mbuserrs)+"/"+String(mbustries)+" ("+String((double)mbuserrs/(double)mbustries/100.0,3)+"%)");
   response_message += getTableRow2Col(F("Version"), SOFTWARE_VERSION);
   response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
   response_message += getTableFoot();
@@ -966,21 +967,6 @@ void sdPageHandler(String URI, AsyncWebServerRequest *request ){
   debugMsgln("sdPageHandler URI:"+URI,4);
   String relative_uri = URI;
   relative_uri.replace("/sd/","/");
-/*  checkController();
-  String response_message;
-  response_message.reserve(4000);
-  response_message = getHTMLHead();
-  response_message += getNavBar();
-  response_message += getFormHead(F("SD"));
-
-  response_message += "<div>";  
-  response_message += "sdPageHandler requested URI:/sd"+relative_uri;
-  response_message += "</div>";
-
-  response_message += getFormFoot();
-  response_message += getHTMLFoot();
-  request->send(200, F("text/html"), response_message);
-*/
   if (sd_card_available && loadFromSdCard(relative_uri, request)) {
     return;
   }
