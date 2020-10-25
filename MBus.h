@@ -187,16 +187,30 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
   }
 }
 
+int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpreted
+  if (noController) return -1;
+  int result=1;
+  debugMsgln("MBus_get_reg_raw: "+String(address),4);
+  for ( int i = 0 ; (i < 3) && result ; i++ ) {  // try 3 times
+    mbustries++;
+    result = node.readHoldingRegisters(address, 1);
+    if (result == node.ku8MBSuccess) {
+      raw = node.getResponseBuffer(0);
+    } else {
+      delay(i*50); // increasing delay between failed attempts
+      mbuserrs++;
+    }
+  }
+  return result;
+}
+
 int MBus_get_int(int address, int &value) {                 // get signed int
   if (noController) return -1;
   debugMsgln("MBus_get_int: "+String(address),4);
-  uint8_t result = node.readHoldingRegisters(address, 1);
-  mbustries++;
-  if (result) mbuserrs++;
+  uint16_t reg;
+  int result = MBus_get_reg_raw(address, reg);
   if (result == node.ku8MBSuccess)  {
-    uint16_t val_16; 
-    val_16 = node.getResponseBuffer(0);
-    value = reinterpret_cast<int16_t&>(val_16);             // change unsigned to signed
+    value = reinterpret_cast<int16_t&>(reg);             // change unsigned to signed
   }
   debugMsgln("Result: "+String(result),4);
   return result;
@@ -205,11 +219,10 @@ int MBus_get_int(int address, int &value) {                 // get signed int
 int MBus_get_uint16(int address, uint16_t &value) {         // get unsigned int
   if (noController) return -1;
   debugMsgln("MBus_get_uint16: "+String(address),4);
-  uint8_t result = node.readHoldingRegisters(address, 1);
-  mbustries++;
-  if (result) mbuserrs++;
+  uint16_t reg;
+  int result = MBus_get_reg_raw(address, reg);
   if (result == node.ku8MBSuccess)  {
-    value = node.getResponseBuffer(0) ;
+    value = reg ;
   }
   debugMsgln("Got "+String(value),4);
   debugMsgln("Result: "+String(result),4);
@@ -221,8 +234,6 @@ int MBus_get_n10(int address, float &value) {             // get 10x unsigned in
   debugMsgln("MBus_get_n10: "+String(address),4);
   uint16_t intval;
   int result = MBus_get_uint16(address, intval);
-  mbustries++;
-  if (result) mbuserrs++;
   if (result == node.ku8MBSuccess) {
     value = intval/10.;
   }
@@ -235,25 +246,26 @@ int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long i
   debugMsgln("MBus_get_uint32: "+String(address),4);
   int result = node.readHoldingRegisters(address, 2);
   mbustries++;
-  if (result) mbuserrs++;
   if (result == node.ku8MBSuccess) {
     value = node.getResponseBuffer(0) << 16 ;         // HI first
     value += node.getResponseBuffer(1) ;
+  } else {
+    mbuserrs++;
   }
   debugMsgln("Result: "+String(result),4);
   return result;
 }
-
   
 int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long int, low first
   if (noController) return -1;
   debugMsgln("MBus_get_uint32: "+String(address),4);
   int result = node.readHoldingRegisters(address, 2);
   mbustries++;
-  if (result) mbuserrs++;
   if (result == node.ku8MBSuccess) {
     value = node.getResponseBuffer(1) << 16 ;         // LO first
     value += node.getResponseBuffer(0) ;
+  } else {
+    mbuserrs++;
   }
   debugMsgln("Result: "+String(result),4);
   return result;
@@ -264,8 +276,6 @@ int MBus_get_dn10(int address, float &value) {        // get long 10x, return fl
   debugMsgln("MBus_get_dn10: "+String(address),4);
   uint32_t intval;
   int result = MBus_get_uint32(address, intval);
-  mbustries++;
-  if (result) mbuserrs++;
   if (result == node.ku8MBSuccess) {
     value = intval/10.;
   }
@@ -276,12 +286,10 @@ int MBus_get_dn10(int address, float &value) {        // get long 10x, return fl
 int MBus_get_float(int address, float &value) {     // get float16, return float32
   if (noController) return -1;
   debugMsgln("MBus_get_float: "+String(address),4);
-  int result = node.readHoldingRegisters(address, 1);
-  mbustries++;
-  if (result) mbuserrs++;
+  uint16_t reg;
+  int result = MBus_get_reg_raw(address, reg);
   if (result == node.ku8MBSuccess) {
-    uint16_t data = node.getResponseBuffer(0);
-    value = IEEEf16::f32(data);
+    value = IEEEf16::f32(reg);
   }
   debugMsgln("Result: "+String(result),4);
   return result;
@@ -504,22 +512,6 @@ int MBus_write_reg(int address, String valu) {
   return result; 
 }
 
-int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpreted
-  if (noController) return -1;
-  int result;
-  debugMsgln("MBus_get_reg_raw: "+String(address),4);
-  for ( int i = 0 ; (i < 3) && result ; i ++ ) {  // try 3 times
-    result = node.readHoldingRegisters(address, 1);
-    mbustries++;
-    if (result) mbuserrs++;
-    if (result == node.ku8MBSuccess) {
-      raw = node.getResponseBuffer(0);
-    }
-  if (result) delay(i*50); // increasing delay between failed attempts
-  }
-  return result;
-}
-
 int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {  //TODO this returns more than requested.
   if (noController) return -1;
   debugMsgln("MBus_get_regs_raw: "+String(count)+"x, "+String(address),4);
@@ -616,30 +608,40 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   query[6] = (uint8_t)((crc & 0xFF00) >> 8);  // add the CRC to the query
   debugMsgln("Mbus CRC out = " + String(crc,HEX),4);
 
-  preTransmission();
-  
-  while (mbSerial.read() != -1);
-  count = mbSerial.write(query, 7);
-  mbSerial.flush();
-  postTransmission();
-  int startwait = 300; // up to 300 ms for start of a response.
-  int charwait = 10;   // no more than 10 ms between chars, should come ~1 ms apart
-  // loop until we run out of time or bytes, or an error occurs
-  uint32_t doneTime = millis() + startwait; 
-  bool done = false;
-  count = 0;
-  while ( !done ) {
-    if (mbSerial.available()) {
-      response[count++] = mbSerial.read();
-      doneTime = millis() + charwait; 
-    }  //matches xx.available
-    if (doneTime < millis()) { done = true; }  // no response or didn't get a char for a while
-  } // while() - done getting response
-
-  debugMsgln("readDeviceID, wrote " + String(count),5);
-
-  mbustries++;
-  if (count == 0) {mbuserrs++; return -1;} else {count = 0;}
+  bool good;
+  for (int tries=1; tries < 3; tries++) {
+    good=false;
+    preTransmission();
+    while (mbSerial.read() != -1);
+    count = mbSerial.write(query, 7);
+    mbSerial.flush();
+    postTransmission();
+    
+    int startwait = 300; // up to 300 ms for start of a response.
+    int charwait = 10;   // no more than 10 ms between chars, should come ~1 ms apart
+    // loop until we run out of time or bytes, or an error occurs
+    uint32_t doneTime = millis() + startwait; 
+    bool done = false;
+    count = 0;
+    
+    while ( !done ) {
+      if (mbSerial.available()) {
+        response[count++] = mbSerial.read();
+        good = true; // got a response
+        doneTime = millis() + charwait; 
+      }  //matches xx.available
+      if (doneTime < millis()) { done = true; }  // no response or didn't get a char for a while
+    } // while() - done getting response
+    mbustries++;
+    if (good) {
+      tries=4;
+    } else {
+      mbuserrs++;
+      delay(tries*50); // delay a bit more between each try
+    }
+  }
+  debugMsgln(String(F("readDeviceID, bytes read:")) + String(count),5);
+  if (count == 0) { return -1;} else {count = 0;}
   id_idx = 8;
   numObjs = response[id_idx-1];
   vendorName = "";
@@ -850,7 +852,7 @@ void checkController() {
   static long int lastFound = millis();
   String lastModel = model;
   bool lastState = noController;
-  if (noController || lastFound + 60000 < millis()) {  // check if no controller, or it's been more than a minute
+  if (noController || lastFound + 300000 < millis()) {  // check if no controller, or it's been more than 5 minutes
     lastFound = millis();
     model = getModel();
     if (model == "") {

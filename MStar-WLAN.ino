@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201023"
+#define SOFTWARE_VERSION "v2.201024"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -46,7 +46,7 @@ using namespace std;
  * every few minutes if there is no client connected.
  */
 #define WIFI_MODE_AP_STA                // define to run AP while also connected as station
-
+#define PS_RAM    // use WROVER PS-RAM
 #include <string>
 #include <sstream>
 #include <EEPROM.h>
@@ -63,6 +63,7 @@ using namespace std;
 //#include <WebServer.h>
 #include <AsyncTCP.h>
 #include "ESPAsyncWebServer.h"
+#include <WebAuthentication.h> 
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <FS.h>
@@ -102,9 +103,6 @@ String ctlLogFileName = CTL_LOGFILE;
 //---------------------------
 // definitions
 //---------------------------
-
-// hardware
-#define PS_RAM      // PS-RAM available (WROVER-B)
 
 //security
 #define WEB_USERNAME "admin"
@@ -238,6 +236,7 @@ boolean mbActive = false;    // whether we're using mbus
 boolean wlanLedState = true;
 boolean noController = true;
 boolean mytz2skip = false; //testing
+boolean psRAMavail = false;
 uint32_t mytz2skipMillis;
 
 // used for flashing the WLAN status LED
@@ -296,6 +295,10 @@ void setup() {
 
   EEPROM.begin(EEPROM_SIZE);
   delay(10);
+  if (psramInit()){
+    psRAMavail=true;
+    debugMsgln(F("PS-RAM available"),1);
+  }
   getEeConfig(); // load config from eeprom
   getWLANsFromEEPROM();
   setupWLAN();
@@ -303,7 +306,6 @@ void setup() {
   setupModbus();
   server.begin();
   startWeb();
-
   modbusTCP.begin();
 
   if (!MDNS.begin("MStarWLAN")) {

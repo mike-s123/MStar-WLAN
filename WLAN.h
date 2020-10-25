@@ -125,7 +125,6 @@ void tryWLAN() {
         return;
       }
     } // while
-    debugMsgln("",1);
     IPAddress ip = WiFi.localIP();
     debugMsg(F("WLAN IP address:"),1);
     debugMsgln(formatIPAsString(ip),1);

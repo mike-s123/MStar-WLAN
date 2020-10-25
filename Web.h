@@ -16,18 +16,30 @@ void handleUpdate(AsyncWebServerRequest *request) {
   response_message += "<script> \
     function notify_update() {document.getElementById(\"update\").innerHTML = \"<h2>Updating...</h2>\"\; } \
     </script>";
-  response_message += "Firmware = *.esp32.bin<br>SPIFFS = *.spiffs.bin<br> \
+  response_message += F("Firmware = *.esp32.bin<br>SPIFFS = *.spiffs.bin<br> \
   <form method='POST' action='/doUpdate' enctype='multipart/form-data' target='_self' onsubmit='notify_update()'> \
   <input type='file' name='update'><br> \
   <input type='submit' value='Do update'></form> \
   <div id=\"update\"></div> \
-  ";
+  ");
   response_message += getHTMLFoot();
-  request->send(200, "text/html", response_message);
+  request->send(200, F("text/html"), response_message);
 };
 
 void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
   if (!index){
+    {
+      debugMsgln("Update, URL:"+String(request->url()),1);
+      debugMsgln("Update, filename:"+String(filename),1);
+      debugMsgln("Update, index:"+String(index),1);
+//      debugMsgln("Update, data:"+String(data),1);
+      debugMsgln("Update, len:"+String(len),1);
+      debugMsgln("Update, final:"+String(final),1);
+      StringPrint stream;
+      Update.printError(stream);
+      debugMsg("OTA error:"+stream.str(),1);
+      needLogTime = true;
+    }
     size_t content_len;  
     debugMsgln(F("OTA Updating"),1);
     logFile.flush();
@@ -35,7 +47,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     // if filename includes spiffs, update the fs partition
     int cmd = (filename.indexOf(F(".spiffs.bin")) > -1 ) ? U_SPIFFS : U_FLASH;
     if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) {
-      debugMsgln("OTA bad filename",1);
+      debugMsgln(F("OTA bad filename"),1);
       return; // wrong image for ESP32
     }
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
@@ -60,14 +72,14 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     } else {
       String response_message;
       response_message = getHTMLHead();
-      response_message += "<h2>Please wait while the device reboots</h2> \
-      <meta http-equiv=\"refresh\" content=\"30;url=/\" />";
+      response_message += F("<h2>Please wait while the device reboots</h2> \
+      <meta http-equiv=\"refresh\" content=\"20;url=/\" />");
       response_message += getHTMLFoot();
       AsyncWebServerResponse *response = request->beginResponse(200, "text/html", response_message);
-      response->addHeader("Refresh", "30");  
-      response->addHeader("Location", "/");
+      response->addHeader(F("Refresh"), "20");  
+      response->addHeader(F("Location"), "/");
       request->send(response);    
-      debugMsgln("Update complete, rebooting",1);
+      debugMsgln(F("Update complete, rebooting"),1);
       if (logFile) logFile.flush();
       delay(100);
       ESP.restart();
@@ -132,40 +144,55 @@ void startWeb() {
   });
   
   server.on("/setTime", HTTP_GET, [](AsyncWebServerRequest *request){
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return setTimePageHandler(request);
   });
 
   server.on("/cmd", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return cmdPageHandler(request);
   });
 
   server.on("/setcharge", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return setChargePageHandler(request);
   });
 
   server.on("/setother", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     setOtherPageHandler(request);
   });
 
   server.on("/rest", [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     restPageHandler(request);
@@ -180,14 +207,19 @@ void startWeb() {
   });
 
   server.on("/wlan_config", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return wlanPageHandler(request);
   });
 
   server.on("/security_config", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//      return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
@@ -195,8 +227,11 @@ void startWeb() {
   });
 
   server.on("/utility", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return utilityPageHandler(request);
@@ -207,16 +242,22 @@ void startWeb() {
   });
 
   server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return resetPageHandler(request);
   });
 
   server.on("/resetall", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
-     && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
     return resetAllPageHandler(request);
@@ -247,17 +288,17 @@ void startWeb() {
 
   server.serveStatic("/",FILESYSTEM,"/"); // everything else in flash
 
-  #ifdef ARDUINO_ARCH_ESP32
-    debugMsgln("ESP32 server.ons",1);
+  debugMsgln("ESP32 server.ons",1);
 
-    server.on("/sd/", HTTP_GET, [] (AsyncWebServerRequest *request) {
-      debugMsgln("server.on(/sd/):" + request->url(),3);
-      sdPageHandler(request->url(), request);
-    });
+  server.on("/sd/", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    debugMsgln("server.on(/sd/):" + request->url(),3);
+    sdPageHandler(request->url(), request);
+  });
 
-#endif // ARDUINO_ARCH_ESP32
 
   server.on(update_path, HTTP_GET, [](AsyncWebServerRequest *request){
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//      return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
@@ -267,6 +308,8 @@ void startWeb() {
   server.on("/doUpdate", HTTP_POST,
     [](AsyncWebServerRequest *request) {},
     [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//      return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }

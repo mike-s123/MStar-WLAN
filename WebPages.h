@@ -44,6 +44,7 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
   unsigned short int ntp_poll = -1;
   String data, value, ssid, psk, response_message = F("OK"), rtcTime, ntp_item, \
           ntp_svr = "", ntp_tz = "", var = "", where, user, pass;
+  string response_msg[10];
   bool wlanPsk=false, wlanSsid=false;
   enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, \
                   set_rtc_ntp, cfg_ntp, clr_dlog, clr_clog, set_apssid, set_cred, set_jsonpass, \
@@ -272,7 +273,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
   String uptimeString = ""; uptimeString += upDays; uptimeString += F(" days, "); uptimeString += upHours, uptimeString += F(" hours, "); uptimeString += upMins; uptimeString += F(" mins, "); uptimeString += upSecs; uptimeString += F(" secs");
   response_message += getTableRow2Col(F("Uptime"), uptimeString);
-  response_message += getTableRow2Col(F("Modbus errors/tries"), String(mbuserrs)+"/"+String(mbustries)+" ("+String((double)mbuserrs/(double)mbustries/100.0,3)+"%)");
+  response_message += getTableRow2Col(F("Modbus errors/tries"), String(mbuserrs)+"/"+String(mbustries)+" ("+String(((double)mbuserrs/(double)mbustries)*100.,3)+"%)");
   response_message += getTableRow2Col(F("Version"), SOFTWARE_VERSION);
   response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
   response_message += getTableFoot();
@@ -753,7 +754,8 @@ void resetAllPageHandler(AsyncWebServerRequest *request) {
 
 void resetPageHandler(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /reset page."),2);
-
+  logFile.flush();
+  
   String response_message;
   response_message.reserve(2000);
   response_message = getHTMLHead();
@@ -762,6 +764,7 @@ void resetPageHandler(AsyncWebServerRequest *request) {
   response_message += F("<script> var timer = setTimeout(function() {window.location='/'}, 12000);</script>");  
   response_message += getHTMLFoot();
   request->send(200, F("text/html"), response_message);
+
   for ( int i = 0; i < 1000 ; i++ ) {
 //    server.handleClient();
     delayMicroseconds(1000);    // wait to deliver response

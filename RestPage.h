@@ -30,7 +30,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
     DeserializationError jsonDesErr = deserializeJson(jsonIn, request->arg(F("json")).c_str() );
     String cmd = jsonIn[F("cmd")];
     String pass = jsonIn[F("pass")];
-    #ifdef PS_RAM   // use PS-RAM if available
+   #ifdef PS_RAM   // use PS-RAM if available
       struct SpiRamAllocator {
         void* allocate(size_t size) {
           return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
