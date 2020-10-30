@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201024"
+#define SOFTWARE_VERSION "v2.201029"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -134,7 +134,8 @@ String ctlLogFileName = CTL_LOGFILE;
 // GPIO 2 for blue led on ESP-12E, GPIO 16 (or LED_BUILTIN, aka D0) for blue led on NodeMCU
 // GPIO 2 (D4) for Wemos D1 mini
 // GPIO 2 for WROVER-B board
-#define WLAN_PIN 2
+#define WLAN_PIN 2  // up to board 2020.2
+//#define WLAN_PIN 33 // from 2020.10
 
 #define EEPROM_SIZE 1024  // ESP "eeprom"
 #define EEPROM_SIG "mjs!"
@@ -237,6 +238,7 @@ boolean wlanLedState = true;
 boolean noController = true;
 boolean mytz2skip = false; //testing
 boolean psRAMavail = false;
+boolean daytime = false;
 uint32_t mytz2skipMillis;
 
 // used for flashing the WLAN status LED
@@ -248,10 +250,12 @@ int mbAddr = mbusSlave;
 String model = MODEL;
 String fullModel = MODEL;
 String ctlSerialNum = "00000000";
-unsigned long mbustries, mbuserrs;
+unsigned long mbustries, mbuserrs, lastFound = millis();
+float vary;
 byte mac[6];
 String my_MAC;
 String my_hostname;
+String logLast="";
 File fsUploadFile;              // a File object to temporarily store the received file
 
 String referrer; 
@@ -278,6 +282,7 @@ HardwareSerial mbSerial(1);
 #include "Web.h"                // starts up web server
 
 void setup() {
+
   pinMode(I2C_SDA_RESET ,INPUT);
   attachSDCardIRQ();
     

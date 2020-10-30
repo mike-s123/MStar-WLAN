@@ -20,7 +20,7 @@ void debugMsgln(String msg, int level) {
   #endif
 }
 
-void debugMsg(String msg,int level) {
+void debugMsg(String msg, int level) {
   #ifdef DEBUG_ON
     if (level <= debug_level) {
       Serial.print(msg);

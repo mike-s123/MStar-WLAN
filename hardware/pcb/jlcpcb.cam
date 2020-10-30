@@ -258,6 +258,14 @@
             "filename_prefix": "CAMOutputs/Assembly",
             "output_type": "assembly",
             "outputs": [
+                {
+                    "filename_format": "%ASSEMBLYPREFIX/BOM_%N",
+                    "list_attribute": false,
+                    "list_type": "values",
+                    "name": "Bill of Material",
+                    "output_format": "html",
+                    "type": "bom"
+                }
             ]
         },
         {

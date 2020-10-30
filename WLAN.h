@@ -77,7 +77,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     WiFi.mode(WIFI_STA);
     debugMsgln(F("WLAN changing to station mode."),1);
   #endif
-  
+
   if (wlan_count) {    // if we have WLANs configured for station mode, try to connect
     tryWLAN();
   } else {  // no wlan_count

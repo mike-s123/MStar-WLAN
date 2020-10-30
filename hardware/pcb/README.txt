@@ -13,14 +13,15 @@ Resistors and caps aren't critical, other than below.
 
 Most parts are standard, these are specific:
 C1 or C2 - United Chemi-Con EGPD250ELL472MK35H (4700uF/25V, 12.5mm dia, 35mm long)
+C12 - should be tantalum, 6.3V
 D2 - Vishay SB140-E3, due to its low Vf.
 VR - OKI-78SR-3.3/1.5-W36-C
-VR - STM LDL1117S33R SOT-223-4 (only with ESP32)
+VR - STM LDL1117S33R SOT-223-4 (only with WROVER)
 J1 6P6C connector - Kobiconn 154-UL6661
-J3 - microUSB CUI UJ2-MIBH-4-SMT-TR (only with ESP32)
+J3 - USB C - JAE DX07S016JA3R1500 (only with WROVER)
 Case - Hammond RL6105
-USB/Serial - FTDI FT231XS-R SSOP-20 (only with ESP32)
-Reset - Rohm IMH3AT110 SOT-457 (only with ESP32)
+USB/Serial - FTDI FT231XS-R SSOP-20 (only with WROVER)
+Reset - Rohm IMH3AT110 SOT-457 (only with WROVER)
 RTC - DS3231(ZS-042 module) Note that the header is installed on the side opposite the battery, so the battery is accessible when the module is soldered in place.
 MicroSD socket - Hirose DM3BT-DSF-PEJS
 TVS - BZW04-17B

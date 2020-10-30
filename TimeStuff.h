@@ -6,8 +6,8 @@
 
 //#define RTCtestNtpSet 2  // deliberately sets RTC wrong for testing. 1=slow 997 ms, 2=fast 997 ms
 
-void debugMsg(String msg, int level);
-void debugMsgln(String msg, int level);
+void debugMsg(String msg, int level=1);
+void debugMsgln(String msg, int level=1);
 void tryWLAN();
 void ctlLog();
 

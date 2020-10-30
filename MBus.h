@@ -849,7 +849,6 @@ void refreshCtlLogFile(){
 }
 
 void checkController() {
-  static long int lastFound = millis();
   String lastModel = model;
   bool lastState = noController;
   if (noController || lastFound + 300000 < millis()) {  // check if no controller, or it's been more than 5 minutes

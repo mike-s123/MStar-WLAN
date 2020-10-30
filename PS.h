@@ -102,7 +102,6 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
   for ( int i=0 ; (i < 16) && !noController ; i++) {
     if ( registers[i] == F("adc_va") || registers[i] == F("adc_ia") ) { // Array power is different between PWM and MPPT models
       int addy;
-      static float vary;
       addy = findAddrByVar(registers[i]);
       MBus_get_float(addy, vary);
       if (gotFirst) {
@@ -346,7 +345,6 @@ void psLog() {
   int numReg = sizeof(registers)/sizeof(registers[0]);
   fullReg reg;
   String logLine="";
-  static String logLast="";
   logLine.reserve(120);
   for (int i=0; i<numReg; i++) {
     mbGetFullReg(reg, registers[i]);
@@ -354,6 +352,16 @@ void psLog() {
       logLine += "0.00";
     } else {
       logLine += reg.value;
+    }
+    if (registers[i] == 36) {
+      if (reg.value.toFloat() >= 0.1 && !daytime) {
+          debugMsgln(F("Start of daytime."),1);
+          daytime = true;
+      }
+      if (reg.value.toFloat() < 0.1 && daytime) {
+        debugMsgln(F("Start of nighttime."),1);
+        daytime = false;
+      }
     }
     if (i+1 < numReg) logLine += ",";
   }
