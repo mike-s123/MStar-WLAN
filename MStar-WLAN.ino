@@ -28,7 +28,7 @@ using namespace std;
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings."
 
-#define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
+#define DEBUG_ON 3               // enable debugging output. If defined, debug_level can be changed during runtime.
                                   // 0 off, 1 least detail, 8 most detail, 9 includes passwords
 
 #ifdef DEBUG_ON

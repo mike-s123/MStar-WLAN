@@ -357,6 +357,7 @@ String getJsButton(String buttonText, String onClick) {
   String result = F("<form><input type=\"button\" value=\"");
   result += buttonText;
   result += F("\" onclick=\"");
+  result += onClick + F("\"></form>");
   return result;
 }
 
