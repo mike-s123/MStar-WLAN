@@ -43,11 +43,13 @@ Using a standard "rollover" (tabs on the same side of the cable) 6P6C ("RJ12") c
 
 The MStar-WLAN will initially come up as a wireless access point with SSID "MStar" and PSK of "morningstar". It will have an address of 192.168.4.1. 
 
-The web interface has some minimal security. Any page which allows configuration changes is protected with username "admin", password "setup". To do an Over-The-Air (OTA) firmware update, the username is "admin", password "update".
+The web interface has some minimal security. Any page which allows configuration changes is protected with default username "admin", password "setup". To do an Over-The-Air (OTA) firmware update or change security settings, the default username is "admin", password "update".
+
+SSID, names and passwords can be changed (Utility tab, Security settings). To reset to defaults, press and hold the BOOT button for more than 5 seconds after powering up (WLAN LED will fast blink).
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your DHCP server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (statistically) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex (not working with ESP32, not my fault).
 
-OTA updates are done from the Utility tab, "Update WLAN module firmware" link. OTA updates of the flash (/data) image are also possible. ESP32 uses "MStar-WLAN.ino.esp32.bin" and "MStar-WLAN.spiffs.bin". 
+OTA updates are done from the Utility tab, "Update WLAN module firmware" link. OTA updates of the flash (/data) image are also possible. File names are "MStar-WLAN.ino.esp32.bin" and "MStar-WLAN.spiffs.bin". 
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 

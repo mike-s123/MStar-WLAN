@@ -22,13 +22,13 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201029"
+#define SOFTWARE_VERSION "v2.201101"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
-                     Allow WLAN and security settings."
+                     Allow WLAN and security settings. Allow reset to defaults."
 
-#define DEBUG_ON 3               // enable debugging output. If defined, debug_level can be changed during runtime.
+#define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                   // 0 off, 1 least detail, 8 most detail, 9 includes passwords
 
 #ifdef DEBUG_ON
@@ -134,7 +134,7 @@ String ctlLogFileName = CTL_LOGFILE;
 // GPIO 2 for blue led on ESP-12E, GPIO 16 (or LED_BUILTIN, aka D0) for blue led on NodeMCU
 // GPIO 2 (D4) for Wemos D1 mini
 // GPIO 2 for WROVER-B board
-#define WLAN_PIN 2  // up to board 2020.2
+#define WLAN_PIN 2  // up through board 2020.2
 //#define WLAN_PIN 33 // from 2020.10
 
 #define EEPROM_SIZE 1024  // ESP "eeprom"
@@ -185,6 +185,7 @@ String ctlLogFileName = CTL_LOGFILE;
 #define SD_CARD1_CS 32 // for SDCard1, connected to header
 #define SD_CARD_TO_USE 0  // Which SD card to use
 #define SD_DETECT 26    // SD card inserted, only for SDCard0
+#define BOOT_SW 0       // GPIO0 connected to BOOT switch
 #define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
 #define SD_CARD_LOG true //log to SD card
 bool sd_card_log = SD_CARD_LOG;
@@ -284,6 +285,8 @@ HardwareSerial mbSerial(1);
 void setup() {
 
   pinMode(I2C_SDA_RESET ,INPUT);
+  pinMode(BOOT_SW, INPUT);
+  
   attachSDCardIRQ();
     
   WiFi.macAddress(mac);
@@ -348,6 +351,25 @@ void loop() {
   } else {
     mbusTCP();
   }
+
+  long unsigned int boot_reset = millis();
+  while (!digitalRead(BOOT_SW)) {             // BOOT switch is pressed
+    delay(100);
+    if (millis() > boot_reset + 5000) {       // switch pressed for more than 5 seconds
+      boot_reset = 0;                         // doing a reset
+      wlanLedState = !wlanLedState;
+      setWlanLED(wlanLedState);
+      delay(50);                             // blink fast if switch pressed and doing reset
+    }
+  }                                           // keep looping as long as BOOT is pressed
+  if (boot_reset == 0) {                      // reset to defaults requested
+    debugMsgln(F("BOOT held, resetting to defaults."),1);    
+    resetEEPROM();
+    logFile.flush();
+    delay(100);
+    reboot();
+  }
+
 
 /*
  *  Blink the LED based on current connection state.
