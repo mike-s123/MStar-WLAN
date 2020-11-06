@@ -69,6 +69,15 @@ function setApPSK ( pass ) {
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;
 }
+
+function setStaHostname ( hostname ) {
+  var theUrl = "/cmd?sethostname=" + encodeURIComponent(hostname) + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("stahn").innerHTML = hostname;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
 function setJSONpass ( pass ) {
   var theUrl = "/cmd?setjsonpass=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
   var xhr = new XMLHttpRequest() ;

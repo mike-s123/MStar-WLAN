@@ -43,12 +43,12 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
   int addr, offset, slot, numArgs = request->args();
   unsigned short int ntp_poll = -1;
   String data, value, ssid, psk, response_message = F("OK"), rtcTime, ntp_item, \
-          ntp_svr = "", ntp_tz = "", var = "", where, user, pass;
+          ntp_svr = "", ntp_tz = "", var = "", where, user, pass, hostname;
   string response_msg[10];
   bool wlanPsk=false, wlanSsid=false;
   enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, \
                   set_rtc_ntp, cfg_ntp, clr_dlog, clr_clog, set_apssid, set_cred, set_jsonpass, \
-                  set_appsk};
+                  set_appsk, set_hostname};
   commands cmd;
   debugMsg(F("SET args received:"),4);
   debugMsgln(String(numArgs),4);
@@ -88,6 +88,9 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
     } else if ( request->argName(i) == F("setjsonpass") ) {
       cmd = set_jsonpass;
       pass = request->arg(i);
+    } else if ( request->argName(i) == F("sethostname") ) {
+      cmd = set_hostname;
+      hostname = request->arg(i);
     } else if ( request->argName(i) == F("data") ) {
       data = request->arg(i);
     } else if ( request->argName(i) == F("ssid") ) {
@@ -182,6 +185,10 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
     case set_jsonpass: json_password = pass.c_str();
                     storeStringInEEPROM(pass, eeJsonPass, 16);
                     break;
+    case set_hostname: 
+                    my_hostname = hostname.c_str();
+                    storeStringInEEPROM(my_hostname, eeHostName, 32);
+                    break;
     case set_cred:  if (where == "root") {
                       debugMsgln(F("set_cred root"),5);
                       if (user.length() > 0) {
@@ -247,6 +254,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   
   // Status table
   response_message += getTableHead2Col(F("Status"), F("Name"), F("Value"));
+  response_message += getTableRow2Col(F("Unique name"), my_name);
   if ( WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress ip = WiFi.localIP();
     response_message += getTableRow2Col(F("hostname"), my_hostname);
@@ -438,7 +446,9 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   response_message.reserve(30000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-  
+
+  response_message += F("<center><h3>(Changes below are immediate)</h3></center>");
+
   response_message += getFormHead("&nbsp;");
   response_message += getTableHead2Col(F("Admin Account"), F("Name"), F("Password"));
   String webuser,webpass,adminuser,adminpass,userbox,passbox;
@@ -471,19 +481,7 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   response_message += "\" onchange=\"setJSONpass(this.value)\">";
   response_message += getFormFoot();
 
-  response_message += getFormHead("AP SSID");
-  response_message += "<label for=\"apSSID\">SSID:</label>";
-  response_message += "<input type=\"text\" id=\"apSSID\" name=\"apSSID\" size=\"32\" value=\"";
-  response_message += ap_SSID.c_str();
-  response_message += "\" onchange=\"setApSSID(this.value)\">";
-  response_message += getFormFoot();
-
-  response_message += getFormHead("AP PSK");
-  response_message += "<label for=\"appsk\">AP PSK:</label>";
-  response_message += "<input type=\"text\" id=\"appsk\" name=\"appsk\" size=\"32\" value=\"";
-  response_message += ap_password.c_str();
-  response_message += "\" onchange=\"setApPSK(this.value)\">";
-  response_message += getFormFoot();
+  response_message += getHTMLFoot();
 
   debugMsg(F("response_message size:"),4);
   debugMsgln(String(response_message.length()),4);
@@ -586,8 +584,9 @@ void wlanPageHandler(AsyncWebServerRequest *request)
   }
   response_message += getFormFoot();
   response_message += "<br/>";
-  
+
   response_message += getFormHead("&nbsp;");
+  response_message += (F("<h3>(Changes below are immediate)</h3>"));
   response_message += getTableHead2Col(F("WLAN"), F("SSID"), F("PSK (password)"));
   for (int i = 0 ; i < 4 ; i++ ) { 
       String esidvar[4];
@@ -619,6 +618,28 @@ void wlanPageHandler(AsyncWebServerRequest *request)
   }
   response_message += getTableFoot();
   response_message += getFormFoot(); 
+
+  response_message += getFormHead("Hostname");
+  response_message += "<label for=\"stahn\">hostname:</label>";
+  response_message += "<input type=\"text\" id=\"stahn\" name=\"stahn\" size=\"32\" value=\"";
+  response_message += my_hostname.c_str();
+  response_message += "\" onchange=\"setStaHostname(this.value)\">";
+  response_message += getFormFoot();
+
+   response_message += getFormHead("AP SSID");
+  response_message += "<label for=\"apSSID\">SSID:</label>";
+  response_message += "<input type=\"text\" id=\"apSSID\" name=\"apSSID\" size=\"32\" value=\"";
+  response_message += ap_SSID.c_str();
+  response_message += "\" onchange=\"setApSSID(this.value)\">";
+  response_message += getFormFoot();
+
+  response_message += getFormHead("AP PSK");
+  response_message += "<label for=\"appsk\">AP PSK:</label>";
+  response_message += "<input type=\"text\" id=\"appsk\" name=\"appsk\" size=\"32\" value=\"";
+  response_message += ap_password.c_str();
+  response_message += "\" onchange=\"setApPSK(this.value)\">";
+  response_message += getFormFoot();
+
   response_message += getHTMLFoot();
 
   debugMsg(F("response_message size:"),4);

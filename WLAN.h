@@ -77,6 +77,9 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     WiFi.mode(WIFI_STA);
     debugMsgln(F("WLAN changing to station mode."),1);
   #endif
+  WiFi.setHostname(my_hostname.c_str());             // TODO not working
+  debugMsg(F("Using hostname: "),1);
+  debugMsgln(WiFi.getHostname(),1);
 
   if (wlan_count) {    // if we have WLANs configured for station mode, try to connect
     tryWLAN();

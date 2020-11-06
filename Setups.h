@@ -7,7 +7,8 @@ void setupComms() {
   #endif
   pinMode(RX_PIN, INPUT);
   delay(10);
-  mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);    
+  mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);
+//    remaps UART to appropriate pins for MODBUS
 //    pinMatrixOutAttach(TX_PIN, U1TXD_OUT_IDX, true, false);
 //    pinMatrixInAttach(RX_PIN, U1RXD_IN_IDX, true);
 
@@ -39,16 +40,7 @@ void setupWLAN() {
  */
   ap_ssid = ap_SSID.c_str();
   //ap_password = AP_PSK;
-
   WiFi.persistent(true);
-//  WiFi.mode(WIFI_STA);
-  char __hostname[sizeof(my_hostname)+1];
-  my_hostname.toCharArray(__hostname, sizeof(__hostname));
-  WiFi.setHostname(__hostname);             // TODO not working
-  
-  debugMsg(F("Using hostname: "),1);
-  debugMsgln(my_hostname,1);
-  
   wlanConnected = connectToWLAN();    // try to connect
   lastWLANtry = millis();
 }
@@ -134,8 +126,9 @@ void changeSDCard(){
     ctl_logFile.close(); // release hooks and buffers
     logFile.close();
     SD.end();
+    if (sd_card_available) debugMsgln(F("SD card removed"),1); 
     sd_card_available = false;
-    debugMsgln(F("SD card removed"),1);
+    
   } else {                // sd card inserted
     delay(100);
     if (!digitalRead(SD_DETECT)) {

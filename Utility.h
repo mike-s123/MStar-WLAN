@@ -345,7 +345,7 @@ unsigned short int getNtpPollFromEEPROM() {
 void wipeEEPROM() {
   debugMsgln(F("Wiping EEPROM."),1);
   for (int i = 0; i < EEPROM_SIZE; i++) {
-    EEPROM.write(i, 255);
+    EEPROM.write(i, 0);
   }
   EEPROM.commit();
 }
@@ -372,6 +372,8 @@ void resetEEPROM() {
   storeStringInEEPROM(F(UPDATE_USERNAME), eeUpgradeName, 16);
   storeStringInEEPROM(F(UPDATE_PASSWORD), eeUpgradePass, 16);
   storeStringInEEPROM(F(JSON_PASSWORD), eeJsonPass, 16);
+  storeStringInEEPROM(my_name, eeHostName, 32);
+
   String chkstr = F(EEPROM_SIG);
   for (int i = 0; i<=3 ; i++) {
     EEPROM.write(i + EEPROM_SIZE -4, chkstr[i]);
@@ -407,6 +409,7 @@ void getEeConfig(){
   root_username = getStringFromEEPROM(eeUpgradeName,16).c_str();
   root_password = getStringFromEEPROM(eeUpgradePass,16).c_str();
   json_password = getStringFromEEPROM(eeJsonPass,16).c_str();
+  my_hostname = getStringFromEEPROM(eeHostName,32).c_str();
 }
 
 class IEEEf16  // Convert between float32 (IEEE754 Single precision binary32) and float16 (IEEE754 half precision binary16)

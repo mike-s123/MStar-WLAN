@@ -56,7 +56,9 @@ String getNavBar() {
   }
   String navbar = F("<nav class=\"navbar navbar-inverse navbar-fixed-top\">");
   navbar += F("<div class=\"container-fluid\"><div class=\"navbar-header\">");
-  navbar += F("<a class=\"navbar-brand\" href=\"/\">MStar-WLAN</a></div>");
+  navbar += F("<a class=\"navbar-brand\" href=\"/\">");
+  navbar += my_hostname;
+  navbar += F("</a></div>");
   navbar += F("<div class=\"navbar-brand\">");
   navbar += ctl;
   navbar += F("</div>");

@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201101"
+#define SOFTWARE_VERSION "v2.201106"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -131,12 +131,6 @@ String ctlLogFileName = CTL_LOGFILE;
 #define JSON_VERSION "1.0"                // changes with api changes
 #define JSON_VERSION_MIN "1.0"            // changes when backward compatibility is broken
 
-// GPIO 2 for blue led on ESP-12E, GPIO 16 (or LED_BUILTIN, aka D0) for blue led on NodeMCU
-// GPIO 2 (D4) for Wemos D1 mini
-// GPIO 2 for WROVER-B board
-#define WLAN_PIN 2  // up through board 2020.2
-//#define WLAN_PIN 33 // from 2020.10
-
 #define EEPROM_SIZE 1024  // ESP "eeprom"
 #define EEPROM_SIG "mjs!"
 /*
@@ -155,7 +149,8 @@ String ctlLogFileName = CTL_LOGFILE;
  * 482-497 (16) Upgrade password
  * 498-513 (16) JSON password
  * 514-517 (4) Serial number
- * 514-1019  unused    
+ * 518-549 (32) hostname
+ * 550-1019  unused    
  * 1020-1023 (4)  Valid signature (EEPROM_SIG)
  */
 #define eeWLANSSID 0
@@ -172,7 +167,13 @@ String ctlLogFileName = CTL_LOGFILE;
 #define eeUpgradePass 482
 #define eeJsonPass 498
 #define eeSerialNum 514
+#define eeHostName 518
 
+// GPIO 2 for blue led on ESP-12E, GPIO 16 (or LED_BUILTIN, aka D0) for blue led on NodeMCU
+// GPIO 2 (D4) for Wemos D1 mini
+// GPIO 2 or 33 for WROVER-B board
+//#define WLAN_PIN 2  // up through board 2020.2
+#define WLAN_PIN 33 // from 2020.10
 #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10
 #define RX_PIN 27         // RxD to IO27, pin 12
 #define TX_PIN 4          // Txd to IO4, pin 26
@@ -255,7 +256,8 @@ unsigned long mbustries, mbuserrs, lastFound = millis();
 float vary;
 byte mac[6];
 String my_MAC;
-String my_hostname;
+String my_name;                 // for log file name
+String my_hostname;             // for networking
 String logLast="";
 File fsUploadFile;              // a File object to temporarily store the received file
 
@@ -283,17 +285,17 @@ HardwareSerial mbSerial(1);
 #include "Web.h"                // starts up web server
 
 void setup() {
-
   pinMode(I2C_SDA_RESET ,INPUT);
-  pinMode(BOOT_SW, INPUT);
-  
-  attachSDCardIRQ();
+  pinMode(BOOT_SW, INPUT_PULLUP); // to read the boot switch
+
+  attachSDCardIRQ();            // get an interrupt when card inserted/removed
     
   WiFi.macAddress(mac);
   my_MAC =  String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
-  my_hostname = HOSTNAME + String("-") + my_MAC;
-  logFileName = "/"+ my_hostname + ".log";
-  setupRtcSQW();  // real time clock
+  my_name = HOSTNAME + String("-") + my_MAC;
+  my_hostname = my_name;
+  logFileName = "/"+ my_name + ".log";
+  setupRtcSQW();  // real time clock 1/sec interrupt
   setupComms();   // serial port stuff
   setupFS();      // filesystems
 
@@ -337,7 +339,6 @@ void setup() {
 } // setup()
 
 void loop() {
-
   events(); // for EZTime  
   checkNtp();
   if (sd_card_changed) changeSDCard();
@@ -352,7 +353,7 @@ void loop() {
     mbusTCP();
   }
 
-  long unsigned int boot_reset = millis();
+  long unsigned int boot_reset = millis() | 1; // can never be 0
   while (!digitalRead(BOOT_SW)) {             // BOOT switch is pressed
     delay(100);
     if (millis() > boot_reset + 5000) {       // switch pressed for more than 5 seconds
@@ -369,7 +370,6 @@ void loop() {
     delay(100);
     reboot();
   }
-
 
 /*
  *  Blink the LED based on current connection state.
