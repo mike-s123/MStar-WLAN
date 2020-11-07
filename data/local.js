@@ -158,8 +158,10 @@ function setAging (id) {
   location.reload(true);
 }
 
-function restart_ctl () {
-	var theUrl = "/rest?json={\"addr\":255,\"cmd\":\"writeSingleCoil\",\"valu\":\"on\",\"pass\":\"imsure\"}" ;
+function restart_ctl (pass) {
+	var theUrl = '/rest?json={"addr":255%2C"cmd":"writeSingleCoil"%2C"valu":"on"%2C"pass":"' ;
+	theUrl += pass ;
+	theUrl += '"}' ;
 	var xhr = new XMLHttpRequest() ;
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;

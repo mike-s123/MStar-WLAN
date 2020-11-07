@@ -529,7 +529,10 @@ String promptReset() {
     debugMsgln(F("promptReset: reset needed"),4);
     response_message = F("<div class=\"controller\">");
     response_message += F("<br><h3>Settings changed, controller needs restart.</h3>");
-    response_message += getJsButton(F("Restart Controller"), F("restart_ctl()"));
+    String cmd = F("restart_ctl('");
+    cmd += json_password.c_str();
+    cmd += "')";
+    response_message += getJsButton(F("Restart Controller"), cmd );
     response_message += F("</div>");
     }
   return response_message;

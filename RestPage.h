@@ -17,7 +17,7 @@ void jsonErr(AsyncWebServerRequest *request, String info, String message="bad re
 
 void restPageHandler(AsyncWebServerRequest *request) {                          //  URI /rest
 /* example of use
- * http://192.168.168.151/rest?json={"addr":0,"cmd":"readHoldingRegisters","count":3}
+ * http://192.168.4.1/rest?json={"addr":0%2C"cmd":"readHoldingRegisters"%2C"count":3}
  * err if the given address doesn't exist
  * will return the next "count" (default=1) available registers, 
  * skipping unavailable ones.
@@ -93,9 +93,11 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
         { jsonErr(request, F("parsing failed"), F("parsing failed") , 413); return; }
       }
     } else if ( cmd == F("readHoldingRegisters") || cmd == F("readInputRegisters") || cmd == F("readInputRegister") ) {
-      String address = jsonIn[F("addr")] | "-1";
+      String address = jsonIn[F("addr")] ;
+      if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbReg = getDecInt(address);              // this covers all bases
-      int count = jsonIn[F("count")] | 1;
+      int count = jsonIn[F("count")];
+      if (count == 0) count = 1; //default
       if ( cmd == "readInputRegister" ) { count = 1; };
       debugMsgln("REST read register(s) "+address+"/"+String(count),3);
       if ( count > 256 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
@@ -131,13 +133,15 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
         }
       }
 /* example of use
- * http://192.168.168.151/rest?json={"addr":1,"cmd":"readCoils","count":3}
+ * http://192.168.4.1/rest?json={"addr":1%2C"cmd":"readCoils"%2C"count":3}
  * will return the next "count" available items, ignoring unavailable ones.
 */
     } else if ( cmd == F("readCoils") || cmd == F("readDiscreteInputs") ) {
-      String address = jsonIn[F("addr")] | "-1";
+      String address = jsonIn[F("addr")] ;
+      if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbCoil = getDecInt(address);              // this covers all bases
-      int count  = jsonIn[F("count")] | 1;
+      int count  = jsonIn[F("count")] ;
+      if (count == 0) count = 1; // default
       if ( count > 10 ) { jsonErr(request, F("count > 10"), F("request entity too large") , 413); return; }
       if ( getCoilIndex(mbCoil) < 0 ){ jsonErr(request, F("bad addr")); return; }
       jsonOut[F("model")] = model;
@@ -161,17 +165,18 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       }
     } else if ( cmd == F("writeSingleRegister") ) {
       debugMsgln(F("json writeSingleRegister"),4);
-      String valu="";
       int result;
-      String address = jsonIn[F("addr")] | "-1";
+      String address = jsonIn[F("addr")] ;
+      if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbReg = getDecInt(address);              // this covers all bases
       int mbRegIndex = getMbRegIndex(mbReg);
       if ( !mbRegRW[mbRegIndex] ) { jsonErr(request, F("read only")); return; }
-      valu = jsonIn[F("pass")] | "none";
-      if ( valu != json_password.c_str() ){ jsonErr(request, F("no password")); return; }
+      String pass = jsonIn["pass"] ;
+      if (pass.length()==0) { jsonErr(request, F("no password")); return; }      
+      if ( pass != json_password.c_str() ){ jsonErr(request, F("bad password")); return; }
       if ( mbRegIndex < 0 ){ jsonErr(request, F("bad addr")); return; }
-      valu = jsonIn[F("valu")] | "none";
-      if ( valu == "none" ){ jsonErr(request, F("no value")); return; }
+      String valu = jsonIn["valu"];
+      if ( valu.length() == 0 ){ jsonErr(request, F("no value")); return; }
       result = MBus_write_reg(mbReg, valu);
       if ( !result ) {
         jsonOut[F("writeSingleRegister")] = F("OK");
@@ -181,19 +186,18 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       ok = true;
 
     } else if ( cmd == F("writeSingleCoil") ) {
-      // write a coil  TODO
       debugMsgln(F("json writeSingleCoil"),4);
-      String valu="";
       bool state;
       int result;
-      String address = jsonIn[F("addr")] | "-1";
+      String address = jsonIn["addr"];
+      if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbCoil = getDecInt(address);              // this covers all bases
       int mbCoilIndex = getCoilIndex(mbCoil);
-      valu = jsonIn[F("pass")] | "none";
-      if ( valu != json_password.c_str() ){ jsonErr(request, F("no password")); return; }
-      bool force = (jsonIn[F("force")] == "true") | false;
+      String pass = jsonIn["pass"];
+      if ( pass != json_password.c_str() ){ jsonErr(request, F("no password")); return; }
+      bool force = (jsonIn[F("force")] == "true") ;
       if ( (mbCoilIndex < 0) && !force ){ jsonErr(request, F("bad addr")); return; }
-      valu = jsonIn[F("valu")] | "none";
+      String valu = jsonIn["valu"];
       if ( valu == "on" || valu == "true" ) {
         valu = F("on");
       } else if ( valu == "off" || valu == "false" ) {
@@ -210,7 +214,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       }
       ok = true;
     } else if ( cmd == F("readRegRaw") ) {  
-      String address = jsonIn[F("addr")] | "-1";
+      String address = jsonIn[F("addr")] ;
+      if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbReg = getDecInt(address);              // this covers all bases
       int result;
       jsonOut[F("model")] = model;
@@ -219,7 +224,8 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       JsonArray regArray = jsonOut.createNestedArray(F("registers"));
       String valu;
       uint16_t raw;
-      int count  = jsonIn[F("count")] | 1;
+      int count  = jsonIn[F("count")];
+      if (count == 0) count = 1; // defaults to 1
       for (int i = 0 ; i < count ; i++) {
         JsonObject regO      = regArray.createNestedObject();
         JsonObject registers = regO.createNestedObject(F("register"));
@@ -231,12 +237,14 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       }
       ok = true;
     } else if ( cmd == F("getLogItem") ) {  
-      String address = jsonIn[F("addr")] | "-1";
+      String address = jsonIn[F("addr")] ;
+      if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int idx = getDecInt(address);              // this covers all bases (10, hex, and octal, specifically)
       long int lint;
       logItem item;
       int result;
-      int count  = jsonIn[F("count")] | 1;
+      int count  = jsonIn[F("count")];
+      if (count == 0) count = 1 ; // default to 1
       if ( count > 32 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
       if ( idx < 0 || idx > 255 ) { jsonErr(request, F("bad addr")); return; };
       jsonOut[F("model")] = model;
@@ -317,10 +325,9 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       String response_message;
       response_message.reserve(65536); //94000 
       debugMsgln("REST2 json free heap: "+String(ESP.getFreeHeap()),3);
-      response_message = jsonIn[F("back")] | "false";
-      if ( response_message != "true" ) {
+      String back = jsonIn["back"] ;
+      if ( back != "true" ) {
         debugMsgln(F("Sending json response"),3);
-        response_message = "";
         serializeJsonPretty(jsonOut,response_message);
         request->send(200, F("application/json"), response_message);
       } else {
