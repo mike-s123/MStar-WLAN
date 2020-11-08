@@ -2,7 +2,7 @@
 #include <DS3231.h>   // Northern Widget LLC, et al 1.0.2, via IDE, public domain
 #include <extEEPROM.h> // Jack Christensen, 3.4.1, via IDE licensed under CC BY-SA 4.0.
 #include <EwmaT.h> // 1.0.2 via IDE, jonnieZG, https://github.com/jonnieZG/EWMA, MIT license
-#include <ezTime.h> //Rop Gonggrijp 1.8.3, via IDE
+#include <ezTime.h> // 0.8.3 Rop Gonggrijp, via IDE
 
 //#define RTCtestNtpSet 2  // deliberately sets RTC wrong for testing. 1=slow 997 ms, 2=fast 997 ms
 

@@ -5,4 +5,6 @@ app0,     app,  ota_0,   0x10000, 0x180000,
 app1,     app,  ota_1,   0x190000,0x180000,
 spiffs,   data, spiffs,  0x310000,0xcf0000,
 
-# end at 1000000
+# end at 1000000 = 16MB Flash
+# 1.5MB program (1572864)
+# ~13MB SPIFFS (13565952)

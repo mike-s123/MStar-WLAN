@@ -1,14 +1,14 @@
 # MStar-WLAN
 
-This project includes both a software and hardware design for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi) or USB. It's 99.9% working, with features still being added. The core is an ESP32-WROVER-B 16MB (~$5 from Mouser) or an ESP32 DevkitC v4. A complete build should be <$40, ignoring your time. Those platforms were chosen because they're available with a relatively large flash (16 MiB) for storing files, which allows having documentation and support for multiple solar controllers on-board. Supports MS-View compatible logging of controller info to an SD card, in addition to a debugging log. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
+This project includes both a software and hardware design for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi) or USB. It's 99.9% working, with features still being added. The core is an ESP32-WROVER-B 16MB (~$5 from Mouser) or an ESP32 DevkitC v4. A complete build should be ~$40, ignoring your time. Those platforms were chosen because they're available with a relatively large flash (16 MiB) for storing files, which allows having documentation and support for multiple solar controllers on-board. Supports MS-View compatible logging of controller info to an SD card, in addition to a debugging log. There's support for monitoring and configuration via a web interface, MODBUS/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
 
-A core with less flash memory should work fine as long as the "data" directory will fit. The code supports moving a lot of content to an SD Card. Put "data-small" into SPIFFS, and the "Put on SD Card - small" directory onto an SD Card to use an ESP32 board with less flash. The additional flash memory on the recommended modules is there in order to support all the static files. Edit /data/documentation.htm if you remove documentation files, or simply live with broken links.
+A core with less flash memory should work fine as long as the "data" directory will fit. The code supports moving a lot of content to an SD Card. Put "data-small" into SPIFFS, and the "Put on SD Card - small" directory onto an SD Card to use an ESP32 board with less flash. The additional flash memory on the recommended modules is there in order to support all the static files even without an SD Card present. Edit /data/documentation.htm if you remove documentation files, or simply live with broken links.
 
 It is written using the [Arduino IDE](https://www.arduino.cc/en/Main/Software), which is a bit "odd", hence code being split for clarity amongst multiple .h files. If you know how to do it better, please contribute. Yes, I know some of the code is butt-ugly. But it works. Function over form.
 
 The printed circuit board was done in [Eagle](https://www.autodesk.com/products/eagle/overview).
 
-Development has been done testing against the Prostar MPPT and Prostar PWM Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have register definition .csv files (see data/csv_file_desc.txt) added. Might need to do some work for register datatypes - Morningstar has many (really, what were they thinking creating one which based on a 16 bit int, n·316.67·2^-15, and multiple similar) and they've changed over time. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support will require more than just creating the .csv files.
+Development has been done testing against the Prostar MPPT and Prostar PWM Gen3 controllers, and the information/config files for those have been provided. Other controllers will need to have register definition .csv files (see data/csv_file_desc.txt) added. Might need to do some work for register datatypes - Morningstar has many (really, what were they thinking creating one based on a 16 bit int, n·316.67·2^-15, and multiple similar) and they've changed over time. It should also be able to support Sunsavers (SSDuo, SS-MPPT), and Tristar (TS-45, TS-60, TS-MPPT-x) controllers (i.e. ones supporting MODBUS). Morningstar isn't consistent with naming or numbering the registers, so such support will require more than just creating the .csv files. PS.h (supports ProStar MPPT and PWM models) can be used as a template on how to support other models.
 
 MODBUS-TCP works with Morningstar's MSView, allowing it to be used to monitor and configure a controller wirelessly. To do that, in MSView, do "Devices/Manual connection", select your controller type, select Connection Type Remote, and enter the IP address or DNS name of the MStar-WLAN. OK. Then right click on the controller in the left column and "connect." MSView first downloads any logs, so may take a minute before much else happens. That should work with any controller supporting MODBUS, it doesn't depend on the .csv files, so if nothing else, it can be a wireless alternative to their USB/RS-232 to MeterBus converters (except for doing firmware updates).
 
@@ -28,7 +28,7 @@ I have a limited number of circuit boards on hand. If you can contribute to the 
 
 Development is currently being done with Arduino IDE 1.8.10, and ESP32 Arduino platform 1.0.4.
 
-Library requirements are noted in the .ino file. The [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. Modified boards.txt (newboards.txt) and partition (largest_spiffs_16MB.csv) files are provided to better support large SPIFFs.
+Library requirements are noted in the .ino file. The [ESP32](https://github.com/espressif/arduino-esp32) core for Arduino needs to be installed. View the README in the forArduinoIDE folder for info on setting up a custom board and partitions in the Arduino IDE.
 
 The "data" directory needs to be uploaded to the board from the IDE or via OTA (Utility tab, update). The board will access the files using SPIFFS. After installing the code via the IDE, you can upload a SPIFFS image via OTA. Or, you can use the [arduino-esp32fs-plugin](https://github.com/me-no-dev/arduino-esp32fs-plugin) to uploade from the IDE.
 
@@ -54,6 +54,10 @@ OTA updates are done from the Utility tab, "Update WLAN module firmware" link. O
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 
 ![image of charge settings page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/charge_settings.png)
+
+## Known issues
+
+When powered by the controller, it will sometimes reset at 2AM. I think this is somehow related to the ezTime library, which is really the only thing that time is special to (it's the DST changeover time for my timezone). It doesn't seem to happen when powered by USB. Perhaps a short race condition which causes a greater than normal power draw. It's not a big issue - the solar controller isn't affected, and we'll simply reboot and resume operation.
 
 ## Support
 

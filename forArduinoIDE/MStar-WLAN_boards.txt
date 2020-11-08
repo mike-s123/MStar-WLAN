@@ -1,7 +1,17 @@
 
 ##############################################################
 
-MStar-WLAN.name=ESP32 MStar-WLAN (WROVER-B, 16 MB, custom partition)
+menu.UploadSpeed=Upload Speed
+menu.CPUFreq=CPU Frequency
+menu.FlashFreq=Flash Frequency
+menu.FlashMode=Flash Mode
+menu.FlashSize=Flash Size
+menu.PartitionScheme=Partition Scheme
+menu.DebugLevel=Core Debug Level
+menu.PSRAM=PSRAM
+menu.Revision=Board Revision
+
+MStar-WLAN.name=ESP32 MStar-WLAN (WROVER-B, custom partitions)
 
 MStar-WLAN.upload.tool=esptool_py
 MStar-WLAN.upload.maximum_size=1310720
@@ -24,9 +34,27 @@ MStar-WLAN.build.boot=dio
 MStar-WLAN.build.partitions=default
 MStar-WLAN.build.defines=-DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue
 
-MStar-WLAN.menu.PartitionScheme.default=Largest SPIFFS (~13 MB FS)
-MStar-WLAN.menu.PartitionScheme.default.build.partitions=largest_spiffs_16MB
+MStar-WLAN.menu.PartitionScheme.default=16MB Flash (1.5M prog, OTA, 13M SPIFFS)
+MStar-WLAN.menu.PartitionScheme.default.build.partitions=MStar-WLAN_16MB
 MStar-WLAN.menu.PartitionScheme.default.upload.maximum_size=1572864
+
+MStar-WLAN.menu.PartitionScheme.default_8MB=8MB Flash (1.5M prog, OTA, 5M SPIFFS)
+MStar-WLAN.menu.PartitionScheme.default_8MB.build.partitions=MStar-WLAN_8MB
+MStar-WLAN.menu.PartitionScheme.default.upload.maximum_size=1572864
+
+MStar-WLAN.menu.PartitionScheme.default_4MB=4MB Flash (1.5M prog, OTA, 960K SPIFFS)
+MStar-WLAN.menu.PartitionScheme.default_4MB.build.partitions=MStar-WLAN_4MB
+MStar-WLAN.menu.PartitionScheme.default.upload.maximum_size=1572864
+
+#MStar-WLAN.menu.FlashSize.16M=16MB (128Mb)
+#MStar-WLAN.menu.FlashSize.16M.build.flash_size=16MB
+#MStar-WLAN.menu.FlashSize.8M.build.partitions=MStar-WLAN_16MB
+#MStar-WLAN.menu.FlashSize.8M=8MB (64Mb)
+#MStar-WLAN.menu.FlashSize.8M.build.flash_size=8MB
+#MStar-WLAN.menu.FlashSize.8M.build.partitions=MStar-WLAN_8MB
+#MStar-WLAN.menu.FlashSize.4M=4MB (32Mb)
+#MStar-WLAN.menu.FlashSize.4M.build.flash_size=4MB
+#MStar-WLAN.menu.FlashSize.4M.build.partitions=MStar-WLAN_4MB
 
 MStar-WLAN.menu.CPUFreq.240=240MHz (WiFi/BT)
 MStar-WLAN.menu.CPUFreq.240.build.f_cpu=240000000L

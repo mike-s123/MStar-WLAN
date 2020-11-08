@@ -18,11 +18,11 @@
  *   All rights reserved.
  *   some parts subject to other licenses as noted.
  *   
- *   Using Arduino IDE 1.8.10, ESP32 Arduino 1.0.4
+ *   Using Arduino IDE 1.8.13, ESP32 Arduino 1.0.4
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201107"
+#define SOFTWARE_VERSION "v2.201108"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -50,19 +50,19 @@ using namespace std;
 #define PS_RAM    // use WROVER PS-RAM
 #include <string>
 #include <sstream>
-#include <EEPROM.h>
-#include <FS.h>
-#include <Wire.h>
+#include <EEPROM.h>   // 1.0.3
+#include <FS.h>       // 1.0
+#include <Wire.h>     // 1.0.1
 
 //#include <BearSSLHelpers.h>
 //#include <CertStoreBearSSL.h>
 
-#include "ESPAsyncWebServer.h" 
+#include "ESPAsyncWebServer.h"  // 1.2.0 
 
-#include <WiFi.h>
-#include <WiFiMulti.h>
+#include <WiFi.h>               // 1.0
+#include <WiFiMulti.h>          //
 //#include <WebServer.h>
-#include <AsyncTCP.h>
+#include <AsyncTCP.h>           // 1.0.3
 #include "ESPAsyncWebServer.h"
 #include <WebAuthentication.h> 
 #include <ESPmDNS.h>
@@ -72,12 +72,12 @@ using namespace std;
 #define FILESYSTEM SPIFFS
 #define FS_TYPE "SPIFFS"
 #include <SPIFFS.h>
-#include <SD.h>
+#include <SD.h>                 // 1.0.5
 #include <SPI.h>
 #include <sys/time.h>
 //  #include "SdFat.h"
 #include <HardwareSerial.h>
-#include "StreamUtils.h"              // https://github.com/bblanchon/ArduinoStreamUtils (MIT License)
+#include "StreamUtils.h"              // 1.5.0 https://github.com/bblanchon/ArduinoStreamUtils (MIT License)
 File logFile;                         // platform log file
 String logFileName;
 File ctl_logFile;                     // controller log file
@@ -88,7 +88,7 @@ String ctlLogFileName = CTL_LOGFILE;
   #define EZT_LOGFILE "/eztime.log"   // must start with /
 #endif
 
-#include <ArduinoJson.h>   // Benoit Blanchon 6.15.2, via IDE
+#include <ArduinoJson.h>   // Benoit Blanchon 6.17.1, via IDE
 #include <WiFiClient.h>
 //#include <WiFiClientSecure.h>
 //#include <WiFiClientSecureAxTLS.h>
@@ -99,7 +99,7 @@ String ctlLogFileName = CTL_LOGFILE;
 //#include <WiFiServerSecureAxTLS.h>
 //#include <WiFiServerSecureBearSSL.h>
 #include <WiFiUdp.h>
-#include <ModbusMaster.h> //Doc Walker 2.0.1, via IDE
+#include <ModbusMaster.h> // 2.0.1 Doc Walker, via IDE
 
 //---------------------------
 // definitions
@@ -292,7 +292,10 @@ void setup() {
   attachSDCardIRQ();            // get an interrupt when card inserted/removed
     
   WiFi.macAddress(mac);
-  my_MAC =  String(mac[3],HEX) + String(mac[4],HEX) + String(mac[5],HEX);
+  my_MAC = "0" + String(mac[5],HEX); // this pads the octets
+  my_MAC = "0" + String(mac[4],HEX) + my_MAC.substring(my_MAC.length()-2) ;
+  my_MAC = "0" + String(mac[3],HEX) + my_MAC.substring(my_MAC.length()-4) ;
+  my_MAC = my_MAC.substring(my_MAC.length()-6) ;
   my_name = HOSTNAME + String("-") + my_MAC;
   my_hostname = my_name;
   logFileName = "/"+ my_name + ".log";
