@@ -295,27 +295,23 @@ void platformPageHandler(AsyncWebServerRequest *request)
       "&nbsp;&nbsp;" + \
       "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
   }
-
+  response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
   response_message += getTableFoot();
   
+// Platform info  
   response_message += getTableHead2Col(F("Platform Information"), F("Name"), F("Value"));
-  response_message += getTableRow2Col(F("Version"), SOFTWARE_VERSION);
-  response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
+  response_message += getTableRow2Col(F("Firmware Version"), SOFTWARE_VERSION);
+  response_message += getTableRow2Col(F("Compiled on"), myTZ.dateTime(compileTime(), RFC850));
+  response_message += getTableRow2Col(F("Arduino IDE version"), String(ARDUINO));
+  response_message += getTableRow2Col(F("ESP SDK version"), String(ESP.getSdkVersion()));
+  response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
   response_message += getTableRow2Col(F("Architecture"), F("ESP32"));
   response_message += getTableRow2Col(F("Chip revision"), String(ESP.getChipRevision()));
   response_message += getTableRow2Col(F("CPU Frequency (MHz)"), String(ESP.getCpuFreqMHz()));
-  if (rtcPresent) {
-    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg;C");
-  }
-  String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST"); //myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850)
-  response_message += getTableRow2Col(F("Compiled on"), myTZ.dateTime(compileTime(), RFC850));  //datetime);
-  response_message += getTableRow2Col(F("Arduino IDE"), String(ARDUINO));
-  response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
   response_message += getTableRow2Col(F("Sketch size"), formatBytes(ESP.getSketchSize()));
   String ota = formatBytes(ESP.getFreeSketchSpace());
   if ( largeFlash ) { ota += F(" (OTA update capable)"); }
   response_message += getTableRow2Col(F("Free sketch size"), ota);
-  response_message += getTableRow2Col(F("SDK version"), String(ESP.getSdkVersion()));
   response_message += getTableRow2Col(F("Internal total heap"), String(ESP.getHeapSize()));
   response_message += getTableRow2Col(F("Internal free heap"), String(ESP.getFreeHeap()));
   response_message += getTableRow2Col(F("Internal min free heap"), String(ESP.getMinFreeHeap()));
@@ -332,6 +328,9 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += getTableRow2Col(F("Flash chip speed"), String(ESP.getFlashChipSpeed()));
   response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
   response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
+  if (rtcPresent) {
+    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg;C");
+  }
   response_message += getTableRow2Col(F("Hall sensor"), String(hallRead()));
 
   if (model.startsWith(F("PS-"))) {  // TODO make this universal
