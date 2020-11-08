@@ -254,6 +254,19 @@ void platformPageHandler(AsyncWebServerRequest *request)
   
   // Status table
   response_message += getTableHead2Col(F("Status"), F("Name"), F("Value"));
+  if (rtcPresent || timeStatus() == timeSet ) {
+    response_message += getTableRow2Col(F("Current Time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850));
+  }
+  // Make the uptime readable
+  long upSecs = millis() / 1000;
+  long upDays = upSecs / 86400;
+  long upHours = (upSecs - (upDays * 86400)) / 3600;
+  long upMins = (upSecs - (upDays * 86400) - (upHours * 3600)) / 60;
+  upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
+  String uptimeString = ""; uptimeString += upDays; uptimeString += F(" days, "); uptimeString += upHours, uptimeString += F(" hours, "); uptimeString += upMins; uptimeString += F(" mins, "); uptimeString += upSecs; uptimeString += F(" secs");
+  response_message += getTableRow2Col(F("Uptime"), uptimeString);
+  response_message += getTableRow2Col(F("Modbus errors/tries"), String(mbuserrs)+"/"+String(mbustries)+" ("+String(((double)mbuserrs/(double)mbustries)*100.,3)+"%)");
+
   response_message += getTableRow2Col(F("Unique name"), my_name);
   if ( WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress ip = WiFi.localIP();
@@ -272,26 +285,26 @@ void platformPageHandler(AsyncWebServerRequest *request)
   }
   float pwr = WiFi.getTxPower()/4.0;
   response_message += getTableRow2Col(F("Tx power"), String(pwr)+" dBm" );
+  if (sd_card_available) {
+    if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Debug log file"), \
+      "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>" + \
+      "&nbsp;&nbsp;" + \
+      "<a href=\"/sd" + logFileName + "\" download>" + "(download)" + "</a>");
+    if (sd_card_log && sd_card_available && ctl_logFile) response_message += getTableRow2Col(F("Controller log file"), \
+      "<a href=\"/sd" + ctlLogFileName + "\" target=\"_blank\">" + "/sd" + ctlLogFileName + "</a>" + \
+      "&nbsp;&nbsp;" + \
+      "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
+  }
 
-  // Make the uptime readable
-  long upSecs = millis() / 1000;
-  long upDays = upSecs / 86400;
-  long upHours = (upSecs - (upDays * 86400)) / 3600;
-  long upMins = (upSecs - (upDays * 86400) - (upHours * 3600)) / 60;
-  upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
-  String uptimeString = ""; uptimeString += upDays; uptimeString += F(" days, "); uptimeString += upHours, uptimeString += F(" hours, "); uptimeString += upMins; uptimeString += F(" mins, "); uptimeString += upSecs; uptimeString += F(" secs");
-  response_message += getTableRow2Col(F("Uptime"), uptimeString);
-  response_message += getTableRow2Col(F("Modbus errors/tries"), String(mbuserrs)+"/"+String(mbustries)+" ("+String(((double)mbuserrs/(double)mbustries)*100.,3)+"%)");
-  response_message += getTableRow2Col(F("Version"), SOFTWARE_VERSION);
-  response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
   response_message += getTableFoot();
   
   response_message += getTableHead2Col(F("Platform Information"), F("Name"), F("Value"));
+  response_message += getTableRow2Col(F("Version"), SOFTWARE_VERSION);
+  response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
   response_message += getTableRow2Col(F("Architecture"), F("ESP32"));
   response_message += getTableRow2Col(F("Chip revision"), String(ESP.getChipRevision()));
   response_message += getTableRow2Col(F("CPU Frequency (MHz)"), String(ESP.getCpuFreqMHz()));
   if (rtcPresent) {
-    response_message += getTableRow2Col(F("RTC Time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850));
     response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg;C");
   }
   String datetime = String(__DATE__) + ", " + String(__TIME__) +F(" EST"); //myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850)
@@ -311,14 +324,6 @@ void platformPageHandler(AsyncWebServerRequest *request)
   if (sd_card_available) {
     response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
     response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
-    if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Debug log file"), \
-      "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>" + \
-      "&nbsp;&nbsp;" + \
-      "<a href=\"/sd" + logFileName + "\" download>" + "(download)" + "</a>");
-    if (sd_card_log && sd_card_available && ctl_logFile) response_message += getTableRow2Col(F("Controller log file"), \
-      "<a href=\"/sd" + ctlLogFileName + "\" target=\"_blank\">" + "/sd" + ctlLogFileName + "</a>" + \
-      "&nbsp;&nbsp;" + \
-      "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
   }
   response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
   response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
