@@ -294,7 +294,7 @@ void psSetOtherPageHandler(AsyncWebServerRequest *request) {
   request->send(200, F("text/html"), response_message);
 }
 
-void psGetSn() {
+int psGetSn() {
   char serialNum[10] = "00000000";
   int snStart = findAddrByVar("sn12");
   if (snStart > 0) {
@@ -306,15 +306,17 @@ void psGetSn() {
     }
     serialNum[8] = 0 ;
   } else {
-    debugMsgln(F("No serial number register found"),2);
+    debugMsgln(F("No serial number register found"),1);
+    return 0;
   }
   ctlSerialNum = serialNum;
+  return 1;
 }
 
 void psGetCtlLogFileName() {
-  psGetSn();
+  if (ctlSerialNum == "00000000") psGetSn(); // try twice if needed
   ctlLogFileName = "/ctl" + ctlSerialNum + ".log" ;
-  debugMsgln("ctlLogFileName set to:"+ctlLogFileName, 2);
+  debugMsgln("ctlLogFileName set to:"+ctlLogFileName, 1);
 }
 
 void psLog() {

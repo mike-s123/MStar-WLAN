@@ -2,8 +2,6 @@
 void setupComms() {
   #ifdef DEBUG_ON
     setupDebug();
-    debugMsg(F("Debug on, level "),1);
-    debugMsgln(String(debug_level),1);
   #endif
   pinMode(RX_PIN, INPUT);
   delay(10);
@@ -52,8 +50,9 @@ void setupModbus() {
   // needed for Morningstar 6P6C connections, which are half-duplex
   node.preTransmission(preTransmission);
   node.postTransmission(postTransmission);
-  delay(10);
-
+  preTransmission();
+  postTransmission(); // initialize
+  debugMsgln("mbSerial.available="+String(mbSerial.available(),DEC),4);
   model = getModel();
   if (model=="") { 
     noController = true;
@@ -65,6 +64,7 @@ void setupModbus() {
     debugMsgln(model,1);
   } else {
     debugMsg(F("Got model from mbus:"),1);
+    noController = false;
     debugMsgln(model,1);
     noController = false;
   }
@@ -85,6 +85,8 @@ void checkSDCard(int cardNum = 0) {
     if (logFile && millis() < 15000) { // just booted, not a running SD card insertion      
       debugMsgln("",1);
       debugMsgln(F("***********BOOTED***********"),1);
+      debugMsg(F("Debug on, level "),1);
+      debugMsgln(String(debug_level),1);
       debugMsg(F("Reset reason CPU 0:"),1);
       debugMsgln(get_reset_reason(0),1);
       debugMsg(F("Reset reason CPU 1:"),1);

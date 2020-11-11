@@ -128,9 +128,18 @@ void tryWLAN() {
         return;
       }
     } // while
+    debugMsgln("",2);
     IPAddress ip = WiFi.localIP();
     debugMsg(F("WLAN IP address:"),1);
     debugMsgln(formatIPAsString(ip),1);
     debugMsgln("Connected to:" + String(WiFi.SSID()),1);
+    if (!MDNS.begin(my_hostname.c_str())) {
+      debugMsgln(F("Error setting up MDNS responder!"),1);
+    } else {
+      MDNS.addService("_http", "_tcp", 80);
+  //    MDNS.addServiceTxt("_http", "http://"+my_hostname+"/status");
+      MDNS.addService("_mbap", "_tcp", 502);      // modbus application protocol, from IANA
+      debugMsgln(F("mDNS responder started"),1);
+    }
   }
 } // tryWLAN()

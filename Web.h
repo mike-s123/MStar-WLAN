@@ -4,6 +4,7 @@
  * 
  */
 
+/*
 // OTA update functions, from https://github.com/lbernstone/asyncUpdate
 void handleUpdate(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /update page."),2);
@@ -13,14 +14,13 @@ void handleUpdate(AsyncWebServerRequest *request) {
   response_message.reserve(1000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-  response_message += "<script> \
-    function notify_update() {document.getElementById(\"update\").innerHTML = \"<h2>Updating...</h2>\"\; } \
-    </script>";
+  response_message += "<script> function notify_update() {document.getElementById(\"update\").innerHTML = \"<h2>Updating..."
+                      "</h2>\"\; } </script>";
   response_message += F("Firmware = *.esp32.bin<br>SPIFFS = *.spiffs.bin<br> \
   <form method='POST' action='/doUpdate' enctype='multipart/form-data' target='_self' onsubmit='notify_update()'> \
   <input type='file' name='update'><br> \
   <input type='submit' value='Do update'></form> \
-  <div id=\"update\"></div> \
+  <div id=\"update\"></div><div id=\"percent\"></div> \
   ");
   response_message += getHTMLFoot();
   request->send(200, F("text/html"), response_message);
@@ -86,6 +86,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     }
   }
 }
+*/
 
 bool serveFile(String path, AsyncWebServerRequest *request) {  
   String dataType = "text/plain";
@@ -296,7 +297,7 @@ void startWeb() {
   });
 
 
-  server.on(update_path, HTTP_GET, [](AsyncWebServerRequest *request){
+/*  server.on(update_path, HTTP_GET, [](AsyncWebServerRequest *request){
 //    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) ) {
 //      return request->requestAuthentication(my_hostname.c_str(), true);
     if (!request->authenticate(root_username.c_str(), root_password.c_str())) {
@@ -317,6 +318,20 @@ void startWeb() {
   );
   
 //  Update.onProgress(printProgress);
+*/
+
+
+  AsyncMyOTA.begin(&server, root_username.c_str(), root_password.c_str());    // Start
+  AsyncMyOTA.setID(my_hostname.c_str());
+
+  server.on("/update", HTTP_GET, [&](AsyncWebServerRequest *request){
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+      return request->requestAuthentication();
+    }
+//    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", ELEGANT_HTML, ELEGANT_HTML_SIZE);
+    return updatePageHandler(request);
+  });
 
   server.begin();
   debugMsgln(F("HTTP server started"),1);

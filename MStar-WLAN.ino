@@ -22,11 +22,11 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201108"
+#define SOFTWARE_VERSION "v2.201110"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
-                     Allow WLAN and security settings. Allow reset to defaults. Change hostname<br/>\
+                     Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
                      REST fixes."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
@@ -77,6 +77,7 @@ using namespace std;
 #include <sys/time.h>
 //  #include "SdFat.h"
 #include <HardwareSerial.h>
+#include "driver/uart.h"
 #include "StreamUtils.h"              // 1.5.0 https://github.com/bblanchon/ArduinoStreamUtils (MIT License)
 File logFile;                         // platform log file
 String logFileName;
@@ -170,8 +171,6 @@ String ctlLogFileName = CTL_LOGFILE;
 #define eeSerialNum 514
 #define eeHostName 518
 
-// GPIO 2 for blue led on ESP-12E, GPIO 16 (or LED_BUILTIN, aka D0) for blue led on NodeMCU
-// GPIO 2 (D4) for Wemos D1 mini
 // GPIO 2 or 33 for WROVER-B board
 //#define WLAN_PIN 2  // up through board 2020.2
 #define WLAN_PIN 33 // from 2020.10
@@ -283,7 +282,9 @@ HardwareSerial mbSerial(1);
 #include "PS.h"                 // status, charge and other pages for Prostar models
 #include "WebPages.h"           // stuff to serve content
 #include "Setups.h"
+#include "OTA.h"
 #include "Web.h"                // starts up web server
+
 
 void setup() {
   pinMode(I2C_SDA_RESET ,INPUT);
@@ -318,23 +319,19 @@ void setup() {
   setupWLAN();
   setupClocks();
   setupModbus();
-  server.begin();
-  startWeb();
   modbusTCP.begin();
-
-  if (!MDNS.begin("MStarWLAN")) {
-    debugMsgln(F("Error setting up MDNS responder!"),1);
-  } else {
-    MDNS.addService("http", "tcp", 80);
-    debugMsgln(F("mDNS responder started"),1);
-  }
-  
   debugMsgln("Getting modbus info for " + model,1);
   getFile(model);
-  #ifdef ARDUINO_ARCH_ESP32
-    refreshCtlLogFile();
-  #endif
+  if (getSn()) {
+    debugMsg(F("Serial number:"),1);
+    debugMsgln(ctlSerialNum,1);
+  } else {
+    debugMsgln(F("Failed to get serial number."),1);
+  }
+  refreshCtlLogFile();
 
+  server.begin();
+  startWeb();
   getRtcTime();
   WiFi.setTxPower(WIFI_POWER_19dBm); // 15 is about 1/3 the power of the default 19.5 dBm
 
@@ -349,7 +346,7 @@ void loop() {
   #ifndef DEBUG_ON
     serialPassthrough();
   #endif
-
+  AsyncMyOTA.loop();
 // This handles connections to TCP/502 for Modbus TCP from MSView
   if (!modbusClient.connected()) {
     modbusClient = modbusTCP.available();

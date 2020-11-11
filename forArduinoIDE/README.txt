@@ -23,7 +23,6 @@ cd MStar-WLAN/esp32
 ln -s ../../espressif/esp32/* .
 rm boards.txt
 rm platform.txt
-rm tools/partitions/*
 cp ../../../MStar-WLAN/forArduinoIDE/MStar-WLAN_boards.txt ./boards.txt
 cp ../../../MStar-WLAN/forArduinoIDE/MStar-WLAN_platform.txt ./platform.txt
 cp ../../../MStar-WLAN/forArduinoIDE/*.csv ./tools/partitions

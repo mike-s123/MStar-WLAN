@@ -46,12 +46,12 @@ void setupDebug() {
   #endif
 }
 
-void psGetSn(); //fwd
-void getSn() {
+int psGetSn(); //fwd
+int getSn() {
   checkController();
   if (!noController) {
     if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
-      psGetSn();
+      return psGetSn();
     }
   }
 }

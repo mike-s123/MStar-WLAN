@@ -671,7 +671,7 @@ void utilityPageHandler(AsyncWebServerRequest *request)
   response_message += F("<p><hr><h3>Utility Functions</h3>");
   response_message += F("<font size=\"4\">");
 
-  response_message += F("<hr><a href=\"/wlan_config\">Wireless settings</a>");
+  response_message += F("<hr><a href=\"/wlan_config\">Wireless and network settings</a>");
   response_message += F("<hr><a href=\"/security_config\">Security settings</a>");
   response_message += F("<hr><a href=\"/setTime\">Time settings</a>");
   response_message += F("<hr><a href=\"/documentation.htm\">Documentation</a>");
@@ -1013,4 +1013,21 @@ void sdPageHandler(String URI, AsyncWebServerRequest *request ){
   }
   request->send(404, "text/plain", message);
   debugMsgln(message,5);
+}
+
+void updatePageHandler(AsyncWebServerRequest *request) {
+  debugMsgln(F("Entering /update page."),2);
+  String response_message;
+  response_message.reserve(3000);
+  response_message = getHTMLHead();
+  response_message += getNavBar();
+  response_message += "<noscript><strong>We're sorry but OTA doesn't work properly without JavaScript enabled."
+                      " Please enable it to continue.</strong></noscript><div id=\"app\"></div>"
+                      "<script src=\"/OTA.js\"> defer</script>";
+  response_message += getHTMLFoot();
+
+  debugMsg(F("response_message size:"),4);
+  debugMsgln(String(response_message.length()),4);
+
+  request->send(200, F("text/html"), response_message);
 }
