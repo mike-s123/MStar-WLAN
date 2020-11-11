@@ -98,10 +98,24 @@ void rxEnable(bool state) {                                   // high = enabled 
 
 void preTransmission() {  // callbacks for half-duplex MODBUS
   rxEnable(false);
-  delayMicroseconds(4011);               // can't repeat requests too quickly, character time is
-}                                        // 11 bits @ 9600 = 0.00114583 s, *3.5 char min interframe = 4.011 ms.
+  delay(10); // test
+//  delayMicroseconds(4011);               // can't repeat requests too quickly, character time is
+                                           // 11 bits @ 9600 = 0.00114583 s, *3.5 char min interframe = 4.011 ms.
+  mbSerial.flush();
+  while (mbSerial.available()) mbSerial.read(); // because flush doesn't work?
+  node.clearResponseBuffer();
+}
 void postTransmission() {
+//  uart_wait_tx_done(UART_NUM_1, 3);     // wait for uart 1 to empty, timeout is 3 RTOS ticks - ~30 ms
+                                          // doesn't work, results in "E (338308) uart: uart_wait_tx_done(1051): uart driver error"
+  int pre = mbSerial.availableForWrite();
+  while (mbSerial.availableForWrite() < 0x7f) ; // delay until tx buffer is empty (i.e. room for 0x7f chars)
+//  debugMsgln("postTransmission, availableForWrite (pre/post)="+String(pre)+"/" +String(mbSerial.availableForWrite()),1);
+  delayMicroseconds(2292);                // wait for final char to clock out (2 char times)
   rxEnable(true);
+//  delayMicroseconds(2292);                // time for bad char to clock in
+//  mbSerial.flush();                       // make sure we didn't receive a glitch
+  while (mbSerial.available()) mbSerial.read(); // because flush doesn't work?
 }
 
 int findAddrByVar(String var) {   // given var name, return addr of register, -1 if not found
@@ -155,7 +169,10 @@ int MBus_get_coil(int address, bool &value) {             // returns 0 on succes
   for ( int i = 0 ; (i < 3) && result ; i++ ) {           // try up to 3 times
     result = node.readCoils(address, 1);                   // succcess = 0
     mbustries++;
-    if (result) mbuserrs++;
+    if (result) {
+      mbuserrs++;
+      debugMsgln(F("MBus_get_coil, mbuserr."),2);
+    }
     delay(i*50);                                           // delay a bit more on each attempt
   }
   if (result == node.ku8MBSuccess)  {
@@ -176,7 +193,10 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
   if ( row > 0 ) {
     result = node.writeSingleCoil(address, state);
     mbustries++;
-    if (result) mbuserrs++;
+    if (result) {
+      mbuserrs++;
+      debugMsgln(F("MBus_write_coil, mbuserr."),2);
+    }
     if ( ( address == 255 || address == 254 ) && state && result == node.ku8MBResponseTimedOut ){  
       result = 0;  // we reset the controller, timeout expected
     }
@@ -197,8 +217,9 @@ int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpre
     if (result == node.ku8MBSuccess) {
       raw = node.getResponseBuffer(0);
     } else {
-      delay(i*50); // increasing delay between failed attempts
+      delay((i*100)+50); // increasing delay between failed attempts
       mbuserrs++;
+      debugMsgln("MBus_get_reg_raw, mbuserr:"+String(result,DEC)+" addr:"+String(address),2);
     }
   }
   return result;
@@ -251,6 +272,7 @@ int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long i
     value += node.getResponseBuffer(1) ;
   } else {
     mbuserrs++;
+    debugMsgln(F("MBus_get_uint32, mbuserr."),2);
   }
   debugMsgln("Result: "+String(result),4);
   return result;
@@ -266,6 +288,7 @@ int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long in
     value += node.getResponseBuffer(0) ;
   } else {
     mbuserrs++;
+    debugMsgln(F("MBus_get_uint32_rev, mbuserr."),2);
   }
   debugMsgln("Result: "+String(result),4);
   return result;
@@ -416,7 +439,10 @@ int mbGetFullReg(fullReg &myReg, int address) {  //given address, gets all we kn
 int MBusWSR(unsigned int address, unsigned int value) {
   int result = node.writeSingleRegister(address, value);
   mbustries++;
-  if (result) mbuserrs++;
+  if (result) {
+    mbuserrs++;
+    debugMsgln(F("MBusWSR, mbuserr."),2);
+  }
   return result;
 }
 
@@ -524,7 +550,10 @@ int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {  //TODO this
 //    delay(5);
     result = node.readHoldingRegisters(address+(i*32), 32);
     mbustries++;
-    if (result) mbuserrs++;
+    if (result) {
+      mbuserrs++;
+      debugMsgln(F("MBus_get_regs_raw1, mbuserr."),2);
+    }
     for (int j = 0; j<32; j++) {
         rawarray[(i*32)+j] = node.getResponseBuffer(j);
         debugMsgln("rawarray "+String((i*32)+j)+"="+String(node.getResponseBuffer(j),HEX),4);
@@ -533,7 +562,10 @@ int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {  //TODO this
 //  delay(5);
   result += node.readHoldingRegisters(address+i*32, leftover);
   mbustries++;
-  if (result) mbuserrs++;
+  if (result) {
+    mbuserrs++;
+    debugMsgln(F("MBus_get_regs_raw2, mbuserr."),2);
+  }
   for ( i=0; i<leftover; i++) {
     rawarray[passes*32+i] = node.getResponseBuffer(i);
   }
@@ -612,13 +644,13 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   for (int tries=1; tries < 3; tries++) {
     good=false;
     preTransmission();
-    while (mbSerial.read() != -1);
-    count = mbSerial.write(query, 7);
-    mbSerial.flush();
+    mbSerial.flush(); // clear buffers
+    mbSerial.write(query, 7);
+//    delay(9); // wait for it to be sent, should take ~8 ms (uart_wait_tx_done?)
     postTransmission();
     
     int startwait = 300; // up to 300 ms for start of a response.
-    int charwait = 10;   // no more than 10 ms between chars, should come ~1 ms apart
+    int charwait = 2;   // no more than 1.5 char times allowed, should come ~1.1 ms apart
     // loop until we run out of time or bytes, or an error occurs
     uint32_t doneTime = millis() + startwait; 
     bool done = false;
@@ -626,22 +658,28 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
     
     while ( !done ) {
       if (mbSerial.available()) {
-        response[count++] = mbSerial.read();
-        good = true; // got a response
-        doneTime = millis() + charwait; 
+        int uartchars = mbSerial.available();
+        char incoming = mbSerial.read();
+        debugMsg(String(F("readDeviceID, mbSerial avail, count: ")) + String(uartchars,DEC),6); 
+        debugMsgln(String(F(", char:")) + String(incoming, DEC),6);
+        response[count++] = incoming;
+        if (incoming != 0) good = true; // got a response other than null
+        doneTime = millis() + charwait; // started getting a response, change to char timeout
       }  //matches xx.available
-      if (doneTime < millis()) { done = true; }  // no response or didn't get a char for a while
+      if (millis() > doneTime) { done = true; }  // no response or didn't get a char for a while
     } // while() - done getting response
     mbustries++;
     if (good) {
       tries=4;
     } else {
       mbuserrs++;
+      debugMsgln(F("readDeviceID, mbuserr."),2);
       delay(tries*50); // delay a bit more between each try
     }
   }
-  debugMsgln(String(F("readDeviceID, bytes read:")) + String(count),5);
-  if (count == 0) { return -1;} else {count = 0;}
+  debugMsgln(String(F("readDeviceID, bytes read:")) + String(count),3);
+  
+  if (count <= 1) { return -1; } else {count = 0;}
   id_idx = 8;
   numObjs = response[id_idx-1];
   vendorName = "";
@@ -735,7 +773,10 @@ int mbusTCP() {
       mbbuffer[10] == 0xff ? state = true : state = false ;
       result = node.writeSingleCoil(refNum, state);
       mbustries++;
-      if (result) mbuserrs++;
+      if (result) {
+        mbuserrs++;
+        debugMsgln(F("mbusTCP5, mbuserr."),2);
+      }
       // good response is to just return what we got...
 
     } else if (func == 6) { //write single register
@@ -744,7 +785,10 @@ int mbusTCP() {
       val    = mbbuffer[10]*256 + mbbuffer[11]; //value
       result = node.writeSingleRegister(refNum, val);
       mbustries++;
-      if (result) mbuserrs++;
+      if (result) {
+        mbuserrs++;
+        debugMsgln(F("mbusTCP6, mbuserr."),2);
+      }
       // good response is to just return what we got...
 
     } else if (func == 43) { // Read device ID, 
