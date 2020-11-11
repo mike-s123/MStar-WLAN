@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.5.2">
+<eagle version="9.6.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -9,20 +9,20 @@
 </settings>
 <grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
-<layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
-<layer number="16" name="Bottom" color="1" fill="1" visible="no" active="no"/>
-<layer number="17" name="Pads" color="2" fill="1" visible="no" active="no"/>
-<layer number="18" name="Vias" color="2" fill="1" visible="no" active="no"/>
-<layer number="19" name="Unrouted" color="6" fill="1" visible="no" active="no"/>
-<layer number="20" name="Dimension" color="15" fill="1" visible="no" active="no"/>
-<layer number="21" name="tPlace" color="7" fill="1" visible="no" active="no"/>
-<layer number="22" name="bPlace" color="7" fill="1" visible="no" active="no"/>
-<layer number="23" name="tOrigins" color="15" fill="1" visible="no" active="no"/>
-<layer number="24" name="bOrigins" color="15" fill="1" visible="no" active="no"/>
-<layer number="25" name="tNames" color="7" fill="1" visible="no" active="no"/>
-<layer number="26" name="bNames" color="7" fill="1" visible="no" active="no"/>
-<layer number="27" name="tValues" color="7" fill="1" visible="no" active="no"/>
-<layer number="28" name="bValues" color="7" fill="1" visible="no" active="no"/>
+<layer number="1" name="Top" color="4" fill="1" visible="yes" active="no"/>
+<layer number="16" name="Bottom" color="1" fill="1" visible="yes" active="no"/>
+<layer number="17" name="Pads" color="2" fill="1" visible="yes" active="no"/>
+<layer number="18" name="Vias" color="2" fill="1" visible="yes" active="no"/>
+<layer number="19" name="Unrouted" color="6" fill="1" visible="yes" active="no"/>
+<layer number="20" name="Dimension" color="15" fill="1" visible="yes" active="no"/>
+<layer number="21" name="tPlace" color="7" fill="1" visible="yes" active="no"/>
+<layer number="22" name="bPlace" color="7" fill="1" visible="yes" active="no"/>
+<layer number="23" name="tOrigins" color="15" fill="1" visible="yes" active="no"/>
+<layer number="24" name="bOrigins" color="15" fill="1" visible="yes" active="no"/>
+<layer number="25" name="tNames" color="7" fill="1" visible="yes" active="no"/>
+<layer number="26" name="bNames" color="7" fill="1" visible="yes" active="no"/>
+<layer number="27" name="tValues" color="7" fill="1" visible="yes" active="no"/>
+<layer number="28" name="bValues" color="7" fill="1" visible="yes" active="no"/>
 <layer number="29" name="tStop" color="7" fill="3" visible="no" active="no"/>
 <layer number="30" name="bStop" color="7" fill="6" visible="no" active="no"/>
 <layer number="31" name="tCream" color="7" fill="4" visible="no" active="no"/>
@@ -31,8 +31,8 @@
 <layer number="34" name="bFinish" color="6" fill="6" visible="no" active="no"/>
 <layer number="35" name="tGlue" color="7" fill="4" visible="no" active="no"/>
 <layer number="36" name="bGlue" color="7" fill="5" visible="no" active="no"/>
-<layer number="37" name="tTest" color="7" fill="1" visible="no" active="no"/>
-<layer number="38" name="bTest" color="7" fill="1" visible="no" active="no"/>
+<layer number="37" name="tTest" color="7" fill="1" visible="yes" active="no"/>
+<layer number="38" name="bTest" color="7" fill="1" visible="yes" active="no"/>
 <layer number="39" name="tKeepout" color="4" fill="11" visible="no" active="no"/>
 <layer number="40" name="bKeepout" color="1" fill="11" visible="no" active="no"/>
 <layer number="41" name="tRestrict" color="4" fill="10" visible="no" active="no"/>
@@ -40,19 +40,19 @@
 <layer number="43" name="vRestrict" color="2" fill="10" visible="no" active="no"/>
 <layer number="44" name="Drills" color="7" fill="1" visible="no" active="no"/>
 <layer number="45" name="Holes" color="7" fill="1" visible="no" active="no"/>
-<layer number="46" name="Milling" color="3" fill="1" visible="no" active="no"/>
-<layer number="47" name="Measures" color="7" fill="1" visible="no" active="no"/>
-<layer number="48" name="Document" color="7" fill="1" visible="no" active="no"/>
-<layer number="49" name="Reference" color="7" fill="1" visible="no" active="no"/>
-<layer number="50" name="dxf" color="7" fill="1" visible="no" active="no"/>
-<layer number="51" name="tDocu" color="7" fill="1" visible="no" active="no"/>
-<layer number="52" name="bDocu" color="7" fill="1" visible="no" active="no"/>
-<layer number="53" name="tGND_GNDA" color="7" fill="9" visible="no" active="no"/>
-<layer number="54" name="bGND_GNDA" color="1" fill="9" visible="no" active="no"/>
-<layer number="56" name="wert" color="7" fill="1" visible="no" active="no"/>
-<layer number="57" name="tCAD" color="7" fill="1" visible="no" active="no"/>
-<layer number="59" name="tCarbon" color="7" fill="1" visible="no" active="no"/>
-<layer number="60" name="bCarbon" color="7" fill="1" visible="no" active="no"/>
+<layer number="46" name="Milling" color="3" fill="1" visible="yes" active="no"/>
+<layer number="47" name="Measures" color="7" fill="1" visible="yes" active="no"/>
+<layer number="48" name="Document" color="7" fill="1" visible="yes" active="no"/>
+<layer number="49" name="Reference" color="7" fill="1" visible="yes" active="no"/>
+<layer number="50" name="dxf" color="7" fill="1" visible="yes" active="no"/>
+<layer number="51" name="tDocu" color="7" fill="1" visible="yes" active="no"/>
+<layer number="52" name="bDocu" color="7" fill="1" visible="yes" active="no"/>
+<layer number="53" name="tGND_GNDA" color="7" fill="9" visible="yes" active="no"/>
+<layer number="54" name="bGND_GNDA" color="1" fill="9" visible="yes" active="no"/>
+<layer number="56" name="wert" color="7" fill="1" visible="yes" active="no"/>
+<layer number="57" name="tCAD" color="7" fill="1" visible="yes" active="no"/>
+<layer number="59" name="tCarbon" color="7" fill="1" visible="yes" active="no"/>
+<layer number="60" name="bCarbon" color="7" fill="1" visible="yes" active="no"/>
 <layer number="88" name="SimResults" color="9" fill="1" visible="no" active="yes"/>
 <layer number="89" name="SimProbes" color="9" fill="1" visible="no" active="yes"/>
 <layer number="90" name="Modules" color="5" fill="1" visible="no" active="yes"/>
@@ -745,22 +745,6 @@ type 0207, grid 2.5 mm</description>
 <text x="-0.0508" y="1.016" size="1.27" layer="25" ratio="10">&gt;NAME</text>
 <text x="-0.0508" y="-2.2352" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
 </package>
-<package name="DO41-7.6:1">
-<description>&lt;b&gt;DO41&lt;/b&gt; 7.6mm x 2mm&lt;p&gt;
-Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
-<wire x1="2.082" y1="-0.92" x2="-2.082" y2="-0.92" width="0.1524" layer="21"/>
-<wire x1="2.082" y1="-0.92" x2="2.082" y2="0.92" width="0.1524" layer="21"/>
-<wire x1="-2.082" y1="0.92" x2="2.082" y2="0.92" width="0.1524" layer="21"/>
-<wire x1="-2.082" y1="0.92" x2="-2.082" y2="-0.92" width="0.1524" layer="21"/>
-<wire x1="3.81" y1="0" x2="2.494" y2="0" width="0.85" layer="51"/>
-<wire x1="-3.81" y1="0" x2="-2.519" y2="0" width="0.85" layer="51"/>
-<rectangle x1="2.082" y1="-0.425" x2="2.717" y2="0.425" layer="21"/>
-<rectangle x1="-2.717" y1="-0.425" x2="-2.082" y2="0.425" layer="21"/>
-<pad name="A" x="3.81" y="0" drill="1.1" diameter="1.7"/>
-<pad name="C" x="-3.81" y="0" drill="1.1" diameter="1.7"/>
-<text x="-2.032" y="1.651" size="1.27" layer="25" ratio="10">&gt;NAME</text>
-<text x="-2.032" y="-2.921" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
-</package>
 <package name="D-2.5" urn="urn:adsk.eagle:footprint:43194/1">
 <description>&lt;b&gt;DIODE&lt;/b&gt;</description>
 <wire x1="0.508" y1="0.762" x2="-0.508" y2="0" width="0.1524" layer="21"/>
@@ -1317,38 +1301,6 @@ type 0204, grid 5 mm</description>
 <wire x1="0" y1="-1.27" x2="-1.27" y2="0" width="0.254" layer="94"/>
 <pin name="GND" x="0" y="2.54" visible="off" length="short" direction="sup" rot="R270"/>
 <text x="-1.905" y="-3.175" size="1.778" layer="96">&gt;VALUE</text>
-</symbol>
-<symbol name="TVS-BD">
-<wire x1="-0.635" y1="-0.9525" x2="0.9525" y2="0" width="0.254" layer="94"/>
-<wire x1="0.9525" y1="0" x2="-0.635" y2="0.9525" width="0.254" layer="94"/>
-<wire x1="-0.635" y1="0.9525" x2="-0.635" y2="-0.9525" width="0.254" layer="94"/>
-<wire x1="0.9525" y1="0.9525" x2="0.9525" y2="0" width="0.254" layer="94"/>
-<wire x1="0.9525" y1="0" x2="0.9525" y2="-0.9525" width="0.254" layer="94"/>
-<wire x1="0.9525" y1="-0.9525" x2="1.4287" y2="-0.9525" width="0.254" layer="94"/>
-<wire x1="0.4762" y1="0.9525" x2="0.9525" y2="0.9525" width="0.254" layer="94"/>
-<wire x1="-5.08" y1="0" x2="-3.4925" y2="0" width="0.1524" layer="94"/>
-<wire x1="-3.4925" y1="0" x2="2.54" y2="0" width="0.1524" layer="94"/>
-<wire x1="-1.905" y1="0.9525" x2="-3.4925" y2="0" width="0.254" layer="94"/>
-<wire x1="-3.4925" y1="0" x2="-1.905" y2="-0.9525" width="0.254" layer="94"/>
-<wire x1="-1.905" y1="-0.9525" x2="-1.905" y2="0.9525" width="0.254" layer="94"/>
-<wire x1="-3.4925" y1="-0.9525" x2="-3.4925" y2="0" width="0.254" layer="94"/>
-<wire x1="-3.4925" y1="0" x2="-3.4925" y2="0.9525" width="0.254" layer="94"/>
-<wire x1="-3.4925" y1="0.9525" x2="-3.9688" y2="0.9525" width="0.254" layer="94"/>
-<wire x1="-3.0163" y1="-0.9525" x2="-3.4925" y2="-0.9525" width="0.254" layer="94"/>
-<pin name="1" x="-5.08" y="0" visible="off" length="point" direction="pas"/>
-<pin name="2" x="2.54" y="0" visible="off" length="point" direction="pas" rot="R180"/>
-<text x="-4.445" y="1.905" size="1.778" layer="95">&gt;NAME</text>
-<text x="-4.445" y="-3.81" size="1.778" layer="96">&gt;VALUE</text>
-<polygon width="0.1524" layer="94">
-<vertex x="-0.635" y="0.9525"/>
-<vertex x="0.9525" y="0"/>
-<vertex x="-0.635" y="-0.9525"/>
-</polygon>
-<polygon width="0.1524" layer="94">
-<vertex x="-1.905" y="-0.9525"/>
-<vertex x="-3.4925" y="0"/>
-<vertex x="-1.905" y="0.9525"/>
-</polygon>
 </symbol>
 <symbol name="ESP32-DEVKITC-V4-NOSD">
 <wire x1="-25.4" y1="-12.7" x2="-25.4" y2="12.7" width="0.254" layer="94"/>
@@ -1978,23 +1930,6 @@ Source: http://www.osram.convergy.de/</description>
 </gates>
 <devices>
 <device name="">
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-</devices>
-</deviceset>
-<deviceset name="TVS-" prefix="TVS">
-<description>&lt;b&gt;TVS BI-DIRECTIONAL&lt;/b&gt;</description>
-<gates>
-<gate name="G$1" symbol="TVS-BD" x="0" y="0"/>
-</gates>
-<devices>
-<device name="" package="DO41-7.6:1">
-<connects>
-<connect gate="G$1" pin="1" pad="A"/>
-<connect gate="G$1" pin="2" pad="C"/>
-</connects>
 <technologies>
 <technology name=""/>
 </technologies>
@@ -11888,6 +11823,95 @@ Source: http://products.nichicon.co.jp/en/pdf/XJA043/e-ud.pdf</description>
 </deviceset>
 </devicesets>
 </library>
+<library name="diode" urn="urn:adsk.eagle:library:210">
+<description>&lt;b&gt;Diodes&lt;/b&gt;&lt;p&gt;
+Based on the following sources:
+&lt;ul&gt;
+&lt;li&gt;Motorola : www.onsemi.com
+&lt;li&gt;Fairchild : www.fairchildsemi.com
+&lt;li&gt;Philips : www.semiconductors.com
+&lt;li&gt;Vishay : www.vishay.de
+&lt;/ul&gt;
+&lt;author&gt;Created by librarian@cadsoft.de&lt;/author&gt;</description>
+<packages>
+<package name="DO41Z10" urn="urn:adsk.eagle:footprint:43100/1" library_version="8">
+<description>&lt;B&gt;DIODE&lt;/B&gt;&lt;p&gt;
+diameter 2.54 mm, horizontal, grid 10.16 mm</description>
+<wire x1="2.032" y1="-1.27" x2="-2.032" y2="-1.27" width="0.1524" layer="21"/>
+<wire x1="2.032" y1="-1.27" x2="2.032" y2="1.27" width="0.1524" layer="21"/>
+<wire x1="-2.032" y1="1.27" x2="2.032" y2="1.27" width="0.1524" layer="21"/>
+<wire x1="-2.032" y1="1.27" x2="-2.032" y2="-1.27" width="0.1524" layer="21"/>
+<wire x1="5.08" y1="0" x2="3.937" y2="0" width="0.762" layer="51"/>
+<wire x1="-5.08" y1="0" x2="-4.064" y2="0" width="0.762" layer="51"/>
+<wire x1="-0.635" y1="0" x2="0" y2="0" width="0.1524" layer="21"/>
+<wire x1="1.016" y1="0.635" x2="1.016" y2="-0.635" width="0.1524" layer="21"/>
+<wire x1="1.016" y1="-0.635" x2="0" y2="0" width="0.1524" layer="21"/>
+<wire x1="0" y1="0" x2="1.524" y2="0" width="0.1524" layer="21"/>
+<wire x1="0" y1="0" x2="1.016" y2="0.635" width="0.1524" layer="21"/>
+<wire x1="0" y1="0" x2="0" y2="-0.635" width="0.1524" layer="21"/>
+<wire x1="0.254" y1="0.635" x2="0" y2="0.635" width="0.1524" layer="21"/>
+<wire x1="0" y1="0.635" x2="0" y2="0" width="0.1524" layer="21"/>
+<pad name="C" x="-5.08" y="0" drill="1.1176"/>
+<pad name="A" x="5.08" y="0" drill="1.1176"/>
+<text x="-1.905" y="1.651" size="1.27" layer="25" ratio="10">&gt;NAME</text>
+<text x="-1.905" y="-2.794" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
+<rectangle x1="-1.651" y1="-1.27" x2="-1.143" y2="1.27" layer="21"/>
+<rectangle x1="2.032" y1="-0.381" x2="3.937" y2="0.381" layer="21"/>
+<rectangle x1="-3.937" y1="-0.381" x2="-2.032" y2="0.381" layer="21"/>
+</package>
+</packages>
+<packages3d>
+<package3d name="DO41Z10" urn="urn:adsk.eagle:package:43341/1" type="box" library_version="8">
+<description>DIODE
+diameter 2.54 mm, horizontal, grid 10.16 mm</description>
+<packageinstances>
+<packageinstance name="DO41Z10"/>
+</packageinstances>
+</package3d>
+</packages3d>
+<symbols>
+<symbol name="ZD" urn="urn:adsk.eagle:symbol:43096/2" library_version="8">
+<wire x1="-1.27" y1="-1.27" x2="1.27" y2="0" width="0.254" layer="94"/>
+<wire x1="1.27" y1="0" x2="-1.27" y2="1.27" width="0.254" layer="94"/>
+<wire x1="1.27" y1="1.27" x2="1.27" y2="0" width="0.254" layer="94"/>
+<wire x1="-1.27" y1="1.27" x2="-1.27" y2="0" width="0.254" layer="94"/>
+<wire x1="-1.27" y1="0" x2="-1.27" y2="-1.27" width="0.254" layer="94"/>
+<wire x1="1.27" y1="0" x2="1.27" y2="-1.27" width="0.254" layer="94"/>
+<wire x1="1.27" y1="-1.27" x2="0.635" y2="-1.27" width="0.254" layer="94"/>
+<wire x1="-1.27" y1="0" x2="-2.54" y2="0" width="0.254" layer="94"/>
+<wire x1="1.27" y1="0" x2="2.54" y2="0" width="0.254" layer="94"/>
+<text x="-1.778" y="1.905" size="1.778" layer="95">&gt;NAME</text>
+<text x="-1.778" y="-3.429" size="1.778" layer="96">&gt;VALUE</text>
+<pin name="A" x="-2.54" y="0" visible="off" length="point" direction="pas"/>
+<pin name="C" x="2.54" y="0" visible="off" length="point" direction="pas" rot="R180"/>
+</symbol>
+</symbols>
+<devicesets>
+<deviceset name="ZPY" urn="urn:adsk.eagle:component:43491/3" prefix="D" library_version="8">
+<description>&lt;b&gt;Z DIODE&lt;/b&gt;&lt;p&gt;
+1 W</description>
+<gates>
+<gate name="1" symbol="ZD" x="0" y="0"/>
+</gates>
+<devices>
+<device name="" package="DO41Z10">
+<connects>
+<connect gate="1" pin="A" pad="A"/>
+<connect gate="1" pin="C" pad="C"/>
+</connects>
+<package3dinstances>
+<package3dinstance package3d_urn="urn:adsk.eagle:package:43341/1"/>
+</package3dinstances>
+<technologies>
+<technology name="">
+<attribute name="POPULARITY" value="0" constant="no"/>
+</technology>
+</technologies>
+</device>
+</devices>
+</deviceset>
+</devicesets>
+</library>
 </libraries>
 <attributes>
 </attributes>
@@ -11910,8 +11934,8 @@ Source: http://products.nichicon.co.jp/en/pdf/XJA043/e-ud.pdf</description>
 <part name="R6" library="MStar-WLAN" deviceset="R-US_" device="" value="10K"/>
 <part name="R1" library="MStar-WLAN" deviceset="R-US_" device="" value="10K"/>
 <part name="R4" library="MStar-WLAN" deviceset="R-US_" device="" value="10K"/>
-<part name="C12" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="CPOL-US" device="E5-8.5" package3d_urn="urn:adsk.eagle:package:23374/1" value="100u"/>
-<part name="MBUS" library="MStar-WLAN" deviceset="LED" device="3MM"/>
+<part name="C12" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="CPOL-US" device="E5-6" package3d_urn="urn:adsk.eagle:package:23368/1" value="100u"/>
+<part name="MBUS" library="MStar-WLAN" deviceset="LED" device="3MM" value="Green"/>
 <part name="ESP32-WROVER-B" library="MStar-WLAN" deviceset="ESP32-WROVER-I" device="" value="ESP32-WROVER-I"/>
 <part name="R7" library="MStar-WLAN" deviceset="R-US_" device="" value="10K"/>
 <part name="FT231XS" library="MStar-WLAN" deviceset="FT231XS-R" device="SSOP20"/>
@@ -11921,8 +11945,8 @@ Source: http://products.nichicon.co.jp/en/pdf/XJA043/e-ud.pdf</description>
 <part name="C5" library="MStar-WLAN" deviceset="C-US" device="C1206" value="1u"/>
 <part name="SUPPLY1" library="MStar-WLAN" deviceset="GND" device=""/>
 <part name="C8" library="MStar-WLAN" deviceset="C-US" device="025-024X044" value="0.1u"/>
-<part name="BOOT" library="MStar-WLAN" deviceset="10-XX" device=""/>
-<part name="RESET" library="MStar-WLAN" deviceset="10-XX" device=""/>
+<part name="BOOT" library="MStar-WLAN" deviceset="10-XX" device="" value="PTS645SM432LFS"/>
+<part name="RESET" library="MStar-WLAN" deviceset="10-XX" device="" value="PTS645SM432LFS"/>
 <part name="SUPPLY3" library="MStar-WLAN" deviceset="GND" device=""/>
 <part name="SUPPLY4" library="MStar-WLAN" deviceset="GND" device=""/>
 <part name="R10" library="MStar-WLAN" deviceset="R-US_" device="" value="27"/>
@@ -11934,12 +11958,11 @@ Source: http://products.nichicon.co.jp/en/pdf/XJA043/e-ud.pdf</description>
 <part name="D1" library="MStar-WLAN" deviceset="DIODE-" device="DO41-7.6" value="SB140-E3"/>
 <part name="DS3231(ZS-042)" library="MStar-WLAN" deviceset="RTC-DS3231-AT24C32-6" device="" value="RTC-DS3231-AT24C32-6"/>
 <part name="R12" library="MStar-WLAN" deviceset="R-US_" device="" value="1K"/>
-<part name="WLAN" library="MStar-WLAN" deviceset="LED" device="3MM"/>
+<part name="WLAN" library="MStar-WLAN" deviceset="LED" device="3MM" value="Red"/>
 <part name="SUPPLY6" library="MStar-WLAN" deviceset="GND" device=""/>
 <part name="C2" library="MStar-WLAN" deviceset="CPOL-US" device="E5-4" value="4m7/25"/>
 <part name="VR1" library="MStar-WLAN" deviceset="VREG" device="-OKI-78SR-3.3/1.5-W36"/>
 <part name="SDCARD0" library="MStar-WLAN" deviceset="DM3BT-DSF-PEJS" device=""/>
-<part name="BZW04-28B" library="MStar-WLAN" deviceset="TVS-" device=""/>
 <part name="32768HZ" library="MStar-WLAN" deviceset="MCS10B" device=""/>
 <part name="VR2" library="MStar-WLAN" deviceset="VREG" device="-TS1117CW-3V3" value="LDL1117S33"/>
 <part name="SUPPLY2" library="MStar-WLAN" deviceset="GND" device=""/>
@@ -11950,12 +11973,13 @@ Source: http://products.nichicon.co.jp/en/pdf/XJA043/e-ud.pdf</description>
 <part name="J3" library="MStar-WLAN" deviceset="DX07S016JA1R1500" device=""/>
 <part name="R8" library="MStar-WLAN" deviceset="R-US_" device="" value="5K1"/>
 <part name="R9" library="MStar-WLAN" deviceset="R-US_" device="" value="5K1"/>
+<part name="D3" library="diode" library_urn="urn:adsk.eagle:library:210" deviceset="ZPY" device="" package3d_urn="urn:adsk.eagle:package:43341/1" value="BZW04-33"/>
 </parts>
 <sheets>
 <sheet>
 <plain>
 <text x="30.48" y="137.16" size="3.81" layer="91">MStar-WLAN
-2020.10 mjs</text>
+2020.11 mjs</text>
 <text x="58.42" y="114.3" size="1.778" layer="94">C1 -or- C2 - United Chemi-Con
 EGPD250ELL472MK35H
 4700uF/25V</text>
@@ -11963,7 +11987,7 @@ EGPD250ELL472MK35H
 WROVER-B only</text>
 <text x="177.8" y="-20.32" size="2.1844" layer="91">This side components,
 WROVER-B only</text>
-<text x="142.24" y="53.34" size="1.778" layer="91" rot="R90">DEVKITC-V4 only.</text>
+<text x="154.94" y="91.44" size="1.778" layer="91" rot="R180">DEVKITC-V4 only.</text>
 <text x="74.93" y="32.004" size="1.778" layer="91">(or 2N3904)</text>
 </plain>
 <instances>
@@ -12009,7 +12033,7 @@ WROVER-B only</text>
 </instance>
 <instance part="MBUS" gate="G$1" x="68.58" y="60.96" smashed="yes">
 <attribute name="NAME" x="72.136" y="56.388" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="74.295" y="56.388" size="1.778" layer="96" rot="R90"/>
+<attribute name="VALUE" x="67.691" y="50.546" size="1.778" layer="96" rot="R90"/>
 </instance>
 <instance part="ESP32-WROVER-B" gate="G$1" x="215.9" y="66.04" smashed="yes">
 <attribute name="NAME" x="204.47" y="97.028" size="1.782309375" layer="95"/>
@@ -12044,12 +12068,10 @@ WROVER-B only</text>
 <attribute name="VALUE" x="208.28" y="117.348" size="1.778" layer="96"/>
 </instance>
 <instance part="BOOT" gate="1" x="190.5" y="127" smashed="yes" rot="MR270">
-<attribute name="NAME" x="193.04" y="133.35" size="1.778" layer="95" rot="MR0"/>
-<attribute name="VALUE" x="187.325" y="130.81" size="1.778" layer="96" rot="MR0"/>
+<attribute name="NAME" x="187.452" y="134.366" size="1.778" layer="95" rot="MR180"/>
 </instance>
 <instance part="RESET" gate="1" x="210.82" y="127" smashed="yes" rot="R270">
-<attribute name="NAME" x="208.28" y="133.35" size="1.778" layer="95"/>
-<attribute name="VALUE" x="213.995" y="130.81" size="1.778" layer="96"/>
+<attribute name="NAME" x="206.756" y="132.334" size="1.778" layer="95"/>
 </instance>
 <instance part="SUPPLY3" gate="GND" x="200.66" y="114.3" smashed="yes">
 <attribute name="VALUE" x="198.755" y="111.125" size="1.778" layer="96"/>
@@ -12093,8 +12115,8 @@ WROVER-B only</text>
 <attribute name="VALUE" x="159.512" y="30.226" size="1.778" layer="96" rot="R180"/>
 </instance>
 <instance part="WLAN" gate="G$1" x="165.1" y="30.48" smashed="yes" rot="R90">
-<attribute name="NAME" x="169.672" y="34.036" size="1.778" layer="95" rot="R180"/>
-<attribute name="VALUE" x="169.672" y="36.195" size="1.778" layer="96" rot="R180"/>
+<attribute name="NAME" x="168.656" y="34.036" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="174.244" y="34.163" size="1.778" layer="96" rot="R180"/>
 </instance>
 <instance part="SUPPLY6" gate="GND" x="127" y="111.76" smashed="yes">
 <attribute name="VALUE" x="125.095" y="108.585" size="1.778" layer="96"/>
@@ -12108,11 +12130,8 @@ WROVER-B only</text>
 <attribute name="VALUE" x="73.66" y="109.22" size="1.778" layer="96" align="top-left"/>
 </instance>
 <instance part="SDCARD0" gate="G$1" x="154.94" y="7.62" smashed="yes" rot="MR0">
-<attribute name="NAME" x="157.48" y="-5.08" size="1.778" layer="95" ratio="12" rot="MR0"/>
+<attribute name="NAME" x="155.448" y="18.034" size="1.778" layer="95" ratio="12" rot="MR0"/>
 <attribute name="VALUE" x="165.1" y="-15.24" size="1.778" layer="96" ratio="12" rot="MR0"/>
-</instance>
-<instance part="BZW04-28B" gate="G$1" x="63.5" y="15.24" smashed="yes" rot="R90">
-<attribute name="NAME" x="66.675" y="10.795" size="1.778" layer="95" rot="R90"/>
 </instance>
 <instance part="32768HZ" gate="1" x="124.46" y="132.08" smashed="yes">
 <attribute name="NAME" x="115.57" y="135.001" size="1.778" layer="95"/>
@@ -12128,9 +12147,9 @@ WROVER-B only</text>
 <attribute name="VALUE" x="168.275" y="78.105" size="1.778" layer="96"/>
 </instance>
 <instance part="U$1" gate="G$1" x="144.78" y="63.5" smashed="yes" rot="R270"/>
-<instance part="C10" gate="G$1" x="127" y="7.62" smashed="yes">
-<attribute name="NAME" x="128.016" y="8.255" size="1.778" layer="95"/>
-<attribute name="VALUE" x="128.016" y="3.429" size="1.778" layer="96"/>
+<instance part="C10" gate="G$1" x="195.58" y="5.08" smashed="yes">
+<attribute name="NAME" x="196.596" y="5.715" size="1.778" layer="95"/>
+<attribute name="VALUE" x="196.596" y="0.889" size="1.778" layer="96"/>
 </instance>
 <instance part="Q2" gate="G$1" x="73.66" y="27.94" smashed="yes" rot="MR0">
 <attribute name="NAME" x="76.962" y="27.94" size="1.778" layer="95" rot="MR180"/>
@@ -12138,7 +12157,7 @@ WROVER-B only</text>
 </instance>
 <instance part="J3" gate="G$1" x="327.66" y="58.42" smashed="yes">
 <attribute name="NAME" x="317.5" y="69.85" size="2.54" layer="95"/>
-<attribute name="VALUE" x="317.5" y="44.45" size="2.54" layer="96" align="top-left"/>
+<attribute name="VALUE" x="312.42" y="44.45" size="2.54" layer="96" align="top-left"/>
 </instance>
 <instance part="R8" gate="G$1" x="302.26" y="38.1" smashed="yes" rot="R270">
 <attribute name="NAME" x="303.7586" y="37.084" size="1.778" layer="95" rot="R270"/>
@@ -12147,6 +12166,10 @@ WROVER-B only</text>
 <instance part="R9" gate="G$1" x="307.34" y="38.1" smashed="yes" rot="R270">
 <attribute name="NAME" x="308.8386" y="37.084" size="1.778" layer="95" rot="R270"/>
 <attribute name="VALUE" x="308.864" y="43.942" size="1.778" layer="96" rot="R270"/>
+</instance>
+<instance part="D3" gate="1" x="63.5" y="12.7" smashed="yes" rot="R90">
+<attribute name="NAME" x="61.595" y="10.922" size="1.778" layer="95" rot="R90"/>
+<attribute name="VALUE" x="66.929" y="10.922" size="1.778" layer="96" rot="R90"/>
 </instance>
 </instances>
 <busses>
@@ -12196,10 +12219,10 @@ WROVER-B only</text>
 <pinref part="R1" gate="G$1" pin="2"/>
 <wire x1="68.58" y1="76.2" x2="68.58" y2="81.28" width="0.1524" layer="91"/>
 <junction x="68.58" y="81.28"/>
-<pinref part="BZW04-28B" gate="G$1" pin="2"/>
-<wire x1="63.5" y1="81.28" x2="63.5" y2="17.78" width="0.1524" layer="91"/>
+<wire x1="63.5" y1="81.28" x2="63.5" y2="15.24" width="0.1524" layer="91"/>
 <junction x="63.5" y="81.28"/>
 <pinref part="Q2" gate="G$1" pin="D"/>
+<pinref part="D3" gate="1" pin="C"/>
 </segment>
 </net>
 <net name="VCC" class="1">
@@ -12243,8 +12266,7 @@ WROVER-B only</text>
 <junction x="91.44" y="104.14"/>
 <wire x1="106.68" y1="104.14" x2="111.76" y2="104.14" width="0.1524" layer="91"/>
 <pinref part="R12" gate="G$1" pin="2"/>
-<wire x1="147.32" y1="30.48" x2="127" y2="30.48" width="0.1524" layer="91"/>
-<wire x1="127" y1="30.48" x2="111.76" y2="30.48" width="0.1524" layer="91"/>
+<wire x1="147.32" y1="30.48" x2="111.76" y2="30.48" width="0.1524" layer="91"/>
 <wire x1="111.76" y1="30.48" x2="111.76" y2="86.36" width="0.1524" layer="91"/>
 <junction x="111.76" y="104.14"/>
 <junction x="106.68" y="104.14"/>
@@ -12254,13 +12276,14 @@ WROVER-B only</text>
 <wire x1="127" y1="86.36" x2="111.76" y2="86.36" width="0.1524" layer="91"/>
 <junction x="111.76" y="86.36"/>
 <pinref part="U$1" gate="G$1" pin="3V3"/>
-<label x="111.76" y="30.48" size="1.778" layer="95"/>
-<wire x1="170.18" y1="10.16" x2="241.3" y2="10.16" width="0.1524" layer="91"/>
+<label x="112.522" y="31.242" size="1.778" layer="95"/>
+<wire x1="170.18" y1="10.16" x2="195.58" y2="10.16" width="0.1524" layer="91"/>
+<wire x1="195.58" y1="10.16" x2="241.3" y2="10.16" width="0.1524" layer="91"/>
 <wire x1="241.3" y1="10.16" x2="241.3" y2="104.14" width="0.1524" layer="91"/>
 <junction x="241.3" y="104.14"/>
 <pinref part="C10" gate="G$1" pin="1"/>
-<wire x1="127" y1="10.16" x2="127" y2="30.48" width="0.1524" layer="91"/>
-<junction x="127" y="30.48"/>
+<wire x1="195.58" y1="7.62" x2="195.58" y2="10.16" width="0.1524" layer="91"/>
+<junction x="195.58" y="10.16"/>
 </segment>
 </net>
 <net name="RXD" class="0">
@@ -12311,7 +12334,6 @@ WROVER-B only</text>
 <wire x1="68.58" y1="55.88" x2="68.58" y2="-10.16" width="0.1524" layer="91"/>
 <junction x="68.58" y="-10.16"/>
 <wire x1="63.5" y1="-10.16" x2="68.58" y2="-10.16" width="0.1524" layer="91"/>
-<pinref part="BZW04-28B" gate="G$1" pin="1"/>
 <wire x1="63.5" y1="10.16" x2="63.5" y2="-10.16" width="0.1524" layer="91"/>
 <junction x="63.5" y="-10.16"/>
 <pinref part="J1" gate="G$1" pin="4"/>
@@ -12378,12 +12400,12 @@ WROVER-B only</text>
 <wire x1="170.18" y1="5.08" x2="172.72" y2="5.08" width="0.1524" layer="91"/>
 <wire x1="172.72" y1="5.08" x2="172.72" y2="-10.16" width="0.1524" layer="91"/>
 <pinref part="SUPPLY2" gate="GND" pin="GND"/>
-<wire x1="172.72" y1="-10.16" x2="246.38" y2="-10.16" width="0.1524" layer="91"/>
-<wire x1="99.06" y1="-10.16" x2="127" y2="-10.16" width="0.1524" layer="91"/>
+<wire x1="172.72" y1="-10.16" x2="195.58" y2="-10.16" width="0.1524" layer="91"/>
+<wire x1="195.58" y1="-10.16" x2="246.38" y2="-10.16" width="0.1524" layer="91"/>
+<wire x1="99.06" y1="-10.16" x2="137.16" y2="-10.16" width="0.1524" layer="91"/>
 <junction x="99.06" y="-10.16"/>
 <junction x="172.72" y="-10.16"/>
 <pinref part="SDCARD0" gate="G$1" pin="CGND1"/>
-<wire x1="127" y1="-10.16" x2="137.16" y2="-10.16" width="0.1524" layer="91"/>
 <wire x1="137.16" y1="-10.16" x2="172.72" y2="-10.16" width="0.1524" layer="91"/>
 <wire x1="139.7" y1="15.24" x2="137.16" y2="15.24" width="0.1524" layer="91"/>
 <wire x1="137.16" y1="15.24" x2="137.16" y2="12.7" width="0.1524" layer="91"/>
@@ -12414,9 +12436,6 @@ WROVER-B only</text>
 <junction x="137.16" y="0"/>
 <wire x1="254" y1="38.1" x2="246.38" y2="38.1" width="0.1524" layer="91"/>
 <junction x="246.38" y="38.1"/>
-<pinref part="C10" gate="G$1" pin="2"/>
-<wire x1="127" y1="2.54" x2="127" y2="-10.16" width="0.1524" layer="91"/>
-<junction x="127" y="-10.16"/>
 <pinref part="Q2" gate="G$1" pin="S"/>
 <pinref part="J3" gate="G$1" pin="SHIELD"/>
 <wire x1="342.9" y1="50.8" x2="345.44" y2="50.8" width="0.1524" layer="91"/>
@@ -12435,6 +12454,10 @@ WROVER-B only</text>
 <pinref part="R9" gate="G$1" pin="2"/>
 <wire x1="307.34" y1="33.02" x2="307.34" y2="27.94" width="0.1524" layer="91"/>
 <junction x="307.34" y="27.94"/>
+<pinref part="C10" gate="G$1" pin="2"/>
+<wire x1="195.58" y1="0" x2="195.58" y2="-10.16" width="0.1524" layer="91"/>
+<junction x="195.58" y="-10.16"/>
+<pinref part="D3" gate="1" pin="A"/>
 </segment>
 <segment>
 <pinref part="DS3231(ZS-042)" gate="G$1" pin="GND.1"/>
@@ -12539,7 +12562,7 @@ WROVER-B only</text>
 <junction x="198.12" y="83.82"/>
 <wire x1="198.12" y1="83.82" x2="198.12" y2="106.68" width="0.1524" layer="91"/>
 <wire x1="215.9" y1="106.68" x2="241.3" y2="106.68" width="0.1524" layer="91"/>
-<label x="200.66" y="106.68" size="1.778" layer="95"/>
+<label x="201.422" y="107.442" size="1.778" layer="95"/>
 <wire x1="215.9" y1="106.68" x2="198.12" y2="106.68" width="0.1524" layer="91"/>
 <pinref part="RESET" gate="1" pin="S1"/>
 <wire x1="215.9" y1="124.46" x2="215.9" y2="119.38" width="0.1524" layer="91"/>
@@ -12565,7 +12588,7 @@ WROVER-B only</text>
 <wire x1="243.84" y1="111.76" x2="248.92" y2="111.76" width="0.1524" layer="91"/>
 <wire x1="248.92" y1="111.76" x2="248.92" y2="134.62" width="0.1524" layer="91"/>
 <junction x="243.84" y="111.76"/>
-<label x="243.84" y="111.76" size="1.778" layer="95"/>
+<label x="234.696" y="112.268" size="1.778" layer="95"/>
 <pinref part="IMH3A" gate="G$1" pin="Q2E"/>
 <wire x1="248.92" y1="134.62" x2="241.3" y2="134.62" width="0.1524" layer="91"/>
 <pinref part="IMH3A" gate="G$1" pin="Q1B"/>
@@ -12582,7 +12605,7 @@ WROVER-B only</text>
 <wire x1="251.46" y1="137.16" x2="233.68" y2="137.16" width="0.1524" layer="91"/>
 <wire x1="248.92" y1="109.22" x2="226.06" y2="109.22" width="0.1524" layer="91"/>
 <junction x="248.92" y="109.22"/>
-<label x="243.84" y="109.22" size="1.778" layer="95"/>
+<label x="234.442" y="109.474" size="1.778" layer="95"/>
 <pinref part="IMH3A" gate="G$1" pin="Q2B"/>
 <wire x1="233.68" y1="137.16" x2="233.68" y2="134.62" width="0.1524" layer="91"/>
 <pinref part="IMH3A" gate="G$1" pin="Q1E"/>
@@ -12724,12 +12747,12 @@ WROVER-B only</text>
 <pinref part="DS3231(ZS-042)" gate="G$1" pin="SDA.1"/>
 <wire x1="127" y1="119.38" x2="119.38" y2="119.38" width="0.1524" layer="91"/>
 <pinref part="ESP32-WROVER-B" gate="G$1" pin="IO15"/>
-<wire x1="177.8" y1="60.96" x2="193.04" y2="60.96" width="0.1524" layer="91"/>
-<wire x1="193.04" y1="60.96" x2="200.66" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="177.8" y1="60.96" x2="198.12" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="198.12" y1="60.96" x2="200.66" y2="60.96" width="0.1524" layer="91"/>
 <pinref part="ESP32-WROVER-B" gate="G$1" pin="IO21"/>
-<wire x1="200.66" y1="53.34" x2="193.04" y2="53.34" width="0.1524" layer="91"/>
-<wire x1="193.04" y1="53.34" x2="193.04" y2="60.96" width="0.1524" layer="91"/>
-<junction x="193.04" y="60.96"/>
+<wire x1="200.66" y1="53.34" x2="198.12" y2="53.34" width="0.1524" layer="91"/>
+<wire x1="198.12" y1="53.34" x2="198.12" y2="60.96" width="0.1524" layer="91"/>
+<junction x="198.12" y="60.96"/>
 <wire x1="177.8" y1="60.96" x2="177.8" y2="48.26" width="0.1524" layer="91"/>
 <junction x="177.8" y="60.96"/>
 <wire x1="177.8" y1="48.26" x2="162.56" y2="48.26" width="0.1524" layer="91"/>
@@ -12827,16 +12850,16 @@ WROVER-B only</text>
 <net name="MOSI" class="0">
 <segment>
 <pinref part="ESP32-WROVER-B" gate="G$1" pin="IO23"/>
-<wire x1="200.66" y1="48.26" x2="180.34" y2="48.26" width="0.1524" layer="91"/>
-<wire x1="180.34" y1="48.26" x2="180.34" y2="43.18" width="0.1524" layer="91"/>
-<wire x1="180.34" y1="43.18" x2="180.34" y2="12.7" width="0.1524" layer="91"/>
-<wire x1="180.34" y1="12.7" x2="170.18" y2="12.7" width="0.1524" layer="91"/>
+<wire x1="200.66" y1="48.26" x2="193.04" y2="48.26" width="0.1524" layer="91"/>
+<wire x1="193.04" y1="48.26" x2="193.04" y2="43.18" width="0.1524" layer="91"/>
+<wire x1="193.04" y1="43.18" x2="193.04" y2="12.7" width="0.1524" layer="91"/>
+<wire x1="193.04" y1="12.7" x2="170.18" y2="12.7" width="0.1524" layer="91"/>
 <pinref part="SDCARD0" gate="G$1" pin="CMD/DI"/>
 <label x="175.26" y="12.7" size="1.778" layer="95"/>
 <wire x1="162.56" y1="83.82" x2="167.64" y2="83.82" width="0.1524" layer="91"/>
 <wire x1="167.64" y1="83.82" x2="167.64" y2="43.18" width="0.1524" layer="91"/>
-<wire x1="167.64" y1="43.18" x2="180.34" y2="43.18" width="0.1524" layer="91"/>
-<junction x="180.34" y="43.18"/>
+<wire x1="167.64" y1="43.18" x2="193.04" y2="43.18" width="0.1524" layer="91"/>
+<junction x="193.04" y="43.18"/>
 <pinref part="U$1" gate="G$1" pin="IO23"/>
 </segment>
 </net>
@@ -12917,10 +12940,6 @@ WROVER-B only</text>
 <approved hash="104,1,127,86.36,U$1,3V3,VCC,,,"/>
 <approved hash="204,1,127,40.64,U$1,EXT_5V,,,,"/>
 <approved hash="105,1,170.18,128.27,N$4,,,,,"/>
-<approved hash="113,1,68.9017,59.69,MBUS,,,,,"/>
-<approved hash="113,1,190.5,129.245,BOOT,,,,,"/>
-<approved hash="113,1,210.82,129.245,RESET,,,,,"/>
-<approved hash="113,1,166.37,30.8017,WLAN,,,,,"/>
 <approved hash="115,1,172.72,-22.86,N$4,,,,,"/>
 <approved hash="115,1,170.18,128.27,N$4,,,,,"/>
 </errors>
