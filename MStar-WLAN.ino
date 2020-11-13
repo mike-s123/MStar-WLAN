@@ -31,8 +31,7 @@ using namespace std;
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
 
 #ifdef DEBUG_ON
-  #define BAUD_LOGGER 115200        // for software serial logging out "old" pins
-                                    // because we're swapping the UART to new ones
+  #define BAUD_LOGGER 115200        // baud rate for logging
   //#define DEBUG_ESP_HTTP_SERVER
   //#define DEBUG_ESP_CORE
   //#define EZT_DEBUG DEBUG           // for EZTime

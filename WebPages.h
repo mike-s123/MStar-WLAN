@@ -318,7 +318,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
   response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
   if (sd_card_available) {
-    response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.totalBytes())));
+    response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.cardSize())));
     response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
   }
   response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));

@@ -98,10 +98,9 @@ void rxEnable(bool state) {                                   // high = enabled 
 
 void preTransmission() {  // callbacks for half-duplex MODBUS
   rxEnable(false);
-  delay(10); // test
-//  delayMicroseconds(4011);               // can't repeat requests too quickly, character time is
-                                           // 11 bits @ 9600 = 0.00114583 s, *3.5 char min interframe = 4.011 ms.
-  mbSerial.flush();
+  delay(10);                                // can't repeat requests too quickly, character time is
+                                            // 11 bits @ 9600 = 0.00114583 s, *3.5 char min interframe = 4.011 ms.
+//  mbSerial.flush();
   while (mbSerial.available()) mbSerial.read(); // because flush doesn't work?
   node.clearResponseBuffer();
 }
@@ -113,7 +112,6 @@ void postTransmission() {
 //  debugMsgln("postTransmission, availableForWrite (pre/post)="+String(pre)+"/" +String(mbSerial.availableForWrite()),1);
   delayMicroseconds(2292);                // wait for final char to clock out (2 char times)
   rxEnable(true);
-//  delayMicroseconds(2292);                // time for bad char to clock in
 //  mbSerial.flush();                       // make sure we didn't receive a glitch
   while (mbSerial.available()) mbSerial.read(); // because flush doesn't work?
 }

@@ -626,9 +626,10 @@ int I2C_ClearBus() {
 }
 
 //format bytes
-String formatBytes(size_t bytes) {
+String formatBytes(uint64_t bytes) {
   if (bytes < 1024) {
-    return String(bytes) + " B";
+    uint32_t smallbytes = bytes;
+    return String(smallbytes) + " B";
   } else if (bytes < (1024 * 1024)) {
     return String(bytes / 1024.0) + " KiB";
   } else if (bytes < (1024 * 1024 * 1024)) {
