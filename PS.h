@@ -203,7 +203,7 @@ void psSetChargePageHandler(AsyncWebServerRequest *request) {
   response_message = getHTMLHead();
   response_message += getNavBar();
   
-  response_message += F("<center><img src=\"/img/charging.png\"></center>");  
+  response_message += F("<center><img src=\"/img/charging.png\" alt=\"Charging\"></center>");  
   String heading = F("Charge Settings <font size=\"4\">(changes have immediate effect)</font>");
   heading += "<h2 id=\"warning\"></h2>";
 
@@ -256,7 +256,7 @@ void psSetOtherPageHandler(AsyncWebServerRequest *request) {
   response_message = getHTMLHead();
   response_message += getNavBar();
 
-  response_message += F("<center><img src=\"/img/otherset.png\"></center>");
+  response_message += F("<center><img src=\"/img/otherset.png\" alt=\"Other\"></center>");
   String heading = F("Other Settings <font size=\"4\">(changes have immediate effect)</font>");
   heading += "<h2 id=\"warning\"></h2>";
 
@@ -369,32 +369,31 @@ void psLog() {
   }
   if (model.startsWith(F("PS-MPPT"))) {
     mbGetFullReg(reg, 62); // Array Max Output Power (found during sweep)
+    logLine += "," + reg.value;
   } 
   if (logLine != logLast && logLine.indexOf(F("err")) < 0 ) { // only write an entry if something has changed and no error
-    #ifdef ARDUINO_ARCH_ESP32
-      ctl_logFile.print(myTZ.dateTime(ISO8601)+","); // ECMAScript/ISO8601: YYYY-MM-DDTHH:mm...
-      ctl_logFile.println(logLine);
-    #endif
+    ctl_logFile.print(myTZ.dateTime(ISO8601)+","); // ECMAScript/ISO8601: YYYY-MM-DDTHH:mm...
+    ctl_logFile.println(logLine);
     logLast = logLine;
   }
 }
 
 void PSopenLogFile() {
-  #ifdef ARDUINO_ARCH_ESP32
-    ctl_logFile.close(); // release hooks and buffers
-    getCtlLogFileName();
-    //if (sd_card_available)
-    if (SD.exists(ctlLogFileName)) {
-      ctl_logFile = SD.open(ctlLogFileName,FILE_APPEND);  // already there, just open
-    } else {                                              // doesn't exist, so open and write header for MS-View
-      ctl_logFile = SD.open(ctlLogFileName,FILE_APPEND);
-      ctl_logFile.print(F("\"Time (local)\",\"Batt V\",\"Net A\",\"Target V\",\"Batt Temp C\",\"Solar V\",\"Solar A\","));
-      ctl_logFile.print(F("\"Load V\",\"Load A\",\"Charge State\""));
-      if (model.startsWith(F("PS-MPPT"))) {
-        ctl_logFile.print(F(",\"Solar Max W\""));   // Array Max Output Power (found during sweep)
-      }
-      ctl_logFile.println();
+  debugMsgln("Closing controller log: "+ctlLogFileName,1);
+  ctl_logFile.close(); // release hooks and buffers
+  getCtlLogFileName();
+  //if (sd_card_available)
+  if (SD.exists(ctlLogFileName)) {
+    ctl_logFile = SD.open(ctlLogFileName,FILE_APPEND);  // already there, just open
+  } else {                                              // doesn't exist, so open and write header for MS-View
+    ctl_logFile = SD.open(ctlLogFileName,FILE_APPEND);
+    ctl_logFile.print(F("\"Time (local)\",\"Batt V\",\"Net A\",\"Target V\",\"Batt Temp C\",\"Solar V\",\"Solar A\","));
+    ctl_logFile.print(F("\"Load V\",\"Load A\",\"Charge State\""));
+    if (model.startsWith(F("PS-MPPT"))) {
+      ctl_logFile.print(F(",\"Solar Max W\""));   // Array Max Output Power (found during sweep)
     }
-    server.serveStatic("/controller.log",SD,ctlLogFileName.c_str()); 
-  #endif
+    ctl_logFile.println();
+  }
+  debugMsgln("Opened controller log: "+ctlLogFileName,1);
+  server.serveStatic("/controller.log",SD,ctlLogFileName.c_str()); 
 }

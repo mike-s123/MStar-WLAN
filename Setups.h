@@ -77,27 +77,6 @@ void checkSDCard(int cardNum = 0) {
   if(!sd_card_available){
     debugMsgln("SD card mount failed",1);
   } else { // SD card mounted
-    refreshCtlLogFile(); // opens log, name based on controller s/n
-    logFile = SD.open(logFileName,FILE_APPEND);
-    #ifdef EZT_DEBUG
-      ezt_logFile = SD.open(EZT_LOGFILE,FILE_APPEND);
-    #endif
-    if (logFile && millis() < 15000) { // just booted, not a running SD card insertion      
-      debugMsgln("",1);
-      debugMsgln(F("***********BOOTED***********"),1);
-      debugMsg(F("Debug on, level "),1);
-      debugMsgln(String(debug_level),1);
-      debugMsg(F("Reset reason CPU 0:"),1);
-      debugMsgln(get_reset_reason(0),1);
-      debugMsg(F("Reset reason CPU 1:"),1);
-      debugMsgln(get_reset_reason(1),1);
-      const char *sv = SOFTWARE_VERSION;
-      String svs = sv;  // butt ugly
-      debugMsgln("Version " + svs + " (" + UTC.dateTime(compileTime(), "Y-m-d~TH:i:s") + ")", 1);
-      #ifdef EZT_DEBUG
-        if (ezt_logFile) ezt_logFile.println(F("***********eztime.log opened***********"));
-      #endif
-    }
     switch (SD.cardType()) { 
       case CARD_NONE:   debugMsgln(F("No SD card attached"),1);
                         break;
@@ -109,6 +88,28 @@ void checkSDCard(int cardNum = 0) {
                         break;
       default:          debugMsgln(F("SD card unknown"),1);
                         break;
+    }
+    logFile = SD.open(logFileName,FILE_APPEND); // opens debug log
+    debugMsgln("Opened debug log: "+logFileName,1);
+    debugMsg(F("Debug on, level "),1);
+    debugMsgln(String(debug_level),1);
+    refreshCtlLogFile(); // opens controller log, 
+    #ifdef EZT_DEBUG
+      ezt_logFile = SD.open(EZT_LOGFILE,FILE_APPEND);
+    #endif
+    if (logFile && millis() < 15000) { // just booted, not a running SD card insertion      
+      debugMsgln("",1);
+      debugMsgln(F("***********BOOTED***********"),1);
+      debugMsg(F("Reset reason CPU 0:"),1);
+      debugMsgln(get_reset_reason(0),1);
+      debugMsg(F("Reset reason CPU 1:"),1);
+      debugMsgln(get_reset_reason(1),1);
+      const char *sv = SOFTWARE_VERSION;
+      String svs = sv;  // butt ugly
+      debugMsgln("Version " + svs + " (" + UTC.dateTime(compileTime(), "Y-m-d~TH:i:s") + ")", 1);
+      #ifdef EZT_DEBUG
+        if (ezt_logFile) ezt_logFile.println(F("***********eztime.log opened***********"));
+      #endif
     }
   }
 }
@@ -125,10 +126,12 @@ void attachSDCardIRQ(){
 void changeSDCard(){
   delay(100); // debounce
   if (digitalRead(SD_DETECT)) { // sd card removed
+    debugMsgln(F("SD card removed"),1);
+    debugMsgln("Closing controller log: "+ctlLogFileName,1);
     ctl_logFile.close(); // release hooks and buffers
+    debugMsgln("Closing debug log: "+logFileName,1);
     logFile.close();
     SD.end();
-    if (sd_card_available) debugMsgln(F("SD card removed"),1); 
     sd_card_available = false;
     
   } else {                // sd card inserted

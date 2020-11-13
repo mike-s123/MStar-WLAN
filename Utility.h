@@ -58,25 +58,30 @@ int getSn() {
 
 void psGetCtlLogFileName(); //fwd dec
 void getCtlLogFileName() {
-  #ifdef ARDUINO_ARCH_ESP32
-    if (!noController) {
-      if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
-        psGetCtlLogFileName();
-      }
+  if (!noController) {
+    if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+      psGetCtlLogFileName();
     }
-  #endif
+  }
 }
 
 void ctlLog() {
-  #ifdef ARDUINO_ARCH_ESP32
-    checkController();
-    if (!noController && sd_card_available && ctl_logFile) {
-      if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
-        debugMsgln(F("Logging PS- controller"),3);
-        psLog();
-      }
+  checkController();
+  if (!noController && sd_card_available && ctl_logFile) {
+    if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+      debugMsgln(F("Logging PS- controller"),3);
+      psLog();
     }
-  #endif
+  }
+}
+
+void PSopenLogFile(); // fwd dec
+void refreshCtlLogFile(){
+  if (!noController) {
+    if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+      PSopenLogFile();
+    }
+  }
 }
 
 void setupPassthru() {

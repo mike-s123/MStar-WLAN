@@ -11,26 +11,24 @@
  *  ESP32 - WROOM (4 MB), use "data-small" folder for SPIFFS, put other files on SD-Card.
  *    -ESP32 Dev Module
  *    -Default 4 MB w/SPIFFS (1.2 MB APP/1.5MB SPIFFS)
- *    or
- *    -Minimal (1.3 MB APP/700kB SPIFFS)
  *  
  *   Original work, License CC BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  *   All rights reserved.
  *   some parts subject to other licenses as noted.
  *   
- *   Using Arduino IDE 1.8.13, ESP32 Arduino 1.0.4
+ *   Using Arduino IDE 1.8.13, ESP32 Arduino 1.0.5rc1
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201111"
+#define SOFTWARE_VERSION "v2.201112"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
-                     REST fixes."
+                     REST fixes. Get files from SD Card if not found in SPIFFS."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
-                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
+                                 // 0 off, 1 least detail, 8 most detail, 9 includes passwords
 
 #ifdef DEBUG_ON
   #define BAUD_LOGGER 115200        // for software serial logging out "old" pins

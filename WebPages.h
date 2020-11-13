@@ -250,7 +250,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-  response_message += F("<center><img src=\"/img/wrover.png\"></center>");
+  response_message += F("<center><img src=\"/img/wrover.png\" alt=\"ESP32\"></center>");
   
   // Status table
   response_message += getTableHead2Col(F("Status"), F("Name"), F("Value"));
@@ -665,7 +665,7 @@ void utilityPageHandler(AsyncWebServerRequest *request)
   response_message = getHTMLHead();
   response_message += getNavBar();
 
-  response_message += F("<center><img src=\"/img/utility.png\"></center>");
+  response_message += F("<center><img src=\"/img/utility.png\" alt=\"Utility\"></center>");
 
   response_message += F("<br><br><div class=\"container\" role=\"secondary\"><br>");
   response_message += F("<p><hr><h3>Utility Functions</h3>");
@@ -954,14 +954,14 @@ bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
   } else if (path.endsWith(".png")) {
     dataType = "image/png";
   } else if (path.endsWith(".gif")) {
-    dataType = "image/gif";
+    dataType = "application/gzip";
   } else if (path.endsWith(".jpg")) {
     dataType = "image/jpeg";
   } else if (path.endsWith(".ico")) {
     dataType = "image/x-icon";
   } else if (path.endsWith(".xml")) {
     dataType = "text/xml";
-  } else if (path.endsWith(".pdf")) {
+  } else if (path.endsWith(".pdf") || path.endsWith(".pdf.gz")) {
     dataType = "application/pdf";
   } else if (path.endsWith(".zip")) {
     dataType = "application/zip";
@@ -973,19 +973,22 @@ bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
     if (ezt_logFile) ezt_logFile.flush();
   #endif
   File dataFile = SD.open(path.c_str());
+  String gzpath = path + ".gz";
+  if (!dataFile) dataFile = SD.open(gzpath.c_str()); // try for gzipped version
+  if (!dataFile) {
+    debugMsgln("File not found",4);
+    return false;
+  }
+
   if (dataFile.isDirectory()) {
     path += "/index.htm";
     dataType = "text/html";
     dataFile = SD.open(path.c_str());
   }
-  if (!dataFile) {
-    debugMsgln("File not found",4);
-    return false;
-  }
   if (request->hasArg("download")) {
     dataType = "application/octet-stream";
   }
-  debugMsgln("Sending file",4);
+  debugMsgln("Sending file" + path,4);
   request->send(SD, path, dataType);
   dataFile.close();
   return true;
@@ -998,7 +1001,12 @@ void sdPageHandler(String URI, AsyncWebServerRequest *request ){
   if (sd_card_available && loadFromSdCard(relative_uri, request)) {
     return;
   }
-  String message = "SDCARD Not Detected\n\n";
+  relative_uri += ".gz";    // see if there's gzip version
+  if (sd_card_available && loadFromSdCard(relative_uri, request)) {
+    return;
+  }
+  String message = "File not found.\n";
+  if (!sd_card_available) message += "SDCARD not present\n";
   message += "URI: ";
   message += request->url();
   message += "\nrelative URI: ";

@@ -511,14 +511,12 @@ void oncePerFive() { // every 5 minutes
   UTC.setEvent(oncePerFive,UTC.now()+300);
   debugMsgln(F("oncePerFive"),3);
   tryWLAN(); // try to connect as station
-  #ifdef ARDUINO_ARCH_ESP32
-    ctlLog(); // log controller data, 1 per 5 min = ~7MB/year
-    if (logFile) logFile.flush();      // flush logs every 5 minutes
-    if (ctl_logFile) ctl_logFile.flush();
-    #ifdef EZT_DEBUG
-      if (ezt_logFile) ezt_logFile.flush();
-    #endif
-  #endif //esp32
+  ctlLog(); // log controller data, 1 per 5 min = ~7MB/year
+  if (logFile) logFile.flush();      // flush logs every 5 minutes
+  if (ctl_logFile) ctl_logFile.flush();
+  #ifdef EZT_DEBUG
+    if (ezt_logFile) ezt_logFile.flush();
+  #endif
 }
 
 void oncePerHour() { // not necessarily _on_ the hour
@@ -526,11 +524,9 @@ void oncePerHour() { // not necessarily _on_ the hour
   UTC.setEvent(oncePerHour,UTC.now()+3600);
   debugMsgln(F("oncePerHour"),2);
   if ((timeStatus() == timeNeedsSync) && rtcPresent) UTC.setTime(getUnixTime());     // lost ntp sync, update from RTC
-  #ifdef ARDUINO_ARCH_ESP32
-    timeval epoch = {myTZ.now(), myTZ.ms()}; // FAT is not TZ aware, use local TZ
-    settimeofday((const timeval*)&epoch, 0); // set ESP ToD, for SD file timestamps
-    debugMsgln(F("settimeofday"),4);
-  #endif // esp32
+  timeval epoch = {myTZ.now(), myTZ.ms()}; // FAT is not TZ aware, use local TZ
+  settimeofday((const timeval*)&epoch, 0); // set ESP ToD, for SD file timestamps
+  debugMsgln(F("settimeofday"),4);
   // TODO logrotate?
 }
 

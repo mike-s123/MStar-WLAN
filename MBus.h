@@ -887,11 +887,6 @@ String getModel() {
   return mod;
 }
 
-void PSopenLogFile(); // fwd dec
-void refreshCtlLogFile(){
-  PSopenLogFile();
-}
-
 void checkController() {
   String lastModel = model;
   bool lastState = noController;
