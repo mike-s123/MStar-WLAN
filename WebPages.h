@@ -305,31 +305,46 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += getTableRow2Col(F("Arduino IDE version"), String(ARDUINO));
   response_message += getTableRow2Col(F("ESP SDK version"), String(ESP.getSdkVersion()));
   response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
-  response_message += getTableRow2Col(F("Architecture"), F("ESP32"));
-  response_message += getTableRow2Col(F("Chip revision"), String(ESP.getChipRevision()));
-  response_message += getTableRow2Col(F("CPU Frequency (MHz)"), String(ESP.getCpuFreqMHz()));
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+  String esp_chip_model;
+  switch (chip_info.model) {
+    case 1: esp_chip_model = "ESP32";
+            break;
+    case 2: esp_chip_model = "ESP32-S2";
+            break;
+    case 4: esp_chip_model = "ESP32-S3";
+            break;
+    default: esp_chip_model = "unknown ESP32";
+  }
+  esp_chip_model += " ("+String(chip_info.cores)+" cores)";
+  response_message += getTableRow2Col(F("Architecture"), esp_chip_model);
+  response_message += getTableRow2Col(F("Chip revision"), String(chip_info.revision));
+  response_message += getTableRow2Col(F("CPU Frequency"), String(ESP.getCpuFreqMHz())+" MHz");
   response_message += getTableRow2Col(F("Sketch size"), formatBytes(ESP.getSketchSize()));
   String ota = formatBytes(ESP.getFreeSketchSpace());
   if ( largeFlash ) { ota += F(" (OTA update capable)"); }
   response_message += getTableRow2Col(F("Free sketch size"), ota);
-  response_message += getTableRow2Col(F("Internal total heap"), String(ESP.getHeapSize()));
-  response_message += getTableRow2Col(F("Internal free heap"), String(ESP.getFreeHeap()));
-  response_message += getTableRow2Col(F("Internal min free heap"), String(ESP.getMinFreeHeap()));
+  response_message += getTableRow2Col(F("Internal total heap"), formatBytes(ESP.getHeapSize()));
+  response_message += getTableRow2Col(F("Internal free heap"), formatBytes(ESP.getFreeHeap()));
+  response_message += getTableRow2Col(F("Internal min free heap"), formatBytes(ESP.getMinFreeHeap()));
   response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
   response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
   if (sd_card_available) {
-    response_message += getTableRow2Col(F("SD card size"), String(formatBytes(SD.cardSize())));
-    response_message += getTableRow2Col(F("SD card used"), String(formatBytes(SD.usedBytes())));
+    response_message += getTableRow2Col(F("SD card size"), formatBytes(SD.cardSize()));
+    response_message += getTableRow2Col(F("SD card used"), formatBytes(SD.usedBytes()));
+  } else {
+    response_message += getTableRow2Col(F("No SD Card"), "-");
   }
-  response_message += getTableRow2Col(F("SPIRAM total heap"), String(ESP.getPsramSize()));
-  response_message += getTableRow2Col(F("SPIRAM free heap"), String(ESP.getFreePsram()));
-  response_message += getTableRow2Col(F("SPIRAM min free heap"), String(ESP.getMinFreePsram()));
-  response_message += getTableRow2Col(F("Flash chip size"), "0x"+String(ESP.getFlashChipSize(),HEX));
-  response_message += getTableRow2Col(F("Flash chip speed"), String(ESP.getFlashChipSpeed()));
+  response_message += getTableRow2Col(F("SPIRAM total heap"), formatBytes(ESP.getPsramSize()));
+  response_message += getTableRow2Col(F("SPIRAM free heap"), formatBytes(ESP.getFreePsram()));
+  response_message += getTableRow2Col(F("SPIRAM min free heap"), formatBytes(ESP.getMinFreePsram()));
+  response_message += getTableRow2Col(F("Flash chip size"), formatBytes(ESP.getFlashChipSize()));
+  response_message += getTableRow2Col(F("Flash chip speed"), String(ESP.getFlashChipSpeed()/1000000)+ " MHz");
   response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
   response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
   if (rtcPresent) {
-    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg;C");
+    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg; C");
   }
   response_message += getTableRow2Col(F("Hall sensor"), String(hallRead()));
 

@@ -1,9 +1,10 @@
  /*
  * MStar-WLAN 2020 mjs
- * 
- * ESP32
  *   
- *  ESP32 - WROVER-B, custom partitions (WROVER 16 MB w/13M FS with modified files)
+ *  ESP32 - WROVER-B preferred for PSRAM. 16 MB flash is also preferred, But others are accmodated. 
+ *  Included are custom partitions (e,g, WROVER 16 MB w/13 MB FS with modified files)
+ *  
+ *  Arduino IDE choices:
  *   lwIP: v2 higher bandwidth
  *   vTables: IRAM
  *   240 MHz
@@ -13,14 +14,15 @@
  *    -Default 4 MB w/SPIFFS (1.2 MB APP/1.5MB SPIFFS)
  *  
  *   Original work, License CC BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
- *   All rights reserved.
- *   some parts subject to other licenses as noted.
+ *   All rights reserved. Some parts subject to other licenses as noted.
+ *   
+ *   Libraries from Arduino IDE, unless otherwise noted.
  *   
  *   Using Arduino IDE 1.8.13, ESP32 Arduino 1.0.5rc1
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201112"
+#define SOFTWARE_VERSION "v2.201117"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -86,7 +88,7 @@ String ctlLogFileName = CTL_LOGFILE;
   #define EZT_LOGFILE "/eztime.log"   // must start with /
 #endif
 
-#include <ArduinoJson.h>   // Benoit Blanchon 6.17.1, via IDE
+#include <ArduinoJson.h>   // Benoit Blanchon 6.17.2, via IDE
 #include <WiFiClient.h>
 //#include <WiFiClientSecure.h>
 //#include <WiFiClientSecureAxTLS.h>
@@ -98,6 +100,8 @@ String ctlLogFileName = CTL_LOGFILE;
 //#include <WiFiServerSecureBearSSL.h>
 #include <WiFiUdp.h>
 #include <ModbusMaster.h> // 2.0.1 Doc Walker, via IDE
+#include "driver/ledc.h"
+
 
 //---------------------------
 // definitions
@@ -129,6 +133,7 @@ String ctlLogFileName = CTL_LOGFILE;
 
 #define JSON_VERSION "1.0"                // changes with api changes
 #define JSON_VERSION_MIN "1.0"            // changes when backward compatibility is broken
+#define LEDC_timerbits          LEDC_TIMER_13_BIT
 
 #define EEPROM_SIZE 1024  // ESP "eeprom"
 #define EEPROM_SIG "mjs!"
@@ -169,7 +174,7 @@ String ctlLogFileName = CTL_LOGFILE;
 #define eeHostName 518
 
 // GPIO 2 or 33 for WROVER-B board
-//#define WLAN_PIN 2  // up through board 2020.2
+#define WLAN_PIN_OLD 2  // up through board 2020.2
 #define WLAN_PIN 33 // from 2020.10
 #define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10
 #define RX_PIN 27         // RxD to IO27, pin 12
@@ -232,7 +237,6 @@ boolean wlanRead = false;     // if we've read SSID/PSKs from EEPROM
 boolean wlanSet = false;      // if we've added them to wifiMulti
 boolean wlansAdded = false;   // if we've added WLANs to wifiMulti
 boolean largeFlash = false;
-boolean mbActive = false;    // whether we're using mbus
 boolean wlanLedState = true;
 boolean noController = true;
 boolean mytz2skip = false; //testing
@@ -243,7 +247,7 @@ uint32_t mytz2skipMillis;
 // used for flashing the WLAN status LED
 int blinkOnTime = 1000;
 int blinkRepeatTime = 2000;
-unsigned long lastMillis = 0;
+unsigned long wlanLed_lastMillis = 0;
 unsigned long lastWLANtry;      // when we last tried to connected (or tried) to an AP
 int mbAddr = mbusSlave;
 String model = MODEL;
@@ -266,6 +270,7 @@ AsyncWebServer server(80);
 WiFiMulti wifiMulti;
 //  WebServer server(80);
 HardwareSerial mbSerial(1);
+ledc_channel_config_t ledc_channel[2];  //
 
 //order here is important
 #include "TimeStuff.h"
@@ -333,11 +338,13 @@ void setup() {
   WiFi.setTxPower(WIFI_POWER_19dBm); // 15 is about 1/3 the power of the default 19.5 dBm
 
   setEvents(); // setup regular events.
+  blinkySetup(WLAN_PIN,WLAN_PIN_OLD);
   debugMsgln(F("Leaving setup()"),1);
 } // setup()
 
 void loop() {
   events(); // for EZTime  
+  blinky(); // for LED
   checkNtp();
   if (sd_card_changed) changeSDCard();
   #ifndef DEBUG_ON
@@ -372,25 +379,12 @@ void loop() {
 /*
  *  Blink the LED based on current connection state.
  */
- 
   if (WiFi.softAPgetStationNum()) {                     // AP client connected, mostly on
-    blinkOnTime = 275;       
-    blinkRepeatTime = 300;
-  } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA (or AP), flash 1/sec
+    blinky(275,300);
+  } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA, flash 1/sec
     wlanConnected = true;
-    blinkOnTime = 200;
-    blinkRepeatTime = 1000;
+    blinky(1000, 1000, 128, 8);
   } else {                                              // no connections, every 10 sec
-    blinkOnTime = 25;
-    blinkRepeatTime = 10000;  
-  }
-
-  if (((millis() - lastMillis) > blinkRepeatTime) && wlanLedState) {
-    lastMillis = millis();
-    wlanLedState = false;
-    setWlanLED(wlanLedState);
-  } else if (((millis() - lastMillis) > blinkOnTime) && !wlanLedState) {
-    wlanLedState = true;
-    setWlanLED(wlanLedState);
+    blinky(2000, 2000, 64, 4);
   }
 } // loop()

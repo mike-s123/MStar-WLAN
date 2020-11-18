@@ -30,6 +30,7 @@ void setupComms() {
   pinMode(RX_ENABLE_PIN, OUTPUT);            // used for half-duplex MODBUS
   rxEnable(false);
   pinMode(WLAN_PIN, OUTPUT);  // LED
+  pinMode(WLAN_PIN_OLD, OUTPUT);  // LED
 }
 
 void setupWLAN() {
@@ -156,4 +157,37 @@ void setupFS() {
     debugMsgln(F(" failed to open"),1);
   }
   checkSDCard(SD_CARD_TO_USE);
+}
+
+void blinkySetup(int pin1=33, int pin2=2) {
+  /*
+   * call to setup blinky
+   * Prepare and set configuration of timers
+   * that will be used by LED Controller
+   */
+  ledc_timer_config_t ledc_timer = {LEDC_HIGH_SPEED_MODE, LEDC_timerbits, LEDC_TIMER_0, 200};
+  ledc_timer_config(&ledc_timer); // Set configuration of timer0 for high speed channels
+  ledc_channel[0].gpio_num = pin1;
+  ledc_channel[0].speed_mode = LEDC_HIGH_SPEED_MODE;
+  ledc_channel[0].channel = LEDC_CHANNEL_0;
+  ledc_channel[0].intr_type = LEDC_INTR_FADE_END;
+  ledc_channel[0].timer_sel = LEDC_TIMER_0;
+  ledc_channel[0].duty = (0x00000001 << (LEDC_timerbits) ) - 1;
+  ledc_channel[0].hpoint = 0;
+
+  ledc_channel[1].gpio_num = pin2;
+  ledc_channel[1].speed_mode = LEDC_HIGH_SPEED_MODE;
+  ledc_channel[1].channel = LEDC_CHANNEL_1;
+  ledc_channel[1].intr_type = LEDC_INTR_FADE_END;
+  ledc_channel[1].timer_sel = LEDC_TIMER_0;
+  ledc_channel[1].duty = (0x00000001 << (LEDC_timerbits) ) - 1;
+  ledc_channel[1].hpoint = 0;
+
+  // Set LED Controller with previously prepared configuration
+  for (int ch = 0; ch < 2; ch++) {
+    ledc_channel_config(&ledc_channel[ch]);
+  };
+
+  // Initialize fade service.
+  ledc_fade_func_install(0);
 }

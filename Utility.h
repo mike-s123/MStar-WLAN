@@ -127,6 +127,7 @@ inline String secToMin(String seconds) {
 
 inline void setWlanLED(boolean newState) {
   digitalWrite(WLAN_PIN, newState);
+  digitalWrite(WLAN_PIN_OLD, newState);
 }
 
 String formatIPAsString(IPAddress ip) {
@@ -631,10 +632,62 @@ String formatBytes(uint64_t bytes) {
     uint32_t smallbytes = bytes;
     return String(smallbytes) + " B";
   } else if (bytes < (1024 * 1024)) {
-    return String(bytes / 1024.0) + " KiB";
+    return String(bytes / 1024.0, 3) + " KiB";
   } else if (bytes < (1024 * 1024 * 1024)) {
-    return String(bytes / 1024.0 / 1024.0) + " MiB";
+    return String(bytes / 1024.0 / 1024.0, 3) + " MiB";
   } else {
-    return String(bytes / 1024.0 / 1024.0 / 1024.0) + " GiB";
+    return String(bytes / 1024.0 / 1024.0 / 1024.0, 3) + " GiB";
+  }
+}
+
+void blinky(int blinktime=0, int repeattime=0, uint16_t bright=256, uint16_t dim=256) { // times in ms
+  /*
+   * blinktime is total time for blink, divided between rising and falling
+   * call with parameters to start or change pattern, blinky(0,0,0,) to turn off fully, blinky(1,1,255,255) for on
+   * call without parameters in loop() to maintain blinking.
+   */
+  uint32_t maxduty = (( 0x00000001 << (LEDC_timerbits)) - 1);
+  static uint32_t my_bright = maxduty;
+  static uint32_t my_dim = 0; 
+  static bool ramping_up = true;
+  static uint32_t duty;
+  static uint16_t ramptime, cycletime=1000;
+  static uint64_t delayMillis = millis()+cycletime;
+  if (!blinktime && !repeattime && ledc_get_duty(ledc_channel[0].speed_mode, ledc_channel[0].channel) != duty) {
+    return; // we're not done ramping, and no change requested
+  } else {
+    if (blinktime) ramptime = blinktime/2;
+    if (repeattime) cycletime = repeattime;
+    if (bright<256){
+      my_bright = ((255-bright)/255.0) * maxduty;
+    } else {
+      if (blinktime) my_bright = 0;
+    }
+    if (dim<256) {
+      my_dim    = ((255-dim)/255.0)    * maxduty;
+    } else {
+      if (blinktime) my_dim = maxduty;
+    }
+    
+    if (!ramping_up) {                                                   // we're at full dim
+      if ( millis() < delayMillis ) {
+        return;                           // not done with delay
+      } else {
+        delayMillis = millis()+cycletime;                               // when we ramp up next
+        ramping_up = true;
+        duty = pow((float)my_bright / (float)maxduty, 0.3) * maxduty ;
+        for (int ch = 0; ch < 2; ch++) {
+            ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
+                    ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);
+        }
+      }
+    } else {                  // we're at full dim
+      ramping_up = false;
+      duty = pow((float)my_dim / (float)maxduty,0.3) * maxduty;
+      for (int ch = 0; ch < 2; ch++) {
+          ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
+                  ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);
+      }
+    }
   }
 }
