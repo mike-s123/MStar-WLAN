@@ -640,11 +640,16 @@ String formatBytes(uint64_t bytes) {
   }
 }
 
-void blinky(int blinktime=0, int repeattime=0, uint16_t bright=256, uint16_t dim=256) { // times in ms
+void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint16_t bright=256, uint16_t dim=256) { // times in ms
   /*
-   * blinktime is total time for blink, divided between rising and falling
-   * call with parameters to start or change pattern, blinky(0,0,0,) to turn off fully, blinky(1,1,255,255) for on
-   * call without parameters in loop() to maintain blinking.
+   * blinky() - a very low overhead LED blinker, most stuff is handled in hardware.
+   * 
+   * blinktime is total time for a blink, divided between rising and falling brightness
+   * call with parameters to start or change pattern, blinky(1,ULONG_MAX,0,0) to turn off fully, blinky(1,ULONG_MAX,255,255) for on.
+   * call without parameters in loop() to maintain blinking. Ramping is handled in hardware, and we setup
+   * an interrupt to signal when complete, so we only need to do something here if changing parameters, or
+   * a ramp is complete (so we can ramp in the other direction, or pause...).
+   * 
    */
   uint32_t maxduty = (( 0x00000001 << (LEDC_timerbits)) - 1);
   static uint32_t my_bright = maxduty;
@@ -652,9 +657,10 @@ void blinky(int blinktime=0, int repeattime=0, uint16_t bright=256, uint16_t dim
   static bool ramping_up = true;
   static uint32_t duty;
   static uint16_t ramptime, cycletime=1000;
-  static uint64_t delayMillis = millis()+cycletime;
-  if (!blinktime && !repeattime && ledc_get_duty(ledc_channel[0].speed_mode, ledc_channel[0].channel) != duty) {
-    return; // we're not done ramping, and no change requested
+  static uint64_t nextCycleTime = millis()+cycletime; // when the next cycle will start
+//  if ( (!blinktime && !repeattime && !led_change_done) && (( millis() > nextCycleTime ) && !ramping_up) ) {
+  if ( (!blinktime && !repeattime && !led_change_done) ) {
+    return; // no change requested, and we're not done ramping, and waiting for end of cycle
   } else {
     if (blinktime) ramptime = blinktime/2;
     if (repeattime) cycletime = repeattime;
@@ -669,13 +675,14 @@ void blinky(int blinktime=0, int repeattime=0, uint16_t bright=256, uint16_t dim
       if (blinktime) my_dim = maxduty;
     }
     
-    if (!ramping_up) {                                                   // we're at full dim
-      if ( millis() < delayMillis ) {
-        return;                           // not done with delay
-      } else {
-        delayMillis = millis()+cycletime;                               // when we ramp up next
+    if (!ramping_up) {                                                    // we're at full dim
+      if ( millis() < nextCycleTime ) {                                   // waiting for this cycle to end
+        return;
+      } else {  
+        nextCycleTime = millis()+cycletime;                               // start of a new cycle
         ramping_up = true;
         duty = pow((float)my_bright / (float)maxduty, 0.3) * maxduty ;
+        led_change_done = false;
         for (int ch = 0; ch < 2; ch++) {
             ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
                     ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);
@@ -684,6 +691,7 @@ void blinky(int blinktime=0, int repeattime=0, uint16_t bright=256, uint16_t dim
     } else {                  // we're at full dim
       ramping_up = false;
       duty = pow((float)my_dim / (float)maxduty,0.3) * maxduty;
+      led_change_done =  false;
       for (int ch = 0; ch < 2; ch++) {
           ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
                   ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);

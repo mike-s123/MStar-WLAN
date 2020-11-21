@@ -22,12 +22,12 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201117"
+#define SOFTWARE_VERSION "v2.201120"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
-                     REST fixes. Get files from SD Card if not found in SPIFFS."
+                     REST fixes. Get files from SD Card if not found in SPIFFS. Pulsing LED."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -101,6 +101,7 @@ String ctlLogFileName = CTL_LOGFILE;
 #include <WiFiUdp.h>
 #include <ModbusMaster.h> // 2.0.1 Doc Walker, via IDE
 #include "driver/ledc.h"
+#include "soc/ledc_reg.h"
 
 
 //---------------------------
@@ -231,23 +232,20 @@ const char *fs_type = FS_TYPE;
 
 String esid[4];
 String epass[4];
-boolean wlanConnected = false;
 int wlan_count=0;             // holds how many WLANs configured in EEPROM
 boolean wlanRead = false;     // if we've read SSID/PSKs from EEPROM
 boolean wlanSet = false;      // if we've added them to wifiMulti
 boolean wlansAdded = false;   // if we've added WLANs to wifiMulti
 boolean largeFlash = false;
-boolean wlanLedState = true;
+enum ledStatusStates {lss_APCLIENT, lss_STATION, lss_IDLE, lss_NONE};
+ledStatusStates blinkyState = lss_NONE;
+boolean led_change_done = true;
 boolean noController = true;
 boolean mytz2skip = false; //testing
 boolean psRAMavail = false;
 boolean daytime = false;
 uint32_t mytz2skipMillis;
 
-// used for flashing the WLAN status LED
-int blinkOnTime = 1000;
-int blinkRepeatTime = 2000;
-unsigned long wlanLed_lastMillis = 0;
 unsigned long lastWLANtry;      // when we last tried to connected (or tried) to an AP
 int mbAddr = mbusSlave;
 String model = MODEL;
@@ -339,12 +337,12 @@ void setup() {
 
   setEvents(); // setup regular events.
   blinkySetup(WLAN_PIN,WLAN_PIN_OLD);
+  blinky(1,ULONG_MAX,0,0); // LED OFF
   debugMsgln(F("Leaving setup()"),1);
 } // setup()
 
 void loop() {
   events(); // for EZTime  
-  blinky(); // for LED
   checkNtp();
   if (sd_card_changed) changeSDCard();
   #ifndef DEBUG_ON
@@ -358,10 +356,11 @@ void loop() {
     mbusTCP();
   }
 
-  long unsigned int boot_reset = millis() | 1; // can never be 0
+  long unsigned int boot_reset = millis() | 1; // can never be 0 (arithmatic or)
   while (!digitalRead(BOOT_SW)) {             // BOOT switch is pressed
     delay(100);
     if (millis() > boot_reset + 5000) {       // switch pressed for more than 5 seconds
+      boolean wlanLedState = true;
       boot_reset = 0;                         // doing a reset
       wlanLedState = !wlanLedState;
       setWlanLED(wlanLedState);
@@ -379,12 +378,21 @@ void loop() {
 /*
  *  Blink the LED based on current connection state.
  */
-  if (WiFi.softAPgetStationNum()) {                     // AP client connected, mostly on
-    blinky(275,300);
-  } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA, flash 1/sec
-    wlanConnected = true;
-    blinky(1000, 1000, 128, 8);
-  } else {                                              // no connections, every 10 sec
-    blinky(2000, 2000, 64, 4);
+  if (led_change_done) blinky();                        // maintenance for LED, no need to call if still changing
+  if (WiFi.softAPgetStationNum()) {                     // AP client connected, fast
+    if ( blinkyState != lss_APCLIENT ) {
+      blinkyState = lss_APCLIENT;
+      blinky(300,1000);
+    }
+  } else if (WiFi.status() == WL_CONNECTED) {           // Connected as STA, flash every 2.5 sec
+    if ( blinkyState != lss_STATION ) {
+      blinkyState = lss_STATION;
+      blinky(750, 2500, 255, 8);
+    }
+  } else {                                              // no connections, slower/dimmer
+    if ( blinkyState != lss_IDLE ) {
+      blinkyState = lss_IDLE;
+      blinky(5000, 5000, 64, 4);
+    }
   }
 } // loop()

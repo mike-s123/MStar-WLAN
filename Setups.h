@@ -40,7 +40,7 @@ void setupWLAN() {
   ap_ssid = ap_SSID.c_str();
   //ap_password = AP_PSK;
   WiFi.persistent(true);
-  wlanConnected = connectToWLAN();    // try to connect
+  connectToWLAN();    // try to connect
   lastWLANtry = millis();
 }
 
@@ -159,13 +159,21 @@ void setupFS() {
   checkSDCard(SD_CARD_TO_USE);
 }
 
+static void IRAM_ATTR ledIRQ(void *dummy){
+  // sets a flag when LED ramping is complete.
+  led_change_done = true;
+}
+
 void blinkySetup(int pin1=33, int pin2=2) {
   /*
    * call to setup blinky
    * Prepare and set configuration of timers
    * that will be used by LED Controller
+   * 
+   * All the ramping happens in hardware, so we setup an interrupt to signal when a ramp
+   * is done.
    */
-  ledc_timer_config_t ledc_timer = {LEDC_HIGH_SPEED_MODE, LEDC_timerbits, LEDC_TIMER_0, 200};
+  ledc_timer_config_t ledc_timer = {LEDC_HIGH_SPEED_MODE, LEDC_timerbits, LEDC_TIMER_0, 256};
   ledc_timer_config(&ledc_timer); // Set configuration of timer0 for high speed channels
   ledc_channel[0].gpio_num = pin1;
   ledc_channel[0].speed_mode = LEDC_HIGH_SPEED_MODE;
@@ -178,7 +186,7 @@ void blinkySetup(int pin1=33, int pin2=2) {
   ledc_channel[1].gpio_num = pin2;
   ledc_channel[1].speed_mode = LEDC_HIGH_SPEED_MODE;
   ledc_channel[1].channel = LEDC_CHANNEL_1;
-  ledc_channel[1].intr_type = LEDC_INTR_FADE_END;
+  ledc_channel[1].intr_type = LEDC_INTR_DISABLE;
   ledc_channel[1].timer_sel = LEDC_TIMER_0;
   ledc_channel[1].duty = (0x00000001 << (LEDC_timerbits) ) - 1;
   ledc_channel[1].hpoint = 0;
@@ -189,5 +197,6 @@ void blinkySetup(int pin1=33, int pin2=2) {
   };
 
   // Initialize fade service.
-  ledc_fade_func_install(0);
+  ledc_fade_func_install(ESP_INTR_FLAG_IRAM|ESP_INTR_FLAG_SHARED);
+  ledc_isr_register(ledIRQ, &ledc_channel[0], ESP_INTR_FLAG_IRAM|ESP_INTR_FLAG_SHARED, NULL);
 }
