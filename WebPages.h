@@ -1051,6 +1051,7 @@ void updatePageHandler(AsyncWebServerRequest *request) {
 
   debugMsg(F("response_message size:"),4);
   debugMsgln(String(response_message.length()),4);
-
+  if (logFile) logFile.flush();
+  if (ctl_logFile) ctl_logFile.flush();
   request->send(200, F("text/html"), response_message);
 }

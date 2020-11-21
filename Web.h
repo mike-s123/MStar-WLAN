@@ -214,7 +214,6 @@ void startWeb() {
        && !request->authenticate(root_username.c_str(), root_password.c_str())) {
       return request->requestAuthentication();
     }
-//    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", ELEGANT_HTML, ELEGANT_HTML_SIZE);
     return updatePageHandler(request);
   });
 

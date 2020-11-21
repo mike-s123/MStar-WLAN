@@ -371,7 +371,10 @@ void psLog() {
     mbGetFullReg(reg, 62); // Array Max Output Power (found during sweep)
     logLine += "," + reg.value;
   } 
-  logLine += ",-,-,-"; // spares 1-3, reserved for future use
+  logLine += ",0,0,0";  // Spares 1-3, reserved for future use, 
+                        // because MSView complains if the number of headers doesn't exactly match 
+                        // the number of csv fields. This lets us add new fields in the future and 
+                        // still have the existing log file still work with MSView.
   if (logLine != logLast && logLine.indexOf(F("err")) < 0 ) { // only write an entry if something has changed and no error
     ctl_logFile.print(myTZ.dateTime(ISO8601)+","); // ECMAScript/ISO8601: YYYY-MM-DDTHH:mm...
     ctl_logFile.println(logLine);
@@ -393,7 +396,7 @@ void PSopenLogFile() {
     if (model.startsWith(F("PS-MPPT"))) {
       ctl_logFile.print(F(",\"Solar Max W\""));   // Array Max Output Power (found during sweep)
     }
-    ctl_logFile.print(F("\"Spare1\",\"Spare2\",\"Spare3\""));
+    ctl_logFile.print(F(",\"Spare1\",\"Spare2\",\"Spare3\""));
     ctl_logFile.println();
   }
   debugMsgln("Opened controller log: "+ctlLogFileName,1);
