@@ -315,7 +315,7 @@ int psGetSn() {
 
 void psGetCtlLogFileName() {
   if (ctlSerialNum == "00000000") psGetSn(); // try twice if needed
-  ctlLogFileName = "/ctl" + ctlSerialNum + ".log" ;
+  ctlLogFileName = "/ctl" + ctlSerialNum + ".csv" ;
   debugMsgln("ctlLogFileName set to:"+ctlLogFileName, 1);
 }
 
@@ -397,5 +397,5 @@ void PSopenLogFile() {
     ctl_logFile.println();
   }
   debugMsgln("Opened controller log: "+ctlLogFileName,1);
-  server.serveStatic("/controller.log",SD,ctlLogFileName.c_str()); 
+  server.serveStatic("/controller.csv",SD,ctlLogFileName.c_str()); 
 }

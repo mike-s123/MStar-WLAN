@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201120"
+#define SOFTWARE_VERSION "v2.201121"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -81,7 +81,7 @@ using namespace std;
 File logFile;                         // platform log file
 String logFileName;
 File ctl_logFile;                     // controller log file
-#define CTL_LOGFILE "/ctl.log"        // default, must start with /
+#define CTL_LOGFILE "/ctl.csv"        // default, must start with /
 String ctlLogFileName = CTL_LOGFILE;
 #ifdef EZT_DEBUG
   File ezt_logFile;                   // ez-time log file
