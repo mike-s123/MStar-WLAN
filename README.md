@@ -4,7 +4,7 @@
 
 This project includes both a software and hardware design for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). It's 99.99% working, with features still being added. The development core is an ESP32-WROVER-B 16MB (~$5 from Mouser) or an ESP32 DevkitC v4. A complete build should be ~$40, ignoring your time. Those platforms were chosen because they're available with a relatively large flash (16 MiB) for storing files, which allows having documentation and support for multiple solar controllers on-board. Supports MS-View compatible logging of controller info to an SD card, in addition to a debugging log. There's support for monitoring and configuration via a web interface, Modbus/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
 
-A core with less flash memory should work fine as long as the "data" directory will fit. The code supports moving content from flash to the SD Card. If a file is not found in flash, it will look for it on the SD Card. Put "data-small" into SPIFFS, and the "Put on SD Card - small" directory onto an SD Card to use an ESP32 board with less flash. The additional flash memory on the recommended modules is there in order to support all the static files even without an SD Card present.
+A core with less flash memory should work fine as long as the "data" directory will fit. The code supports moving content from flash to the SD Card. If a file is not found in flash, it will look for it on the SD Card. Delete everything in the "data" directory, copy everything from "data-small" into "data", and then copy everything in the "Put on SD Card - small" directory onto an SD Card to use an ESP32 board with less flash. The additional flash memory on the recommended modules is there in order to support all the static files even without an SD Card present.
 
 It is written using the [Arduino IDE](https://www.arduino.cc/en/Main/Software), which is a bit "odd", hence code being split for clarity amongst multiple .h files. If you know how to do it better, please contribute. Yes, I know some of the code is butt-ugly. But it works. Function over form.
 
@@ -34,7 +34,7 @@ Library requirements are noted in the .ino file. The [ESP32](https://github.com/
 
 Initially, the "data" directory needs to be uploaded to the board from the IDE (using the [arduino-esp32fs-plugin](https://github.com/me-no-dev/arduino-esp32fs-plugin)) or via OTA (Utility tab, will require files on the SD Card).
 
-Uploadable code (MStar-WLAN.ino.esp32.bin) and flash (MStar-WLAN.spiffs.bin) binaries are provided here, which can be flashed using the OTA capability after the initial setup. 
+Uploadable code (MStar-WLAN.ino.esp32.bin) and flash (MStar-WLAN.littlefs.bin) binaries are provided here, which can be flashed using the OTA capability after the initial setup. 
 
 The data/ctl/*.csv files are used to define the different controllers. data/csv_file_desc.txt describes the format.
 
@@ -50,7 +50,7 @@ SSID, names and passwords can be changed (Utility tab, Security settings). To re
 
 Connecting to http://192.168.4.1/ will display the main status page. Other pages are shown along the top. "Utility/Wireless settings" will allow you to connect to a wireless network, from which the MStar-WLAN will get an address via DHCP (check your DHCP server to see what address it received). You can then connect to the internal web server at that address. The firmware also informs the DCHP server with a (statistically) unique hostname of the form "MStar-WLAN-xxxxxx", where the xs are the last 3 octets of the MAC address in hex.
 
-OTA updates are done from the Utility tab, "Update WLAN module firmware" link. OTA updates of the flash (/data) image are also possible. File names are "MStar-WLAN.ino.esp32.bin" and "MStar-WLAN.spiffs.bin". 
+OTA updates are done from the Utility tab, "Update WLAN module firmware" link. OTA updates of the flash (/data) image are also possible. File names are "MStar-WLAN.ino.esp32.bin" and "MStar-WLAN.littlefs.bin". 
 
 ![image of status page](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/status.png)
 
