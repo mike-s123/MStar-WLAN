@@ -22,12 +22,13 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201121"
+#define SOFTWARE_VERSION "v2.201123"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
-                     REST fixes. Get files from SD Card if not found in SPIFFS. Pulsing LED."
+                     REST fixes. Get files from SD Card if not found in SPIFFS. Pulsing LED.<br/>\
+                     Change to LITTLEFS."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -67,10 +68,18 @@ using namespace std;
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <FS.h>
-#define FS_SPIFFS
-#define FILESYSTEM SPIFFS
-#define FS_TYPE "SPIFFS"
-#include <SPIFFS.h>
+#define USE_LittleFS
+#ifdef USE_LittleFS
+  #define FILESYSTEM LITTLEFS
+  #define FS_TYPE "LITTLEFS"
+  #define SPIFFS LITTLEFS
+  #include <LITTLEFS.h>         // GPL v2, https://spdx.org/licenses/BSD-3-Clause.html
+#else
+  #define FILESYSTEM SPIFFS
+  #define FS_TYPE "SPIFFS"
+  #include <SPIFFS.h>
+#endif 
+
 #include <SD.h>                 // 1.0.5
 #include <SPI.h>
 #include <sys/time.h>

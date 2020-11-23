@@ -281,7 +281,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
     response_message += getTableRow2Col(F("AP IP"), formatIPAsString(softapip));
     response_message += getTableRow2Col(F("AP MAC"), WiFi.softAPmacAddress());
     response_message += getTableRow2Col(F("AP SSID"), ap_ssid.c_str());
-    response_message += getTableRow2Col(F("AP connections"),String(WiFi.softAPgetStationNum()));
+    response_message += getTableRow2Col(F("Clients connected"),String(WiFi.softAPgetStationNum()));
   }
   float pwr = WiFi.getTxPower()/4.0;
   response_message += getTableRow2Col(F("Tx power"), String(pwr)+" dBm" );
@@ -328,8 +328,13 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += getTableRow2Col(F("Internal total heap"), formatBytes(ESP.getHeapSize()));
   response_message += getTableRow2Col(F("Internal free heap"), formatBytes(ESP.getFreeHeap()));
   response_message += getTableRow2Col(F("Internal min free heap"), formatBytes(ESP.getMinFreeHeap()));
-  response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
-  response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
+  #ifdef USE_LittleFS
+    response_message += getTableRow2Col(F("LITTLEFS size"), formatBytes(SPIFFS.totalBytes()));
+    response_message += getTableRow2Col(F("LITTLEFS used"), formatBytes(SPIFFS.usedBytes()));
+  #else
+    response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
+    response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
+  #endif
   if (sd_card_available) {
     response_message += getTableRow2Col(F("SD card size"), formatBytes(SD.cardSize()));
     response_message += getTableRow2Col(F("SD card used"), formatBytes(SD.usedBytes()));
