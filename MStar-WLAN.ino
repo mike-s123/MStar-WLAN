@@ -9,9 +9,9 @@
  *   vTables: IRAM
  *   240 MHz
  *   
- *  ESP32 - WROOM (4 MB), use "data-small" folder for SPIFFS, put other files on SD-Card.
+ *  ESP32 - WROOM (4 MB), use "data-small" folder for littlefs, put other files on SD-Card.
  *    -ESP32 Dev Module
- *    -Default 4 MB w/SPIFFS (1.2 MB APP/1.5MB SPIFFS)
+ *    -Default 4 MB w/littlefs (1.2 MB APP/1.5MB littlefs)
  *  
  *   Original work, License CC BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  *   All rights reserved. Some parts subject to other licenses as noted.
@@ -22,13 +22,13 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201123"
+#define SOFTWARE_VERSION "v2.201124"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
-                     REST fixes. Get files from SD Card if not found in SPIFFS. Pulsing LED.<br/>\
-                     Change to LITTLEFS."
+                     REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
+                     Change to littlefs."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -68,15 +68,14 @@ using namespace std;
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <FS.h>
-#define USE_LittleFS
-#ifdef USE_LittleFS
+#define USE_LITTLEFS
+#ifdef USE_LITTLEFS
   #define FILESYSTEM LITTLEFS
-  #define FS_TYPE "LITTLEFS"
-  #define SPIFFS LITTLEFS
+  #define FS_NAME "littlefs"
   #include <LITTLEFS.h>         // GPL v2, https://spdx.org/licenses/BSD-3-Clause.html
 #else
   #define FILESYSTEM SPIFFS
-  #define FS_TYPE "SPIFFS"
+  #define FS_NAME "SPIFFS"
   #include <SPIFFS.h>
 #endif 
 
@@ -237,7 +236,6 @@ string root_username = UPDATE_USERNAME;
 string root_password = UPDATE_PASSWORD;
 string serialNumber = SERIAL_NUMBER;
 const char *update_path = UPDATE_PATH;
-const char *fs_type = FS_TYPE;
 
 String esid[4];
 String epass[4];

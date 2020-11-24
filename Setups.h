@@ -147,13 +147,13 @@ void changeSDCard(){
 }
 
 void setupFS() {
-  debugMsg(fs_type,1);
+  debugMsg(FS_NAME,1);
   debugMsgln(F(" starting"),1);
   if ( FILESYSTEM.begin() ) {
-    debugMsg(FS_TYPE,1);
+    debugMsg(FS_NAME,1);
     debugMsgln(F(" opened"),1);
   } else {
-    debugMsg(FS_TYPE,1);
+    debugMsg(FS_NAME,1);
     debugMsgln(F(" failed to open"),1);
   }
   checkSDCard(SD_CARD_TO_USE);

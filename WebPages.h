@@ -328,13 +328,12 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += getTableRow2Col(F("Internal total heap"), formatBytes(ESP.getHeapSize()));
   response_message += getTableRow2Col(F("Internal free heap"), formatBytes(ESP.getFreeHeap()));
   response_message += getTableRow2Col(F("Internal min free heap"), formatBytes(ESP.getMinFreeHeap()));
-  #ifdef USE_LittleFS
-    response_message += getTableRow2Col(F("LITTLEFS size"), formatBytes(SPIFFS.totalBytes()));
-    response_message += getTableRow2Col(F("LITTLEFS used"), formatBytes(SPIFFS.usedBytes()));
-  #else
-    response_message += getTableRow2Col(F("SPIFFS size"), formatBytes(SPIFFS.totalBytes()));
-    response_message += getTableRow2Col(F("SPIFFS used"), formatBytes(SPIFFS.usedBytes()));
-  #endif
+  String fs = FS_NAME;
+  fs += " size";
+  response_message += getTableRow2Col(fs, formatBytes(FILESYSTEM.totalBytes()));
+  fs = FS_NAME;
+  fs += " used";
+  response_message += getTableRow2Col(fs, formatBytes(FILESYSTEM.usedBytes()));
   if (sd_card_available) {
     response_message += getTableRow2Col(F("SD card size"), formatBytes(SD.cardSize()));
     response_message += getTableRow2Col(F("SD card used"), formatBytes(SD.usedBytes()));
