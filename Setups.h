@@ -147,8 +147,6 @@ void changeSDCard(){
 }
 
 void setupFS() {
-  debugMsg(FS_NAME,1);
-  debugMsgln(F(" starting"),1);
   if ( FILESYSTEM.begin() ) {
     debugMsg(FS_NAME,1);
     debugMsgln(F(" opened"),1);
