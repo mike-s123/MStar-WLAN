@@ -16,7 +16,16 @@ The .csv files get copied to ~/Documents/Arduino/hardware/espressif/esp32/tools/
 =============
 Using symlinks (assumes Git Bash available). Board will be listed in it's own section.
 
-cd ~/Documents/Arduino/hardware
+#!/bin/bash
+
+CURDIR=$PWD
+cd ~/Documents/Arduino/hardware/
+rm -r MStar-WLAN
+cd espressif/esp32
+git pull -v
+cd ~/Documents/Arduino/hardware/espressif/esp32/tools
+./get.exe
+cd ~/Documents/Arduino/hardware/
 mkdir MStar-WLAN
 mkdir MStar-WLAN/esp32
 cd MStar-WLAN/esp32
@@ -26,5 +35,5 @@ rm platform.txt
 cp ../../../MStar-WLAN/forArduinoIDE/MStar-WLAN_boards.txt ./boards.txt
 cp ../../../MStar-WLAN/forArduinoIDE/MStar-WLAN_platform.txt ./platform.txt
 cp ../../../MStar-WLAN/forArduinoIDE/*.csv ./tools/partitions
-
-
+cp ../../../MStar-WLAN/forArduinoIDE/esptool.exe ./tools/esptool/esptool.exe
+cd $CURDIR

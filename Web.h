@@ -205,6 +205,14 @@ void startWeb() {
     sdPageHandler(request->url(), request);
   });
 
+  #ifdef OTA_JS_FROM_PROGMEM
+    server.on("/OTA.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      debugMsgln("server.on(/OTA.js from PROGMEM)",1);
+      AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", OTA_js_gz, sizeof(OTA_js_gz));
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response);
+    });
+  #endif
 
   AsyncMyOTA.begin(&server, root_username.c_str(), root_password.c_str());    // Start
   AsyncMyOTA.setID(my_hostname.c_str());
