@@ -116,17 +116,21 @@ class AsyncMyOtaClass{
                         return request->send(400, "text/plain", "MD5 parameter invalid");
                     }
                     
-/*                    debugMsgln("OTA filename:"+filename,1);
-
-                    int cmd = (filename.indexOf(F(".spiffs.bin")) > -1 ) ? U_SPIFFS : U_FLASH;
-                    if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) {
-                      debugMsgln(F("OTA bad filename"),1);
-                      return; // wrong image for ESP32
+                    debugMsgln("OTA filename:"+filename,2);
+                    String fs_name_id;
+                    if (FS_NAME == "littlefs") {
+                      fs_name_id = F(".littlefs.bin");
+                    } else {
+                      fs_name_id = F(".spiffs.bin");
                     }
-*/
-                    int cmd = (filename == "filesystem") ? U_SPIFFS : U_FLASH;
+                    int cmd = (filename.indexOf(fs_name_id) > -1 ) ? U_SPIFFS : U_FLASH;
+                    if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) {
+                      debugMsgln(F("OTA bad filename"),2);
+                      return request->send(400, "text/plain", "OTA bad filename or type");; // wrong image for ESP32
+                    }
+
                     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) { // Start with max available size
-                      Update.printError(Serial);
+//                      Update.printError(Serial);
                       return request->send(400, "text/plain", "OTA could not begin");
                     }
 

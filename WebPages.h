@@ -1051,6 +1051,7 @@ void updatePageHandler(AsyncWebServerRequest *request) {
   response_message += "<noscript><strong>We're sorry but OTA doesn't work properly without JavaScript enabled."
                       " Please enable it to continue.</strong></noscript><div id=\"app\"></div>"
                       "<script src=\"/OTA.js\"> defer</script>";
+  response_message += "<center><h3>Over-The-Air firmware updater</h2></center>";
   response_message += getHTMLFoot();
 
   debugMsg(F("response_message size:"),4);

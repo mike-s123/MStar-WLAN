@@ -22,13 +22,13 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201124"
+#define SOFTWARE_VERSION "v2.201125"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
                      REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
-                     Change to littlefs."
+                     Change to littlefs. Improve OTA."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -49,7 +49,7 @@ using namespace std;
 #define WIFI_MODE_AP_STA                // define to run AP while also connected as station
 #define PS_RAM    // use WROVER PS-RAM
 #include <string>
-#include <sstream>
+//#include <sstream>
 #include <EEPROM.h>   // 1.0.3
 #include <FS.h>       // 1.0
 #include <Wire.h>     // 1.0.1
@@ -85,7 +85,7 @@ using namespace std;
 //  #include "SdFat.h"
 #include <HardwareSerial.h>
 #include "driver/uart.h"
-#include "StreamUtils.h"              // 1.5.0 https://github.com/bblanchon/ArduinoStreamUtils (MIT License)
+//#include "StreamUtils.h"              // 1.5.0 https://github.com/bblanchon/ArduinoStreamUtils (MIT License)
 File logFile;                         // platform log file
 String logFileName;
 File ctl_logFile;                     // controller log file
