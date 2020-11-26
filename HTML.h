@@ -363,7 +363,7 @@ String getJsButton(String buttonText, String onClick) {
   return result;
 }
 
-String getContentType(String filename) { // file extension to the MIME type
+String getMIMEtype(String filename) { // file extension to the MIME type https://www.iana.org/assignments/media-types/media-types.xhtml
   if      (filename.endsWith(F(".html"))) return F("text/html");
   else if (filename.endsWith(F(".htm"))) return F("text/html");
   else if (filename.endsWith(F(".css"))) return F("text/css");

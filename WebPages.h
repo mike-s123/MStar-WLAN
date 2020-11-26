@@ -966,7 +966,7 @@ bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
   if (path.endsWith(".src")) {
     path = path.substring(0, path.lastIndexOf("."));
   } 
-  dataType = getContentType(path);
+  dataType = getMIMEtype(path);
   
   if (logFile) logFile.flush();      // flush logs
   if (ctl_logFile) ctl_logFile.flush();
