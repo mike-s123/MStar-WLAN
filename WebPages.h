@@ -962,10 +962,6 @@ bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
   if (path.endsWith("/")) {
     path += "index.htm";
   }
-
-  if (path.endsWith(".src")) {
-    path = path.substring(0, path.lastIndexOf("."));
-  } 
   dataType = getMIMEtype(path);
   
   if (logFile) logFile.flush();      // flush logs

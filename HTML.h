@@ -364,17 +364,21 @@ String getJsButton(String buttonText, String onClick) {
 }
 
 String getMIMEtype(String filename) { // file extension to the MIME type https://www.iana.org/assignments/media-types/media-types.xhtml
+//  if (filename.endsWith(".src")) {
+//    filename = filename.substring(0, path.lastIndexOf("."));      // not clear why?
+//  } 
   if      (filename.endsWith(F(".html"))) return F("text/html");
-  else if (filename.endsWith(F(".htm"))) return F("text/html");
-  else if (filename.endsWith(F(".css"))) return F("text/css");
-  else if (filename.endsWith(F(".js"))) return F("application/javascript");
-  else if (filename.endsWith(F(".ico"))) return F("image/x-icon");
-  else if (filename.endsWith(F(".png"))) return F("image/png");
-  else if (filename.endsWith(F(".gif"))) return F("image/gif");
-  else if (filename.endsWith(F(".jpg"))) return F("image/jpeg");
-  else if (filename.endsWith(F(".xml"))) return F("text/xml");
-  else if (filename.endsWith(F(".pdf"))) return F("application/pdf");
-  else if (filename.endsWith(F(".zip"))) return F("application/zip");
-  else if (filename.endsWith(F(".gz"))) return F("application/gzip");
+  else if (filename.endsWith(F(".htm")))  return F("text/html");
+  else if (filename.endsWith(F(".css")))  return F("text/css");
+  else if (filename.endsWith(F(".js")))   return F("application/javascript");
+  else if (filename.endsWith(F(".ico")))  return F("image/x-icon");  // non-standard
+  else if (filename.endsWith(F(".png")))  return F("image/png");
+  else if (filename.endsWith(F(".gif")))  return F("image/gif");
+  else if (filename.endsWith(F(".jpg")))  return F("image/jpeg");
+  else if (filename.endsWith(F(".xml")))  return F("text/xml");
+  else if (filename.endsWith(F(".pdf")))  return F("application/pdf");
+  else if (filename.endsWith(F(".zip")))  return F("application/zip");
+  else if (filename.endsWith(F(".gz")))   return F("application/gzip");
+  else if (filename.endsWith(F(".json"))) return F("application/json");
   return F("text/plain");
 }
