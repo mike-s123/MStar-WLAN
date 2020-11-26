@@ -610,7 +610,7 @@ void wlanPageHandler(AsyncWebServerRequest *request)
   response_message += "<br/>";
 
   response_message += getFormHead("&nbsp;");
-  response_message += (F("<h3>(Changes below are immediate)</h3>"));
+  response_message += (F("<h3>(Changes below are immediate, but may require a reboot)</h3>"));
   response_message += getTableHead2Col(F("WLAN"), F("SSID"), F("PSK (password)"));
   for (int i = 0 ; i < 4 ; i++ ) { 
       String esidvar[4];
@@ -965,28 +965,9 @@ bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
 
   if (path.endsWith(".src")) {
     path = path.substring(0, path.lastIndexOf("."));
-  } else if (path.endsWith(".htm")) {
-    dataType = "text/html";
-  } else if (path.endsWith(".css")) {
-    dataType = "text/css";
-  } else if (path.endsWith(".js")) {
-    dataType = "application/javascript";
-  } else if (path.endsWith(".png")) {
-    dataType = "image/png";
-  } else if (path.endsWith(".gif")) {
-    dataType = "application/gzip";
-  } else if (path.endsWith(".jpg")) {
-    dataType = "image/jpeg";
-  } else if (path.endsWith(".ico")) {
-    dataType = "image/x-icon";
-  } else if (path.endsWith(".xml")) {
-    dataType = "text/xml";
-  } else if (path.endsWith(".pdf") || path.endsWith(".pdf.gz")) {
-    dataType = "application/pdf";
-  } else if (path.endsWith(".zip")) {
-    dataType = "application/zip";
-  }
-
+  } 
+  dataType = getContentType(path);
+  
   if (logFile) logFile.flush();      // flush logs
   if (ctl_logFile) ctl_logFile.flush();
   #ifdef EZT_DEBUG

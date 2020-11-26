@@ -11,27 +11,8 @@ bool serveFile(String path, AsyncWebServerRequest *request) {
   }
   if (path.endsWith(".src")) {
     path = path.substring(0, path.lastIndexOf("."));
-  } else if (path.endsWith(".htm") || path.endsWith(".html")) {
-    dataType = "text/html";
-  } else if (path.endsWith(".css")) {
-    dataType = "text/css";
-  } else if (path.endsWith(".js")) {
-    dataType = "application/javascript";
-  } else if (path.endsWith(".png")) {
-    dataType = "image/png";
-  } else if (path.endsWith(".gif")) {
-    dataType = "image/gif";
-  } else if (path.endsWith(".jpg")) {
-    dataType = "image/jpeg";
-  } else if (path.endsWith(".ico")) {
-    dataType = "image/x-icon";
-  } else if (path.endsWith(".xml")) {
-    dataType = "text/xml";
-  } else if (path.endsWith(".pdf")) {
-    dataType = "application/pdf";
-  } else if (path.endsWith(".zip")) {
-    dataType = "application/zip";
   }
+  dataType = getContentType(path);
   File dataFile = FILESYSTEM.open(path, "r");
   if (dataFile.isDirectory()) {
     path += "/index.htm";

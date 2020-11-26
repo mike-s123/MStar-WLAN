@@ -363,7 +363,7 @@ String getJsButton(String buttonText, String onClick) {
   return result;
 }
 
-String getContentType(String filename) { // convert the file extension to the MIME type
+String getContentType(String filename) { // file extension to the MIME type
   if      (filename.endsWith(F(".html"))) return F("text/html");
   else if (filename.endsWith(F(".htm"))) return F("text/html");
   else if (filename.endsWith(F(".css"))) return F("text/css");
@@ -373,8 +373,8 @@ String getContentType(String filename) { // convert the file extension to the MI
   else if (filename.endsWith(F(".gif"))) return F("image/gif");
   else if (filename.endsWith(F(".jpg"))) return F("image/jpeg");
   else if (filename.endsWith(F(".xml"))) return F("text/xml");
-  else if (filename.endsWith(F(".pdf"))) return F("application/x-pdf");
-  else if (filename.endsWith(F(".zip"))) return F("application/x-zip");
-  else if (filename.endsWith(F(".gz"))) return F("application/x-gzip");
+  else if (filename.endsWith(F(".pdf"))) return F("application/pdf");
+  else if (filename.endsWith(F(".zip"))) return F("application/zip");
+  else if (filename.endsWith(F(".gz"))) return F("application/gzip");
   return F("text/plain");
 }
