@@ -3,3 +3,4 @@ MStar-WLAN.spiffs.bin
 MStar-WLAN.mklittlefs.bin
 MStar-WLAN.spiffs.esp32.bin
 foo/*
+local/*

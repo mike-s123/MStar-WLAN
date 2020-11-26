@@ -22,13 +22,14 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201125c"
+#define SOFTWARE_VERSION "v2.201126"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
                      REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
-                     Change to littlefs. Improve OTA. Serve important stuff from PROGMEM."
+                     Change to littlefs. Improve OTA. Serve important stuff from PROGMEM.<br/>\
+                     Settable debug level."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -80,6 +81,7 @@ using namespace std;
 #endif 
 #define PROGMEM_FILES               // serves important files from PROGMEM instead of flash,
                                     // reduces dependence on filesystem. OTA.js, local.js, local.css
+                                    // if files are found on SD Card, they will be used instead
 
 #include <SD.h>                 // 1.0.5
 #include <SPI.h>

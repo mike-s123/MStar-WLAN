@@ -95,6 +95,17 @@ function setCred ( where, user, pass ) {
   xhr.send() ;
 }
 
+function setDebugLvl ( level ) {
+  if (level > 9) {level = 9} ;
+  if (level < 1) {level = 1} ;
+  var theUrl = "/cmd?setdebuglvl=" + encodeURIComponent(level) + "&version=" + Math.random() ;
+  var theLvl = level ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("debuglvl").innerHTML = level;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
 function setRtcTime () {
 	/* format time as YYYYMMDDdHHMMSS */
 	var currentTime = new Date();

@@ -190,24 +190,37 @@ void startWeb() {
 
   #ifdef PROGMEM_FILES
     server.on("/OTA.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
-      debugMsgln("server.on(/OTA.js from PROGMEM)",3);
-      AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", OTA_js_gz, sizeof(OTA_js_gz));
-      response->addHeader("Content-Encoding", "gzip");
-      response->addHeader("Cache-Control", "max-age=43200");
-      request->send(response);
+      if (sd_card_available && loadFromSdCard(request->url(), request)) {   // look on SD Card first
+        debugMsgln("server.on(/OTA.js from SD Card)",3);
+      } else {
+        debugMsgln("server.on(/OTA.js from PROGMEM)",3);
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", OTA_js_gz, sizeof(OTA_js_gz));
+        response->addHeader("Content-Encoding", "gzip");
+        response->addHeader("Cache-Control", "max-age=43200");
+        request->send(response);
+      }
     });
+    
     server.on("/local.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
-      debugMsgln("server.on(/local.js from PROGMEM)",3);
-      AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", local_js, sizeof(local_js));
-      response->addHeader("Cache-Control", "max-age=43200");
-      request->send(response);
+      if (sd_card_available && loadFromSdCard(request->url(), request)) {   // look on SD Card first
+        debugMsgln("server.on(/local.js from SD Card)",3);
+      } else {
+        debugMsgln("server.on(/local.js from PROGMEM)",3);
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", local_js, sizeof(local_js));
+        response->addHeader("Cache-Control", "max-age=43200");
+        request->send(response);
+      }
     });
 
     server.on("/local.css", HTTP_GET, [] (AsyncWebServerRequest *request) {
-      debugMsgln("server.on(/local.css from PROGMEM)",3);
-      AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", local_css, sizeof(local_css));
-      response->addHeader("Cache-Control", "max-age=43200");
-      request->send(response);
+      if (sd_card_available && loadFromSdCard(request->url(), request)) {   // look on SD Card first
+        debugMsgln("server.on(/local.css from SD Card)",3);
+      } else {
+        debugMsgln("server.on(/local.css from PROGMEM)",3);
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", local_css, sizeof(local_css));
+        response->addHeader("Cache-Control", "max-age=43200");
+        request->send(response);
+      }
     });
   #endif
 

@@ -48,7 +48,7 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
   bool wlanPsk=false, wlanSsid=false;
   enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, \
                   set_rtc_ntp, cfg_ntp, clr_dlog, clr_clog, set_apssid, set_cred, set_jsonpass, \
-                  set_appsk, set_hostname};
+                  set_appsk, set_hostname, set_debuglvl};
   commands cmd;
   debugMsg(F("SET args received:"),4);
   debugMsgln(String(numArgs),4);
@@ -88,6 +88,9 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
     } else if ( request->argName(i) == F("setjsonpass") ) {
       cmd = set_jsonpass;
       pass = request->arg(i);
+    } else if ( request->argName(i) == F("setdebuglvl") ) {
+      cmd = set_debuglvl;
+      value = request->arg(i);
     } else if ( request->argName(i) == F("sethostname") ) {
       cmd = set_hostname;
       hostname = request->arg(i);
@@ -185,6 +188,11 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
                     break;
     case set_jsonpass: json_password = pass.c_str();
                     storeStringInEEPROM(pass, eeJsonPass, 16);
+                    break;
+    case set_debuglvl: debug_level = value.toInt();
+                    debugMsg(F("Debug level set to: "),1);
+                    debugMsgln(String(debug_level),1);
+ //                   storeStringInEEPROM(pass, debug_level, xxx);
                     break;
     case set_hostname: 
                     my_hostname = hostname.c_str();
@@ -470,8 +478,8 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   response_message.reserve(30000);
   response_message = getHTMLHead();
   response_message += getNavBar();
-
-  response_message += F("<center><h3>(Changes below are immediate)</h3></center>");
+  response_message += F("<center><img src=\"/img/lock.png\" alt=\"lock\"><br/>");
+  response_message += F("<h3>(Changes below are immediate,<br/>but may require a reboot)</h3></center>");
 
   response_message += getFormHead("&nbsp;");
   response_message += getTableHead2Col(F("Admin Account"), F("Name"), F("Password"));
@@ -504,6 +512,15 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   response_message += json_password.c_str();
   response_message += "\" onchange=\"setJSONpass(this.value)\">";
   response_message += getFormFoot();
+
+#ifdef DEBUG_ON
+  response_message += getFormHead("Debug level");
+  response_message += "<label for=\"debuglvl\">Debug level (immediate but temporary):</label>";
+  response_message += "<input type=\"number\" id=\"debuglvl\" name=\"debuglvl\" min=\"1\" max=\"9\" size=\"32\" value=\"";
+  response_message += String(debug_level);
+  response_message += "\" onchange=\"setDebugLvl(this.value)\">";
+  response_message += getFormFoot();
+#endif
 
   response_message += getHTMLFoot();
 

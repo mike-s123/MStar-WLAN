@@ -479,13 +479,13 @@ void oncePerMinute() { // not necessarily _on_ the minute
       }
     }
     ms_diff = -(opm_millis - opm_ms - opm_rtc_ms);
-    debugMsgln("opm_millis:"+String(opm_millis),4);
-    debugMsgln("opm_ms:"+String(opm_ms),4);
-    debugMsgln("opm_rtc_ms:"+String(opm_rtc_ms),4);
-    debugMsgln("ms_diff:"+String(ms_diff),4);
+    debugMsgln("opm_millis:"+String(opm_millis),5);
+    debugMsgln("opm_ms:"+String(opm_ms),5);
+    debugMsgln("opm_rtc_ms:"+String(opm_rtc_ms),5);
+    debugMsgln("ms_diff:"+String(ms_diff),5);
   
     if (ms_diff < -999 || ms_diff > 999) { // sanity check, 
-      debugMsg(F("ms_diff out of bounds:"),3);
+      debugMsg(F("ms_diff out of bounds:"),2);
       debugMsgln(String(ms_diff),3);
       return;
     }
@@ -496,7 +496,7 @@ void oncePerMinute() { // not necessarily _on_ the minute
     debugMsgln("real_rtc_diff_ms:"+String(real_rtc_diff_ms),5);
     // moving average-like filter, 1000000 (1000 second) offset because it underflows on negative numbers
     rtc_diff_filtered = rtc_diff_ewmat.filter(real_rtc_diff_ms+1000000)-1000000; 
-    debugMsgln("RTC diff real/filt:" + String(real_rtc_diff_ms) + "/" + String(rtc_diff_filtered),3);
+    debugMsgln("RTC diff real/filt:" + String(real_rtc_diff_ms) + "/" + String(rtc_diff_filtered),4);
     
 
     if (timeStatus() == timeSet && abs(real_rtc_diff_ms - rtc_diff_filtered) < 5 ) {  // only if NTP is running and
