@@ -22,13 +22,13 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201125a"
+#define SOFTWARE_VERSION "v2.201125b"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
                      REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
-                     Change to littlefs. Improve OTA. OTA.js from PROGMEM."
+                     Change to littlefs. Improve OTA. Serve important stuff from PROGMEM."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -38,11 +38,6 @@ using namespace std;
   //#define DEBUG_ESP_HTTP_SERVER
   //#define DEBUG_ESP_CORE
   //#define EZT_DEBUG DEBUG           // for EZTime
-#endif
-
-#define OTA_JS_FROM_PROGMEM         // serves OTA.js from PROGMEM instead of flash
-#ifdef OTA_JS_FROM_PROGMEM
-  #include "OTA_js_gz.h"
 #endif
 
 /*
@@ -83,6 +78,8 @@ using namespace std;
   #define FS_NAME "SPIFFS"
   #include <SPIFFS.h>
 #endif 
+#define PROGMEM_FILES               // serves important files from PROGMEM instead of flash,
+                                    // reduces dependence on filesystem. OTA.js, local.js, local.css
 
 #include <SD.h>                 // 1.0.5
 #include <SPI.h>

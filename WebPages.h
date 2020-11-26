@@ -141,21 +141,22 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
     case write_coil: MBus_write_coil(addr, data);
                     break;
     case clr_clog:  if(sd_card_available) {
-                      debugMsgln(F("Clearing controller log"),1);
+                      debugMsgln(F("Clearing controller log"),3);
                       if (SD.exists(ctlLogFileName)) {
                         ctl_logFile.close();
                         SD.remove(ctlLogFileName);
                         refreshCtlLogFile();
-                        response_message = getHTMLHead();
-                        response_message += F("Controller log cleared<script>setTimeout(() => { history.back(); }, 1500);</script>");
-                        response_message += getHTMLFoot();
-                        request->send(200, F("text/html"), response_message);
-                        return;
-                      }
+                        debugMsgln(F("Controller log cleared"),1);
+                      }; 
+                      response_message = getHTMLHead();
+                      response_message += F("Controller log cleared<script>setTimeout(() => { history.back(); }, 1500);</script>");
+                      response_message += getHTMLFoot();
+                      request->send(200, F("text/html"), response_message);
+                      return;
                     }
                     break;
     case clr_dlog:  if(sd_card_available) {
-                      debugMsgln(F("Clearing debug log"),1);
+                      debugMsgln(F("Clearing debug log"),3);
                       if (SD.exists(logFileName)) {
                         logFile.close();
                         SD.remove(logFileName);
@@ -1051,7 +1052,7 @@ void updatePageHandler(AsyncWebServerRequest *request) {
   response_message += "<noscript><strong>We're sorry but OTA doesn't work properly without JavaScript enabled."
                       " Please enable it to continue.</strong></noscript><div id=\"app\"></div>"
                       "<script src=\"/OTA.js\"> defer</script>";
-  response_message += "<center><h3>Over-The-Air firmware updater</h2></center>";
+  response_message += "<center><h3>Over-The-Air updater</h2></center>";
   response_message += getHTMLFoot();
 
   debugMsg(F("response_message size:"),4);

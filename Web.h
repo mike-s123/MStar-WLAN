@@ -47,6 +47,10 @@ bool serveFile(String path, AsyncWebServerRequest *request) {
   return true;
 }
 
+#ifdef PROGMEM_FILES
+  #include "PROGMEM_FILES.h"
+#endif
+
 void startWeb() { 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     statusPageHandler(request);
@@ -189,13 +193,14 @@ void startWeb() {
   // cache for 12 hours.
   server.serveStatic("/ctl/",       FILESYSTEM, "/ctl/",        "max-age=43200");
   server.serveStatic("/img/",       FILESYSTEM, "/img/",        "max-age=43200");
-  server.serveStatic("/local.js",             FILESYSTEM, "/local.js",              "max-age=43200");
-  server.serveStatic("/local.css",            FILESYSTEM, "/local.css",             "max-age=43200");
 //  server.serveStatic("/ace.js",               FILESYSTEM, "/ace.js",                "max-age=43200");
 //  server.serveStatic("/jquery.min.js",        FILESYSTEM, "/jquery.min.js",         "max-age=43200");
 //  server.serveStatic("/mode-html.js",         FILESYSTEM, "/mode-html.js",          "max-age=43200");
   server.serveStatic("/favicon.ico",          FILESYSTEM, "/favicon.ico",           "max-age=43200");
-
+  #ifndef PROGMEM_FILES
+    server.serveStatic("/local.js",             FILESYSTEM, "/local.js",              "max-age=43200");
+    server.serveStatic("/local.css",            FILESYSTEM, "/local.css",             "max-age=43200");
+  #endif  
   server.serveStatic("/",FILESYSTEM,"/"); // everything else in flash
 
   debugMsgln("ESP32 server.ons",1);
@@ -205,11 +210,25 @@ void startWeb() {
     sdPageHandler(request->url(), request);
   });
 
-  #ifdef OTA_JS_FROM_PROGMEM
+  #ifdef PROGMEM_FILES
     server.on("/OTA.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
-      debugMsgln("server.on(/OTA.js from PROGMEM)",1);
+      debugMsgln("server.on(/OTA.js from PROGMEM)",3);
       AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", OTA_js_gz, sizeof(OTA_js_gz));
       response->addHeader("Content-Encoding", "gzip");
+      response->addHeader("Cache-Control", "max-age=43200");
+      request->send(response);
+    });
+    server.on("/local.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      debugMsgln("server.on(/local.js from PROGMEM)",3);
+      AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", local_js, sizeof(local_js));
+      response->addHeader("Cache-Control", "max-age=43200");
+      request->send(response);
+    });
+
+    server.on("/local.css", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      debugMsgln("server.on(/local.css from PROGMEM)",3);
+      AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", local_css, sizeof(local_css));
+      response->addHeader("Cache-Control", "max-age=43200");
       request->send(response);
     });
   #endif

@@ -147,6 +147,7 @@ void changeSDCard(){
 }
 
 void setupFS() {
+  checkSDCard(SD_CARD_TO_USE);
   if ( FILESYSTEM.begin() ) {
     debugMsg(FS_NAME,1);
     debugMsgln(F(" opened"),1);
@@ -154,7 +155,6 @@ void setupFS() {
     debugMsg(FS_NAME,1);
     debugMsgln(F(" failed to open"),1);
   }
-  checkSDCard(SD_CARD_TO_USE);
 }
 
 static void IRAM_ATTR ledIRQ(void *dummy){
