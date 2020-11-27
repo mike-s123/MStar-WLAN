@@ -113,6 +113,7 @@ void postTransmission() {
   delayMicroseconds(2292);                // wait for final char to clock out (2 char times)
   rxEnable(true);
 //  mbSerial.flush();                       // make sure we didn't receive a glitch
+  delayMicroseconds(1200);
   while (mbSerial.available()) mbSerial.read(); // because flush doesn't work?
 }
 
@@ -125,7 +126,7 @@ int findAddrByVar(String var) {   // given var name, return addr of register, -1
       done = true;
     }
   }
-  debugMsgln("findAddrByVar="+var+", addr="+addr,4);
+  debugMsgln("findAddrByVar="+var+", addr="+addr,7);
   return addr;  
 }
 
@@ -146,7 +147,7 @@ void getDescVal(int address, String &desc, String &val) {
   mbGetFullReg(reg, address);
   desc = reg.desc;
   val = reg.value + " " + mbRegUnitName[reg.unit];
-  debugMsgln("getDescVal desc="+desc+", val="+val,4);
+  debugMsgln("getDescVal desc="+desc+", val="+val,7);
 }
 
 int getCoilIndex(int coil) {     // similar to getMbRegIndex
@@ -162,7 +163,7 @@ int getCoilIndex(int coil) {     // similar to getMbRegIndex
 
 int MBus_get_coil(int address, bool &value) {             // returns 0 on success
   if (noController) return -1;
-  debugMsgln("MBus_get_coil: "+String(address),4);
+  debugMsgln("MBus_get_coil: "+String(address),7);
   uint8_t result = 1;
   for ( int i = 0 ; (i < 3) && result ; i++ ) {           // try up to 3 times
     result = node.readCoils(address, 1);                   // succcess = 0
@@ -176,7 +177,7 @@ int MBus_get_coil(int address, bool &value) {             // returns 0 on succes
   if (result == node.ku8MBSuccess)  {
     value = (node.getResponseBuffer(0))?true:false; 
   }
-  debugMsgln("Result: "+String(result),4);
+  debugMsgln("Result: "+String(result),7);
   return result;
 }
 
@@ -184,7 +185,7 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
   if (noController) return -1;
   bool state;
   valu == "on" ? state=true : state=false ;
-  debugMsgln("MBus_write_coil: "+String(address)+", "+String(state),4);
+  debugMsgln("MBus_write_coil: "+String(address)+", "+String(state),7);
   int row;
   int result;
   row = getCoilIndex(address);
@@ -198,7 +199,7 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
     if ( ( address == 255 || address == 254 ) && state && result == node.ku8MBResponseTimedOut ){  
       result = 0;  // we reset the controller, timeout expected
     }
-    debugMsgln("Result: "+String(result),5);
+    debugMsgln("Result: "+String(result),7);
     return result; 
   } else {
     return -1;
@@ -208,7 +209,8 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
 int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpreted
   if (noController) return -1;
   int result=1;
-  debugMsgln("MBus_get_reg_raw: "+String(address),4);
+  debugMsgln("MBus_get_reg_raw: "+String(address),7);
+  int newMbusErr = 0;
   for ( int i = 0 ; (i < 3) && result ; i++ ) {  // try 3 times
     mbustries++;
     result = node.readHoldingRegisters(address, 1);
@@ -217,52 +219,57 @@ int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpre
     } else {
       delay((i*100)+50); // increasing delay between failed attempts
       mbuserrs++;
+      newMbusErr++;
       debugMsgln("MBus_get_reg_raw, mbuserr:"+String(result,DEC)+" addr:"+String(address),2);
     }
+  }
+  if (newMbusErr > 0 && result == node.ku8MBSuccess) {
+    debugMsgln("Recovered from error.",2);
+    mbuserrs_recovered++;
   }
   return result;
 }
 
 int MBus_get_int(int address, int &value) {                 // get signed int
   if (noController) return -1;
-  debugMsgln("MBus_get_int: "+String(address),4);
+  debugMsgln("MBus_get_int: "+String(address),7);
   uint16_t reg;
   int result = MBus_get_reg_raw(address, reg);
   if (result == node.ku8MBSuccess)  {
     value = reinterpret_cast<int16_t&>(reg);             // change unsigned to signed
   }
-  debugMsgln("Result: "+String(result),4);
+  debugMsgln("Result: "+String(result),7);
   return result;
 }
 
 int MBus_get_uint16(int address, uint16_t &value) {         // get unsigned int
   if (noController) return -1;
-  debugMsgln("MBus_get_uint16: "+String(address),4);
+  debugMsgln("MBus_get_uint16: "+String(address),7);
   uint16_t reg;
   int result = MBus_get_reg_raw(address, reg);
   if (result == node.ku8MBSuccess)  {
     value = reg ;
   }
-  debugMsgln("Got "+String(value),4);
-  debugMsgln("Result: "+String(result),4);
+  debugMsgln("Got "+String(value),7);
+  debugMsgln("Result: "+String(result),7);
   return result;
 }
 
 int MBus_get_n10(int address, float &value) {             // get 10x unsigned int, return float
   if (noController) return -1;
-  debugMsgln("MBus_get_n10: "+String(address),4);
+  debugMsgln("MBus_get_n10: "+String(address),7);
   uint16_t intval;
   int result = MBus_get_uint16(address, intval);
   if (result == node.ku8MBSuccess) {
     value = intval/10.;
   }
-  debugMsgln("Result: "+String(result),4);
+  debugMsgln("Result: "+String(result),7);
   return result;
 }
   
 int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long int, high first
   if (noController) return -1;
-  debugMsgln("MBus_get_uint32: "+String(address),4);
+  debugMsgln("MBus_get_uint32: "+String(address),7);
   int result = node.readHoldingRegisters(address, 2);
   mbustries++;
   if (result == node.ku8MBSuccess) {
@@ -272,14 +279,14 @@ int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long i
     mbuserrs++;
     debugMsgln(F("MBus_get_uint32, mbuserr."),2);
   }
-  debugMsgln("Result: "+String(result),4);
+  debugMsgln("Result: "+String(result),7);
   return result;
 }
   
 int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long int, low first
   if (noController) return -1;
-  debugMsgln("MBus_get_uint32: "+String(address),4);
-  int result = node.readHoldingRegisters(address, 2);
+  debugMsgln("MBus_get_uint32: "+String(address),7);
+  int result = node.readHoldingRegisters(address, 7);
   mbustries++;
   if (result == node.ku8MBSuccess) {
     value = node.getResponseBuffer(1) << 16 ;         // LO first
@@ -294,31 +301,31 @@ int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long in
 
 int MBus_get_dn10(int address, float &value) {        // get long 10x, return float
   if (noController) return -1;
-  debugMsgln("MBus_get_dn10: "+String(address),4);
+  debugMsgln("MBus_get_dn10: "+String(address),7);
   uint32_t intval;
   int result = MBus_get_uint32(address, intval);
   if (result == node.ku8MBSuccess) {
     value = intval/10.;
   }
-  debugMsgln("Result: "+String(result),4);
+  debugMsgln("Result: "+String(result),7);
   return result;
 }  
 
 int MBus_get_float(int address, float &value) {     // get float16, return float32
   if (noController) return -1;
-  debugMsgln("MBus_get_float: "+String(address),4);
+  debugMsgln("MBus_get_float: "+String(address),7);
   uint16_t reg;
   int result = MBus_get_reg_raw(address, reg);
   if (result == node.ku8MBSuccess) {
     value = IEEEf16::f32(reg);
   }
-  debugMsgln("Result: "+String(result),4);
+  debugMsgln("Result: "+String(result),7);
   return result;
 }
 
 int MBus_get_reg(int address, String &value) {         // given an address, looks up type and gets value. returns 0 on success
   if (noController) return -1;
-  debugMsgln("MBus_get_reg: "+String(address),4);
+  debugMsgln("MBus_get_reg: "+String(address),7);
   int row, result = 1, foo_sint;
   uint16_t foo_int;
   float foo_fl;
@@ -415,7 +422,7 @@ int mbGetFullReg(fullReg &myReg, int address) {  //given address, gets all we kn
     myReg.value = "";
     return -1;
   }
-  debugMsgln("MBus_get_fullreg: "+String(address),4);
+  debugMsgln("MBus_get_fullreg: "+String(address),7);
   uint16_t foo_int;
   int foo_sint, result = 0, row;
   float foo_fl;
@@ -636,7 +643,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   }
   query[5] = (uint8_t)(crc & 0x00FF);
   query[6] = (uint8_t)((crc & 0xFF00) >> 8);  // add the CRC to the query
-  debugMsgln("Mbus CRC out = " + String(crc,HEX),4);
+  debugMsgln("Mbus CRC out = " + String(crc,HEX),7);
 
   bool good;
   for (int tries=1; tries < 3; tries++) {
@@ -658,8 +665,8 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
       if (mbSerial.available()) {
         int uartchars = mbSerial.available();
         char incoming = mbSerial.read();
-        debugMsg(String(F("readDeviceID, mbSerial avail, count: ")) + String(uartchars,DEC),6); 
-        debugMsgln(String(F(", char:")) + String(incoming, DEC),6);
+        debugMsg(String(F("readDeviceID, mbSerial avail, count: ")) + String(uartchars,DEC),7); 
+        debugMsgln(String(F(", char:")) + String(incoming, DEC),7);
         response[count++] = incoming;
         if (incoming != 0) good = true; // got a response other than null
         doneTime = millis() + charwait; // started getting a response, change to char timeout
@@ -675,7 +682,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
       delay(tries*50); // delay a bit more between each try
     }
   }
-  debugMsgln(String(F("readDeviceID, bytes read:")) + String(count),3);
+  debugMsgln(String(F("readDeviceID, bytes read:")) + String(count),5);
   
   if (count <= 1) { return -1; } else {count = 0;}
   id_idx = 8;
@@ -686,7 +693,7 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   for (int i = 0; i < numObjs ; i++) {
     id = response[id_idx]; // which object
     count = response[id_idx+1]; // length
-    debugMsgln("readDeviceID, id="+String(id),4);
+    debugMsgln("readDeviceID, id="+String(id),5);
     for (int j = 0 ; j < count; j++) {
       switch (i) {
         case 0: 
@@ -703,12 +710,12 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
     id_idx = id_idx + count + 2;
   }
   
-  debugMsg(F("readDeviceID, vendorName="),4);
-  debugMsgln(vendorName,4);
-  debugMsg(F("readDeviceID, productCode="),4);
-  debugMsgln(productCode,4);
-  debugMsg(F("readDeviceID, majorMinorRevision="),4);
-  debugMsgln(majorMinorRevision,4);
+  debugMsg(F("readDeviceID, vendorName="),5);
+  debugMsgln(vendorName,5);
+  debugMsg(F("readDeviceID, productCode="),5);
+  debugMsgln(productCode,5);
+  debugMsg(F("readDeviceID, majorMinorRevision="),5);
+  debugMsgln(majorMinorRevision,5);
 
 /*  //example
   vendorName = String("Morningstar Corp.");
@@ -870,13 +877,9 @@ String getModel() {
   if (productCode.startsWith(F("PS-MPPT"))) {           mod = "PS-MPPT"; }
   if (productCode.startsWith(F("SS-MPPT"))) {           mod = "SS-MPPT"; }
   if (productCode.startsWith(F("SSDuo"))) {             mod = "SSDuo"; }
-  if (productCode.startsWith(F("TS-MPPT-60-600V"))) {
-                                                        mod = "TS-600"; 
-  } else if (productCode.startsWith(F("TS-MPPT")))  {
-                                                        mod = "TS-MPPT";
-  } else if (productCode.startsWith(F("TS-"))) {
-                                                        mod = "TS"; 
-  }
+  if (productCode.startsWith(F("TS-"))) {               mod = "TS"; }
+  if (productCode.startsWith(F("TS-MPPT")))  {          mod = "TS-MPPT"; }
+  if (productCode.startsWith(F("TS-MPPT-60-600V"))) {   mod = "TS-600"; }
   debugMsg(F("getModel received:"),4);
   debugMsgln(productCode,4);
   debugMsg(F("getModel selected:"),4);

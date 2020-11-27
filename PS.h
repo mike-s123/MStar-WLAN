@@ -180,8 +180,8 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
 
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
 
   request->send(200, F("text/html"), response_message);
 
@@ -236,8 +236,8 @@ void psSetChargePageHandler(AsyncWebServerRequest *request) {
 
   response_message += getTableFoot();
   response_message += getHTMLFoot();
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
   request->send(200, F("text/html"), response_message);
 }
 
@@ -288,8 +288,8 @@ void psSetOtherPageHandler(AsyncWebServerRequest *request) {
   response_message += getTableFoot();
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
 
   request->send(200, F("text/html"), response_message);
 }

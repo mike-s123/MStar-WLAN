@@ -375,8 +375,8 @@ void platformPageHandler(AsyncWebServerRequest *request)
 
   response_message += getHTMLFoot();
   
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
   request->send(200, F("text/html"), response_message);
 }
 
@@ -479,7 +479,7 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   response_message = getHTMLHead();
   response_message += getNavBar();
   response_message += F("<center><img src=\"/img/lock.png\" alt=\"lock\"><br/>");
-  response_message += F("<h3>(Changes below are immediate,<br/>but may require a reboot)</h3></center>");
+  response_message += F("<h3>(Changes below are immediate)</h3></center>");
 
   response_message += getFormHead("&nbsp;");
   response_message += getTableHead2Col(F("Admin Account"), F("Name"), F("Password"));
@@ -524,8 +524,8 @@ void securityPageHandler(AsyncWebServerRequest *request) {
 
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
 
   request->send(200, F("text/html"), response_message);
 }
@@ -683,8 +683,8 @@ void wlanPageHandler(AsyncWebServerRequest *request)
 
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
 
   request->send(200, F("text/html"), response_message);
 
@@ -742,8 +742,8 @@ void utilityPageHandler(AsyncWebServerRequest *request)
   response_message += F("</font></div>");
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
 
   request->send(200, F("text/html"), response_message);
 }
@@ -968,8 +968,8 @@ void setTimePageHandler(AsyncWebServerRequest *request) {
   
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
   request->send(200, F("text/html"), response_message);
 }
 
@@ -1049,8 +1049,8 @@ void updatePageHandler(AsyncWebServerRequest *request) {
   response_message += "<center><h3>Over-The-Air updater</h2></center>";
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),4);
-  debugMsgln(String(response_message.length()),4);
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
   if (logFile) logFile.flush();
   if (ctl_logFile) ctl_logFile.flush();
   request->send(200, F("text/html"), response_message);

@@ -262,7 +262,7 @@ int mbAddr = mbusSlave;
 String model = MODEL;
 String fullModel = MODEL;
 String ctlSerialNum = "00000000";
-unsigned long mbustries, mbuserrs, lastFound = millis();
+unsigned long mbustries, mbuserrs, mbuserrs_recovered, lastFound = millis();
 float vary;
 byte mac[6];
 String my_MAC;
