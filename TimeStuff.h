@@ -390,9 +390,10 @@ void checkClocks(int32_t rtc_diff_filtered) {
 /*
  * IRQ, RTC marks millis() every second
  */
-void IRAM_ATTR rtcIRQ() { // handles interrupts from RTC, can't do much here
+static void IRAM_ATTR rtcIRQ() { // handles interrupts from RTC, can't do much here
   rtc_ms = millis();  // tracks difference between ntp and rtc
   rtc_IRQ = true;
+  if (--myWDT <= 1) ESP.restart(); // loop watchdog
   ;
 }
 
@@ -449,6 +450,8 @@ void oncePerMinute() { // not necessarily _on_ the minute
     if (logFile) logFile.flush();
     WiFi.setTxPower(WIFI_POWER_19dBm); // 18_5, 17, 15, 13, 11, 8_5, 7, 5, 2, WIFI_POWER_MINUS_1dBm
     mytz2skip = true;
+    UTC.setEvent(oncePerMinute,UTC.now()+180); // jump ahead 3 minutes
+    return;
   }
   if ( mytz2skip && (myTZ.hour() == 2 && myTZ.minute() >= 1) ) { // test - reboots happen at 2 AM local?.
     debugMsgln(F("myTZ2 skip/return, WiFi pwr 19 dBm"),1);
@@ -457,6 +460,7 @@ void oncePerMinute() { // not necessarily _on_ the minute
     mytz2skip = false;
   }  
   UTC.setEvent(oncePerMinute,UTC.now()+60);
+  
   debugMsgln(F("oncePerMinute"),3);  
   if ( (timeStatus() == timeSet) && rtcPresent && !rtcNeedsTime ) { // ntp and rtc running  
     uint32_t opm_millis = millis();  // grab some times immediately
@@ -509,6 +513,7 @@ void oncePerMinute() { // not necessarily _on_ the minute
 void oncePerFive() { // every 5 minutes
   deleteEvent(oncePerFive);
   UTC.setEvent(oncePerFive,UTC.now()+300);
+  if ( mytz2skip ) return;          // not doing anything around 2AM
   debugMsgln(F("oncePerFive"),3);
   tryWLAN(); // try to connect as station
   ctlLog(); // log controller data, 1 per 5 min = ~7MB/year
@@ -522,11 +527,15 @@ void oncePerFive() { // every 5 minutes
 void oncePerHour() { // not necessarily _on_ the hour
   deleteEvent(oncePerHour); 
   UTC.setEvent(oncePerHour,UTC.now()+3600);
+  if ( mytz2skip ) return;          // not doing anything around 2AM
   debugMsgln(F("oncePerHour"),2);
   if ((timeStatus() == timeNeedsSync) && rtcPresent) UTC.setTime(getUnixTime());     // lost ntp sync, update from RTC
   timeval epoch = {myTZ.now(), myTZ.ms()}; // FAT is not TZ aware, use local TZ
   settimeofday((const timeval*)&epoch, 0); // set ESP ToD, for SD file timestamps
   debugMsgln(F("settimeofday"),4);
+  if (myTZ.hour() % 6 == 0) { // every 6 hours
+      debugMsgln("Modbus errors/tries: " + String(mbuserrs) + "/" + String(mbustries) + " (" + String(((double)mbuserrs/(double)mbustries)*100.,3) + "%)", 1);
+  }
   // TODO logrotate?
 }
 

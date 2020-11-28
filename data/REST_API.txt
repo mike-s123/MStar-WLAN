@@ -33,7 +33,10 @@ Variables:
 				"window.history.back()" to return to calling page instead of
 				returning data.
 
-==================================================================================				
+=====================================================
+Any of the multiple read commands may timeout and return fewer than the requested count.
+=====================================================
+				
 Commented response to query "/rest?json={"addr":0,"cmd":"readInputRegisters","count":2}"
 Definitions are in register and coil csv files (see "csv_file_desc.txt").
 
@@ -149,6 +152,7 @@ Errors:
 {"error": {"code":400,"message":"bad request","info":"no password"}}
 {"error": {"code":400,"message":"bad request","info":"read only"}}
 {"error": {"code":413,"message":"request entity too large","info":"count > 10"}}
+{"error": {"code":413,"message":"request entity too large","info":"request too large, timed out"}}
 {"error": {"code":500,"message":"internal server error","info":"general error"}}
 {"error": {"code":504,"message":"gateway timeout","info":"modbus error"}}
 

@@ -163,8 +163,7 @@ void startWeb() {
   });
 
   server.onNotFound([](AsyncWebServerRequest *request) {  // If the client requests any URI
-    debugMsgln("server.onNotFound:" + request->url(),3);
-    debugMsgln("File not found on flash, trying SD Card:" + request->url(),3);
+    debugMsgln("File not found on flash, trying SD Card:" + request->url(),4);
     sdPageHandler(request->url(), request);
   });
 

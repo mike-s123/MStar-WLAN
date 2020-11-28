@@ -42,7 +42,20 @@ static const uint8_t  ModbusMaster::ku8MBResponseTimedOut = 0xE2
 static const uint8_t  ModbusMaster::ku8MBInvalidCRC = 0xE3
   ModbusMaster invalid response CRC exception. More...
 */
- 
+
+String mbusErrLookup(uint8_t err){
+  if (err == node.ku8MBIllegalFunction) return "ku8MBIllegalFunction";
+  if (err == node.ku8MBIllegalDataAddress) return "ku8MBIllegalDataAddress";
+  if (err == node.ku8MBIllegalDataValue) return "ku8MBIllegalDataValue";
+  if (err == node.ku8MBSlaveDeviceFailure) return "ku8MBSlaveDeviceFailure";
+  if (err == node.ku8MBSuccess) return "ku8MBSuccess";
+  if (err == node.ku8MBInvalidSlaveID) return "ku8MBInvalidSlaveID";
+  if (err == node.ku8MBInvalidFunction) return "ku8MBInvalidFunction";
+  if (err == node.ku8MBResponseTimedOut) return "ku8MBResponseTimedOut";
+  if (err == node.ku8MBInvalidCRC) return "ku8MBInvalidCRC";
+  return "unknownError";
+}
+
 //-------------------------------------------------------------------
 //------------------------- Modbus stuff ----------------------------
 //-------------------------------------------------------------------
@@ -89,7 +102,7 @@ uint16_t time_fl_daily;
 
 logItem mbLog[256];
 
-int mbGetFullReg(fullReg &myReg, int address); // forward declaration
+int mbGetFullReg(fullReg &myReg, uint16_t address); // forward declaration
 
 void rxEnable(bool state) {                                   // high = enabled = true
   state ? REG_WRITE(GPIO_OUT_W1TS_REG, 1 << RX_ENABLE_PIN) : REG_WRITE(GPIO_OUT_W1TC_REG, 1 << RX_ENABLE_PIN); // faster than digitalWrite
@@ -141,7 +154,7 @@ int getMbRegIndex(int mbReg) {   // given a register address, returns the row in
   return -1;
 }
 
-void getDescVal(int address, String &desc, String &val) {
+void getDescVal(uint16_t address, String &desc, String &val) {
   fullReg reg;
   reg.desc = F("err");
   mbGetFullReg(reg, address);
@@ -161,7 +174,7 @@ int getCoilIndex(int coil) {     // similar to getMbRegIndex
   return -1;
 }
 
-int MBus_get_coil(int address, bool &value) {             // returns 0 on success
+int MBus_get_coil(uint16_t address, bool &value) {             // returns 0 on success
   if (noController) return -1;
   debugMsgln("MBus_get_coil: "+String(address),7);
   uint8_t result = 1;
@@ -181,7 +194,7 @@ int MBus_get_coil(int address, bool &value) {             // returns 0 on succes
   return result;
 }
 
-int MBus_write_coil(int address, String valu) {           // returns 0 on success
+int MBus_write_coil(uint16_t address, String valu) {           // returns 0 on success
   if (noController) return -1;
   bool state;
   valu == "on" ? state=true : state=false ;
@@ -206,31 +219,39 @@ int MBus_write_coil(int address, String valu) {           // returns 0 on succes
   }
 }
 
-int MBus_get_reg_raw(int address, uint16_t &raw) {    // get register uninterpreted
+int MBus_get_reg_raw(uint16_t address, uint16_t &raw) {    // get register uninterpreted
   if (noController) return -1;
   int result=1;
-  debugMsgln("MBus_get_reg_raw: "+String(address),7);
+  debugMsgln("MBus_get_reg_raw: "+String(address),4);
   int newMbusErr = 0;
-  for ( int i = 0 ; (i < 3) && result ; i++ ) {  // try 3 times
+  
+  for ( int i = 0 ; (i < 3) && (result != node.ku8MBSuccess) ; i++ ) {  // try 3 times
     mbustries++;
     result = node.readHoldingRegisters(address, 1);
     if (result == node.ku8MBSuccess) {
       raw = node.getResponseBuffer(0);
     } else {
-      delay((i*100)+50); // increasing delay between failed attempts
+      delay((i*50)+25); // increasing delay between failed attempts
       mbuserrs++;
       newMbusErr++;
-      debugMsgln("MBus_get_reg_raw, mbuserr:"+String(result,DEC)+" addr:"+String(address),2);
+      debugMsgln("MBus_get_reg_raw, mbuserr:"+mbusErrLookup(result)+" addr:"+String(address),2);
     }
   }
   if (newMbusErr > 0 && result == node.ku8MBSuccess) {
     debugMsgln("Recovered from error.",2);
     mbuserrs_recovered++;
   }
+
+/*  
+  result = node.readHoldingRegisters(address, 1);
+  if (result == node.ku8MBSuccess) {
+      raw = node.getResponseBuffer(0);
+    };
+*/    
   return result;
 }
 
-int MBus_get_int(int address, int &value) {                 // get signed int
+int MBus_get_int(uint16_t address, int &value) {                 // get signed int
   if (noController) return -1;
   debugMsgln("MBus_get_int: "+String(address),7);
   uint16_t reg;
@@ -242,7 +263,7 @@ int MBus_get_int(int address, int &value) {                 // get signed int
   return result;
 }
 
-int MBus_get_uint16(int address, uint16_t &value) {         // get unsigned int
+int MBus_get_uint16(uint16_t address, uint16_t &value) {         // get unsigned int
   if (noController) return -1;
   debugMsgln("MBus_get_uint16: "+String(address),7);
   uint16_t reg;
@@ -255,7 +276,7 @@ int MBus_get_uint16(int address, uint16_t &value) {         // get unsigned int
   return result;
 }
 
-int MBus_get_n10(int address, float &value) {             // get 10x unsigned int, return float
+int MBus_get_n10(uint16_t address, float &value) {             // get 10x unsigned int, return float
   if (noController) return -1;
   debugMsgln("MBus_get_n10: "+String(address),7);
   uint16_t intval;
@@ -267,7 +288,7 @@ int MBus_get_n10(int address, float &value) {             // get 10x unsigned in
   return result;
 }
   
-int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long int, high first
+int MBus_get_uint32(uint16_t address, uint32_t &value) {       // get unsigned long int, high first
   if (noController) return -1;
   debugMsgln("MBus_get_uint32: "+String(address),7);
   int result = node.readHoldingRegisters(address, 2);
@@ -283,7 +304,7 @@ int MBus_get_uint32(int address, uint32_t &value) {       // get unsigned long i
   return result;
 }
   
-int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long int, low first
+int MBus_get_uint32_rev(uint16_t address, uint32_t &value) {  // get unsigned long int, low first
   if (noController) return -1;
   debugMsgln("MBus_get_uint32: "+String(address),7);
   int result = node.readHoldingRegisters(address, 7);
@@ -299,7 +320,7 @@ int MBus_get_uint32_rev(int address, uint32_t &value) {  // get unsigned long in
   return result;
 }
 
-int MBus_get_dn10(int address, float &value) {        // get long 10x, return float
+int MBus_get_dn10(uint16_t address, float &value) {        // get long 10x, return float
   if (noController) return -1;
   debugMsgln("MBus_get_dn10: "+String(address),7);
   uint32_t intval;
@@ -311,7 +332,7 @@ int MBus_get_dn10(int address, float &value) {        // get long 10x, return fl
   return result;
 }  
 
-int MBus_get_float(int address, float &value) {     // get float16, return float32
+int MBus_get_float(uint16_t address, float &value) {     // get float16, return float32
   if (noController) return -1;
   debugMsgln("MBus_get_float: "+String(address),7);
   uint16_t reg;
@@ -323,7 +344,7 @@ int MBus_get_float(int address, float &value) {     // get float16, return float
   return result;
 }
 
-int MBus_get_reg(int address, String &value) {         // given an address, looks up type and gets value. returns 0 on success
+int MBus_get_reg(uint16_t address, String &value) {         // given an address, looks up type and gets value. returns 0 on success
   if (noController) return -1;
   debugMsgln("MBus_get_reg: "+String(address),7);
   int row, result = 1, foo_sint;
@@ -412,7 +433,7 @@ int MBus_get_reg(int address, String &value) {         // given an address, look
   } 
 }
 
-int mbGetFullReg(fullReg &myReg, int address) {  //given address, gets all we know about it
+int mbGetFullReg(fullReg &myReg, uint16_t address) {  //given address, gets all we know about it
   if (noController) {
     myReg.row = 0; 
     myReg.var = "";
@@ -441,7 +462,7 @@ int mbGetFullReg(fullReg &myReg, int address) {  //given address, gets all we kn
   return result;  
 }
 
-int MBusWSR(unsigned int address, unsigned int value) {
+int MBusWSR(uint16_t address, unsigned int value) {
   int result = node.writeSingleRegister(address, value);
   mbustries++;
   if (result) {
@@ -452,7 +473,7 @@ int MBusWSR(unsigned int address, unsigned int value) {
 }
 
 
-int MBus_write_reg(int address, String valu) {
+int MBus_write_reg(uint16_t address, String valu) {
   if (noController) return -1;
   debugMsgln("MBus_write_reg: "+String(address)+", "+String(valu),4);
   int row;
@@ -543,13 +564,13 @@ int MBus_write_reg(int address, String valu) {
   return result; 
 }
 
-int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {  //TODO this returns more than requested.
+int MBus_get_regs_raw(uint16_t address, uint16_t *rawarray, int count) {  //TODO this returns more than requested.
   if (noController) return -1;
-  debugMsgln("MBus_get_regs_raw: "+String(count)+"x, "+String(address),4);
+  debugMsgln("MBus_get_regs_raw: "+String(count)+"x, "+String(address),7);
   int result = 0;
   int passes = count / 32; // modbusmaster buffer is 64 bytes
   int leftover = count %32;
-  debugMsgln("RegsRaw, passes "+String(passes)+", left:"+String(leftover),4);
+  debugMsgln("RegsRaw, passes "+String(passes)+", left:"+String(leftover),7);
   int i;
   for (i = 0; i < passes; i++) {
 //    delay(5);
@@ -561,7 +582,7 @@ int MBus_get_regs_raw(int address, uint16_t *rawarray, int count) {  //TODO this
     }
     for (int j = 0; j<32; j++) {
         rawarray[(i*32)+j] = node.getResponseBuffer(j);
-        debugMsgln("rawarray "+String((i*32)+j)+"="+String(node.getResponseBuffer(j),HEX),4);
+        debugMsgln("rawarray "+String((i*32)+j)+"="+String(node.getResponseBuffer(j),HEX),8);
     }
   }
 //  delay(5);
@@ -746,11 +767,11 @@ int mbusTCP() {
     }
     func = mbbuffer[7];
     buffsize = 6 + len;
-    debugMsg(F("modbusTCP received"),4);
+    debugMsg(F("modbusTCP received"),7);
     for (i=0;i<6+len;i++){
-      debugMsg("."+String(mbbuffer[i],HEX),4);
+      debugMsg("."+String(mbbuffer[i],HEX),7);
     }
-    debugMsgln("",4);
+    debugMsgln("",7);
     
     result = 255;
     if (func == 3 || func == 4) {  //read holding/inputs
@@ -846,11 +867,11 @@ int mbusTCP() {
       mbbuffer[5] = (uint8_t)(val & 0x00FF);
     }
     if (!result) {
-      debugMsg(F("modbusTCP sending"),4);
+      debugMsg(F("modbusTCP sending"),7);
       for (i=0;i<buffsize;i++){
-        debugMsg("."+String(mbbuffer[i],HEX),4);
+        debugMsg("."+String(mbbuffer[i],HEX),7);
       }
-      debugMsgln("",4);
+      debugMsgln("",7);
       modbusClient.write((const uint8_t *)mbbuffer, buffsize);
     } else {
       ; // TODO send error response

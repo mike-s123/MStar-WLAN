@@ -22,14 +22,14 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201126"
+#define SOFTWARE_VERSION "v2.201127"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
                      REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
                      Change to littlefs. Improve OTA. Serve important stuff from PROGMEM.<br/>\
-                     Settable debug level."
+                     Settable debug level. REST timeout."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -48,7 +48,7 @@ using namespace std;
  * every few minutes if there is no client connected.
  */
 #define WIFI_MODE_AP_STA                // define to run AP while also connected as station
-#define PS_RAM    // use WROVER PS-RAM
+//#define PS_RAM    // use WROVER PS-RAM
 #include <string>
 //#include <sstream>
 #include <EEPROM.h>   // 1.0.3
@@ -256,7 +256,7 @@ boolean mytz2skip = false; //testing
 boolean psRAMavail = false;
 boolean daytime = false;
 uint32_t mytz2skipMillis;
-
+uint8_t myWDT=120;
 unsigned long lastWLANtry;      // when we last tried to connected (or tried) to an AP
 int mbAddr = mbusSlave;
 String model = MODEL;
@@ -269,6 +269,7 @@ String my_MAC;
 String my_name;                 // for log file name
 String my_hostname;             // for networking
 String logLast="";
+static char log_print_buff[512];
 File fsUploadFile;              // a File object to temporarily store the received file
 
 String referrer; 
@@ -323,7 +324,13 @@ void setup() {
   delay(10);
   if (psramInit()){
     psRAMavail=true;
-    debugMsgln(F("PS-RAM available"),1);
+    debugMsg(F("PS-RAM available"),1);
+    #ifdef PS_RAM
+      debugMsgln(F("(using)"),1);
+    #endif
+    #ifndef PS_RAM
+      debugMsgln(F("(not using)"),1);
+    #endif    
   }
   getEeConfig(); // load config from eeprom
   getWLANsFromEEPROM();
@@ -406,4 +413,5 @@ void loop() {
       blinky(5000, 5000, 64, 4);
     }
   }
+  myWDT = 60; // reset watchdog
 } // loop()

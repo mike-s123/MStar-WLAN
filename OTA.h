@@ -128,7 +128,7 @@ class AsyncMyOtaClass{
                       debugMsgln(F("OTA bad filename"),2);
                       return request->send(400, "text/plain", "OTA bad filename or type");; // wrong image for ESP32
                     }
-
+                    myWDT = 300; // allow up to 5 minutes to flash
                     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) { // Start with max available size
 //                      Update.printError(Serial);
                       return request->send(400, "text/plain", "OTA could not begin");

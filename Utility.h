@@ -30,9 +30,25 @@ void debugMsg(String msg, int level) {
           needLogTime = false;
         }
         logFile.print(msg);
+        if (msg.endsWith("\n")) needLogTime = true;
       }
     } // level
   #endif
+}
+
+int redirectToSD(const char *szFormat, va_list args) {
+#ifdef DEBUG_ON
+//write evaluated format string into buffer
+    int ret = vsnprintf(log_print_buff, sizeof(log_print_buff), szFormat, args);
+
+    //output in buffer. write to file.
+    if (ret >= 0 && sd_card_available && logFile){
+        printf(log_print_buff);
+//        logFile.write((uint8_t *)log_print_buff, (size_t)ret);
+        debugMsg(log_print_buff);
+    }
+    return ret;
+#endif    
 }
 
 void setupDebug() {
@@ -41,6 +57,7 @@ void setupDebug() {
     #ifdef EZT_DEBUG
       setDebug(EZT_DEBUG,ezt_logFile);
     #endif
+    esp_log_set_vprintf(&redirectToSD);
     debugMsgln("",1);
     debugMsgln(F("Starting debug session"),1);
   #endif
@@ -497,7 +514,7 @@ public:
 
 void reboot() {
   debugMsgln(F("Doing ESP.restart()"),1);
-  ESP.restart();         // if not, this should do a soft reboot.
+  ESP.restart();         // this should do a soft reboot.
 }
 
 #include <rom/rtc.h>
@@ -640,6 +657,49 @@ String formatBytes(uint64_t bytes) {
   }
 }
 
+static void IRAM_ATTR ledIRQ(void *dummy){
+  // sets a flag when LED ramping is complete.
+  led_change_done = true;
+}
+
+void blinkySetup(int pin1, int pin2=101) {
+  /*
+   * call to setup blinky
+   * Prepare and set configuration of timers
+   * that will be used by LED Controller
+   * 
+   * All the ramping happens in hardware, so we setup an interrupt to signal when a ramp
+   * is done.
+   */
+  ledc_timer_config_t ledc_timer = {LEDC_HIGH_SPEED_MODE, LEDC_timerbits, LEDC_TIMER_0, 256};
+  ledc_timer_config(&ledc_timer); // Set configuration of timer0 for high speed channels
+  ledc_channel[0].gpio_num = pin1;
+  ledc_channel[0].speed_mode = LEDC_HIGH_SPEED_MODE;
+  ledc_channel[0].channel = LEDC_CHANNEL_0;
+  ledc_channel[0].intr_type = LEDC_INTR_FADE_END;
+  ledc_channel[0].timer_sel = LEDC_TIMER_0;
+  ledc_channel[0].duty = (0x00000001 << (LEDC_timerbits) ) - 1;
+  ledc_channel[0].hpoint = 0;
+  if (pin2 < 100) {
+    ledc_channel[1].gpio_num = pin2;
+    ledc_channel[1].speed_mode = LEDC_HIGH_SPEED_MODE;
+    ledc_channel[1].channel = LEDC_CHANNEL_1;
+    ledc_channel[1].intr_type = LEDC_INTR_DISABLE;
+    ledc_channel[1].timer_sel = LEDC_TIMER_0;
+    ledc_channel[1].duty = (0x00000001 << (LEDC_timerbits) ) - 1;
+    ledc_channel[1].hpoint = 0;
+  }
+  // Set LED Controller with previously prepared configuration
+  ledc_channel_config(&ledc_channel[0]);
+  if (pin2 < 100) {
+    ledc_channel_config(&ledc_channel[1]);
+  }
+
+  // Initialize fade service.
+  ledc_fade_func_install(ESP_INTR_FLAG_IRAM|ESP_INTR_FLAG_SHARED);
+  ledc_isr_register(ledIRQ, &ledc_channel[0], ESP_INTR_FLAG_IRAM|ESP_INTR_FLAG_SHARED, NULL);
+}
+
 void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint16_t bright=256, uint16_t dim=256) { // times in ms
   /*
    * blinky() - a very low overhead LED blinker, most stuff is handled in hardware.
@@ -684,8 +744,8 @@ void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint1
         duty = pow((float)my_bright / (float)maxduty, 0.3) * maxduty ;
         led_change_done = false;
         for (int ch = 0; ch < 2; ch++) {
-            ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
-                    ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);
+          ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
+              ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);
         }
       }
     } else {                  // we're at full dim
@@ -693,8 +753,8 @@ void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint1
       duty = pow((float)my_dim / (float)maxduty,0.3) * maxduty;
       led_change_done =  false;
       for (int ch = 0; ch < 2; ch++) {
-          ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
-                  ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);
+        ledc_set_fade_time_and_start(ledc_channel[ch].speed_mode,
+            ledc_channel[ch].channel, duty , ramptime, LEDC_FADE_NO_WAIT);
       }
     }
   }

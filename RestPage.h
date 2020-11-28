@@ -22,6 +22,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
  * will return the next "count" (default=1) available registers, 
  * skipping unavailable ones.
 */
+#define MBUS_MULTI_TIMEOUT 5000 // for reading multiple coils/registers.
 
   debugMsgln(F("Entering /rest page."),2);
   bool ok = false;
@@ -30,7 +31,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
     DeserializationError jsonDesErr = deserializeJson(jsonIn, request->arg(F("json")).c_str() );
     String cmd = jsonIn[F("cmd")];
     String pass = jsonIn[F("pass")];
-   #ifdef PS_RAM   // use PS-RAM if available
+    #ifdef PS_RAM
       struct SpiRamAllocator {
         void* allocate(size_t size) {
           return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
@@ -42,9 +43,10 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;
       SpiRamJsonDocument jsonOut(256000);
       debugMsgln("REST SPIRAM free heap: "+ String(ESP.getFreePsram()),3);
-    #elif   
+    #endif
+    #ifndef PS_RAM
       DynamicJsonDocument jsonOut(65536);    // bigger is better
-      debugMsgln("REST json free heap: "+String(ESP.getFreeHeap()),3);
+      debugMsgln("REST RAM free heap: "+String(ESP.getFreeHeap()),3);
     #endif
     if ( cmd == F("readRegs") ) {
       int count = 0;
@@ -93,6 +95,10 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
         { jsonErr(request, F("parsing failed"), F("parsing failed") , 413); return; }
       }
     } else if ( cmd == F("readHoldingRegisters") || cmd == F("readInputRegisters") || cmd == F("readInputRegister") ) {
+      /*
+       * Note that reading many registers can take a long time, possibly longer than a client will wait. It can also cause
+       * us to "hang." So, we put a timeout here.
+       */
       String address = jsonIn[F("addr")] ;
       if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbReg = getDecInt(address);              // this covers all bases
@@ -102,6 +108,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       debugMsgln("REST read register(s) "+address+"/"+String(count),3);
       if ( count > 256 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
       if ( getMbRegIndex(mbReg) < 0 ){ jsonErr(request, F("bad addr")); return; }
+      uint64_t timeout = millis() + MBUS_MULTI_TIMEOUT;
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version.c_str();
       jsonOut[F("api_min")] = json_version_min.c_str();
@@ -131,12 +138,21 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
           ok = true;
           i++;
         }
+        if ( millis() > timeout ) {
+          debugMsg(F("REST request timed out at "),2);
+          debugMsgln(String(i),2);
+          i = count; // time's up, no more
+        }
       }
 /* example of use
  * http://192.168.4.1/rest?json={"addr":1%2C"cmd":"readCoils"%2C"count":3}
  * will return the next "count" available items, ignoring unavailable ones.
 */
     } else if ( cmd == F("readCoils") || cmd == F("readDiscreteInputs") ) {
+      /*
+       * Note that reading many Coils can take a long time, possibly longer than a client will wait. It can also cause
+       * us to "hang." So, we put a timeout here.
+       */
       String address = jsonIn[F("addr")] ;
       if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbCoil = getDecInt(address);              // this covers all bases
@@ -148,6 +164,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       jsonOut[F("api")] = json_version.c_str();
       jsonOut[F("api_min")] = json_version_min.c_str();
       JsonArray coilArray = jsonOut.createNestedArray(F("coils"));
+      uint64_t timeout = millis() + MBUS_MULTI_TIMEOUT;
       for (int i=0; i<count && mbCoil <= mbCoilMax; mbCoil++ ) {
         int coilIdx = getCoilIndex(mbCoil);
         bool state;
@@ -161,6 +178,11 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
           coils[F("stat")] = state;
           ok = true;
           i++;
+        }
+        if ( millis() > timeout ) {
+          debugMsg(F("REST request timed out at "),2);
+          debugMsgln(String(i),2);
+          i = count;
         }
       }
     } else if ( cmd == F("writeSingleRegister") ) {
@@ -213,7 +235,11 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
         jsonErr(request, "failure " + String(result)); return;
       }
       ok = true;
-    } else if ( cmd == F("readRegRaw") ) {  
+    } else if ( cmd == F("readRegRaw") ) {
+      /*
+       * Note that reading many registers can take a long time, possibly longer than a client will wait. It can also cause
+       * us to "hang." So, we put a timeout here.
+       */
       String address = jsonIn[F("addr")] ;
       if (address.length()==0) { jsonErr(request, F("bad addr")); return; }
       int mbReg = getDecInt(address);              // this covers all bases
@@ -224,9 +250,10 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       JsonArray regArray = jsonOut.createNestedArray(F("registers"));
       String valu;
       uint16_t raw;
-      int count  = jsonIn[F("count")];
+      uint16_t count  = jsonIn[F("count")];
       if (count == 0) count = 1; // defaults to 1
-      for (int i = 0 ; i < count ; i++) {
+      uint64_t timeout = millis() + MBUS_MULTI_TIMEOUT;
+      for (uint16_t i = 0 ; i < count ; i++) {
         JsonObject regO      = regArray.createNestedObject();
         JsonObject registers = regO.createNestedObject(F("register"));
         result = MBus_get_reg_raw(mbReg+i, raw);
@@ -234,6 +261,11 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
         registers[F("vraw")]   = result ? F("err") : String("0x"+String(raw,HEX));
         registers[F("int")]    = result ? F("err") : String(raw);
         registers[F("f16")]    = result ? F("err") : String(IEEEf16::f32(raw),8);
+        if ( millis() > timeout ) {
+          debugMsg(F("REST request timed out at "),2);
+          debugMsgln(String(i),2);
+          i = count; // time's up, no more allowed.
+        }
       }
       ok = true;
     } else if ( cmd == F("getLogItem") ) {  
@@ -245,7 +277,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       int result;
       int count  = jsonIn[F("count")];
       if (count == 0) count = 1 ; // default to 1
-      if ( count > 32 ) { jsonErr(request, F("count > 256"), F("request entity too large") , 413); return; }
+      if ( count > 32 ) { jsonErr(request, F("count > 32"), F("request entity too large") , 413); return; }
       if ( idx < 0 || idx > 255 ) { jsonErr(request, F("bad addr")); return; };
       jsonOut[F("model")] = model;
       jsonOut[F("api")] = json_version.c_str();
@@ -323,13 +355,22 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
 
     if (ok) {  
       String response_message;
-      response_message.reserve(65536); //94000 
-      debugMsgln("REST2 json free heap: "+String(ESP.getFreeHeap()),3);
+      response_message.reserve(65535); //94000 
+      #ifdef PS_RAM
+        debugMsgln("REST2 SPIRAM free heap: "+ String(ESP.getFreePsram()),4);
+      #endif
+      #ifndef PS_RAM
+        debugMsgln("REST2 RAM free heap: "+String(ESP.getFreeHeap()),4);
+      #endif
       String back = jsonIn["back"] ;
       if ( back != "true" ) {
         debugMsgln(F("Sending json response"),3);
         serializeJsonPretty(jsonOut,response_message);
-        request->send(200, F("application/json"), response_message);
+        debugMsgln("REST sending JSON, length:"+String(response_message.length()),4);
+        AsyncWebServerResponse *response = request->beginResponse(200, F("application/json"), response_message);
+        response->addHeader("Server","ESP Async Web Server");
+        request->send(response);
+//        request->send(200, F("application/json"), response_message);
       } else {
         response_message = getHTMLHead();
         response_message += wrapScript(F("goBack()"));
