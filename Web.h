@@ -1,8 +1,10 @@
 /*
- * 
  * Configure and start the web server
- * 
  */
+
+#ifdef PROGMEM_FILES
+  #include "PROGMEM_FILES.h"
+#endif
 
 bool serveFile(String path, AsyncWebServerRequest *request) {  
   String dataType = "text/plain";
@@ -24,10 +26,6 @@ bool serveFile(String path, AsyncWebServerRequest *request) {
   request->send(FILESYSTEM, path, dataType);
   return true;
 }
-
-#ifdef PROGMEM_FILES
-  #include "PROGMEM_FILES.h"
-#endif
 
 void startWeb() { 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -64,6 +62,16 @@ void startWeb() {
     return cmdPageHandler(request);
   });
 
+  server.on("/rootcmd", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
+//      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//     return request->requestAuthentication(my_hostname.c_str(), true);
+    if ( !request->authenticate(root_username.c_str(), root_password.c_str())) {
+      return request->requestAuthentication();
+    }
+    return rootCmdPageHandler(request);
+  });
+  
   server.on("/setcharge", HTTP_GET, [](AsyncWebServerRequest *request) {
 //    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
 //      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
@@ -125,6 +133,16 @@ void startWeb() {
     return securityPageHandler(request);
   });
 
+  server.on("/logging_config", HTTP_GET, [](AsyncWebServerRequest *request) {
+//    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) ) {
+//      return request->requestAuthentication(my_hostname.c_str(), true);
+    if (!request->authenticate(web_username.c_str(), web_password.c_str()) \
+       && !request->authenticate(root_username.c_str(), root_password.c_str())) {
+      return request->requestAuthentication();
+    }
+    return loggingPageHandler(request);
+  });
+
   server.on("/utility", HTTP_GET, [](AsyncWebServerRequest *request) {
 //    if(!request->authenticate(generateDigestHash(root_username.c_str(), root_password.c_str(), my_hostname.c_str()).c_str()) \
 //      && !request->authenticate(generateDigestHash(web_username.c_str(), web_password.c_str(), my_hostname.c_str()).c_str()) ) {
@@ -168,19 +186,19 @@ void startWeb() {
   });
 
   // cache for 12 hours.
-  server.serveStatic("/ctl/",       FILESYSTEM, "/ctl/",        "max-age=43200");
-  server.serveStatic("/img/",       FILESYSTEM, "/img/",        "max-age=43200");
-//  server.serveStatic("/ace.js",               FILESYSTEM, "/ace.js",                "max-age=43200");
-//  server.serveStatic("/jquery.min.js",        FILESYSTEM, "/jquery.min.js",         "max-age=43200");
-//  server.serveStatic("/mode-html.js",         FILESYSTEM, "/mode-html.js",          "max-age=43200");
-  server.serveStatic("/favicon.ico",          FILESYSTEM, "/favicon.ico",           "max-age=43200");
+  server.serveStatic("/ctl/",             FILESYSTEM, "/ctl/",          "max-age=43200");
+  server.serveStatic("/img/",             FILESYSTEM, "/img/",          "max-age=43200");
+//  server.serveStatic("/ace.js",           FILESYSTEM, "/ace.js",        "max-age=43200");
+//  server.serveStatic("/jquery.min.js",    FILESYSTEM, "/jquery.min.js", "max-age=43200");
+//  server.serveStatic("/mode-html.js",     FILESYSTEM, "/mode-html.js",  "max-age=43200");
+  server.serveStatic("/favicon.ico",      FILESYSTEM, "/favicon.ico",   "max-age=43200");
   #ifndef PROGMEM_FILES
-    server.serveStatic("/local.js",             FILESYSTEM, "/local.js",              "max-age=43200");
-    server.serveStatic("/local.css",            FILESYSTEM, "/local.css",             "max-age=43200");
+    server.serveStatic("/local.js",         FILESYSTEM, "/local.js",      "max-age=43200");
+    server.serveStatic("/local.css",        FILESYSTEM, "/local.css",     "max-age=43200");
   #endif  
-  server.serveStatic("/",FILESYSTEM,"/"); // everything else in flash
+  server.serveStatic("/",                   FILESYSTEM, "/");   // everything else in flash
 
-  debugMsgln("ESP32 server.ons",1);
+  debugMsgln("ESP32 server.ons done",1);
 
   server.on("/sd/", HTTP_GET, [] (AsyncWebServerRequest *request) {
     debugMsgln("server.on(/sd/):" + request->url(),3);
@@ -223,8 +241,8 @@ void startWeb() {
     });
   #endif
 
-  AsyncMyOTA.begin(&server, root_username.c_str(), root_password.c_str());    // Start
-  AsyncMyOTA.setID(my_hostname.c_str());
+  asynchOTA.begin(&server, root_username.c_str(), root_password.c_str());
+  asynchOTA.setID(my_hostname.c_str());
 
   server.on("/update", HTTP_GET, [&](AsyncWebServerRequest *request){
     if (!request->authenticate(web_username.c_str(), web_password.c_str()) \

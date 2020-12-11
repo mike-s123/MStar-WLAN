@@ -12,9 +12,9 @@ void tryWLAN();
 void ctlLog();
 
 signed char getAgingOffset(); // fwd declaration
-String getNtpTZFromEEPROM();
-String getNtpServerFromEEPROM();
-unsigned short int getNtpPollFromEEPROM();
+String getNtpTZ();
+String getNtpServer();
+unsigned short int getNtpPoll();
 
 #define RTC_EEPROM_SIZE 4096
 #define RTC_EEPROM_SIG "mjs!"
@@ -42,7 +42,7 @@ unsigned short int getNtpPollFromEEPROM();
 #define RtcEepromLastSetTime 8
 #define RTC_DRIFT_FACTOR 1.0      // multiply drift offset correction by this
 
-#define NTP_DEFAULT_TZ "EST+5EDT,M3.2.0/2,M11.1.0/2"   // full POSIX format
+#define NTP_DEFAULT_TZ "EST+5EDT,M3.2.0,M11.1.0"   // full POSIX format
 #define NTP_DEFAULT_INTERVAL 7207                 // seconds, best if not a multiple of 60
 #define NTP_DEFAULT_SERVER "0.pool.ntp.org"
 #define NTP_MIN_INTERVAL 601                      // seconds
@@ -341,7 +341,8 @@ float getRtcppm() {
 }
 
 void checkClocks(int32_t rtc_diff_filtered) {  
-  debugMsgln(F("checkClocks"),3);  
+  debugMsgln(F("checkClocks"),3);
+  
   if (rtcPresent && !rtcNeedsTime && (WiFi.getStatusBits() & (STA_HAS_IP_BIT | STA_HAS_IP6_BIT)) ) {
     if (timeStatus() != timeSet) { // ntp went away
         // TODO retry NTP
@@ -436,30 +437,10 @@ void oncePerMinute() { // not necessarily _on_ the minute
   
   void oncePerFive(); //fwd dec
   void oncePerHour(); //fwd dec
+  
   deleteEvent(oncePerMinute);          // will recreate later, if needed
-  /*
-   * What's below is here because the module will sometimes reset at 2 AM local time. It appears to be caused by
-   * a power brownout - it hasn't happened if powered from USB. It also hasn't happened on a PS-MPPT, only a 
-   * PS-PWM. Presumption is that controller doesn't provide as much current. The cause of the power draw seems 
-   * to be related to processing in the EZTime library, as it follows the hour of daylight saving time changes,
-   * and nothing we do is related. Race condition? In any case, reducing the WiFi transmit power for a few minutes 
-   * makes things better by reducing power draw, so that's what we do here.
-   */
-  if ( (myTZ.hour() == 1 && myTZ.minute() >= 58) && !mytz2skip ) { // test - reboots happen at 2 AM local?.
-    debugMsgln(F("myTZ2 skip/return, WiFi pwr 19 dBm"),1);
-    if (logFile) logFile.flush();
-    WiFi.setTxPower(WIFI_POWER_19dBm); // 18_5, 17, 15, 13, 11, 8_5, 7, 5, 2, WIFI_POWER_MINUS_1dBm
-    mytz2skip = true;
-    UTC.setEvent(oncePerMinute,UTC.now()+180); // jump ahead 3 minutes
-    return;
-  }
-  if ( mytz2skip && (myTZ.hour() == 2 && myTZ.minute() >= 1) ) { // test - reboots happen at 2 AM local?.
-    debugMsgln(F("myTZ2 skip/return, WiFi pwr 19 dBm"),1);
-    if (logFile) logFile.flush();
-    WiFi.setTxPower(WIFI_POWER_19dBm);
-    mytz2skip = false;
-  }  
-  UTC.setEvent(oncePerMinute,UTC.now()+60);
+//  UTC.setEvent(oncePerMinute,UTC.now()+60);
+  setEvent(oncePerMinute,now()+60);
   
   debugMsgln(F("oncePerMinute"),3);  
   if ( (timeStatus() == timeSet) && rtcPresent && !rtcNeedsTime ) { // ntp and rtc running  
@@ -502,21 +483,19 @@ void oncePerMinute() { // not necessarily _on_ the minute
     rtc_diff_filtered = rtc_diff_ewmat.filter(real_rtc_diff_ms+1000000)-1000000; 
     debugMsgln("RTC diff real/filt:" + String(real_rtc_diff_ms) + "/" + String(rtc_diff_filtered),4);
     
-
     if (timeStatus() == timeSet && abs(real_rtc_diff_ms - rtc_diff_filtered) < 5 ) {  // only if NTP is running and
       checkClocks(rtc_diff_filtered);                                                 // we've averaged to within 5 ms
     }                                                                                                    
   }
   // other oncePerMinute processing goes here
+  ctlLog(); // log controller data
 }
 
 void oncePerFive() { // every 5 minutes
   deleteEvent(oncePerFive);
   UTC.setEvent(oncePerFive,UTC.now()+300);
-  if ( mytz2skip ) return;          // not doing anything around 2AM
   debugMsgln(F("oncePerFive"),3);
   tryWLAN(); // try to connect as station
-  ctlLog(); // log controller data, 1 per 5 min = ~7MB/year
   if (logFile) logFile.flush();      // flush logs every 5 minutes
   if (ctl_logFile) ctl_logFile.flush();
   #ifdef EZT_DEBUG
@@ -527,7 +506,6 @@ void oncePerFive() { // every 5 minutes
 void oncePerHour() { // not necessarily _on_ the hour
   deleteEvent(oncePerHour); 
   UTC.setEvent(oncePerHour,UTC.now()+3600);
-  if ( mytz2skip ) return;          // not doing anything around 2AM
   debugMsgln(F("oncePerHour"),2);
   if ((timeStatus() == timeNeedsSync) && rtcPresent) UTC.setTime(getUnixTime());     // lost ntp sync, update from RTC
   timeval epoch = {myTZ.now(), myTZ.ms()}; // FAT is not TZ aware, use local TZ
@@ -579,18 +557,18 @@ void setupClocks() {
     
   // now, setup NTP
   myTZ.setDefault();                     // setup NTP service
-  tzPosix = getNtpTZFromEEPROM();
+  tzPosix = getNtpTZ();
   debugMsg(F("Setting NtpTZ to:"),1);
   debugMsgln(tzPosix,1);
   ntpTZ = tzPosix;
   myTZ.setPosix(tzPosix);
-  tzPosix = getNtpServerFromEEPROM(); // tzPosix is used as a temp
+  tzPosix = getNtpServer(); // tzPosix is used as a temp
   debugMsg(F("Setting NtpServer to:"),1);
   debugMsgln(tzPosix,1);
   setServer(tzPosix);
   ntpServer = tzPosix;
   tzPosix = ""; // we were just using it temporarily
-  ntp_temp = getNtpPollFromEEPROM();
+  ntp_temp = getNtpPoll();
   debugMsg(F("Setting NtpPoll to:"),1);
   debugMsgln(String(ntp_temp),1);
   setInterval(ntp_temp);

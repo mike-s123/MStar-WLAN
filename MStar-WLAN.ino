@@ -22,14 +22,15 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201127"
+#define SOFTWARE_VERSION "v2.201210"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
                      Allow WLAN and security settings. Allow reset to defaults. Change hostname.<br/>\
                      REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
                      Change to littlefs. Improve OTA. Serve important stuff from PROGMEM.<br/>\
-                     Settable debug level. REST timeout."
+                     Settable debug level. REST timeout. Modbus reliability. EEPROM>Preferences. <br/>\
+                     Set controller logging period."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -48,21 +49,16 @@ using namespace std;
  * every few minutes if there is no client connected.
  */
 #define WIFI_MODE_AP_STA                // define to run AP while also connected as station
-//#define PS_RAM    // use WROVER PS-RAM
+#define PS_RAM    // use WROVER PS-RAM
 #include <string>
 //#include <sstream>
-#include <EEPROM.h>   // 1.0.3
+#include <Preferences.h>
 #include <FS.h>       // 1.0
 #include <Wire.h>     // 1.0.1
 
-//#include <BearSSLHelpers.h>
-//#include <CertStoreBearSSL.h>
-
 #include "ESPAsyncWebServer.h"  // 1.2.0 
-
 #include <WiFi.h>               // 1.0
 #include <WiFiMulti.h>          //
-//#include <WebServer.h>
 #include <AsyncTCP.h>           // 1.0.3
 #include "ESPAsyncWebServer.h"
 #include <WebAuthentication.h> 
@@ -113,26 +109,28 @@ String ctlLogFileName = CTL_LOGFILE;
 #include <WiFiUdp.h>
 #include <ModbusMaster.h> // 2.0.1 Doc Walker, via IDE
 #include "driver/ledc.h"
+#include "driver/gpio.h"
 #include "soc/ledc_reg.h"
-
+#include "soc/rtc_wdt.h"
 
 //---------------------------
 // definitions
 //---------------------------
 
+#define WROVER  // if using WROVER-B
 //security
 #define WEB_USERNAME "admin"
 #define WEB_PASSWORD "setup"
-#define UPDATE_USERNAME "admin"
-#define UPDATE_PASSWORD "update"
+#define ROOT_USERNAME "admin"
+#define ROOT_PASSWORD "update"
 #define UPDATE_PATH "/update"
 #define JSON_PASSWORD "imsure"
 //#define nosec
 #ifdef nosec
   #define WEB_USERNAME ""
   #define WEB_PASSWORD ""
-  #define UPDATE_USERNAME ""
-  #define UPDATE_PASSWORD ""
+  #define ROOT_USERNAME ""
+  #define ROOT_PASSWORD ""
 #endif
 
 //wlan
@@ -147,44 +145,6 @@ String ctlLogFileName = CTL_LOGFILE;
 #define JSON_VERSION "1.0"                // changes with api changes
 #define JSON_VERSION_MIN "1.0"            // changes when backward compatibility is broken
 #define LEDC_timerbits          LEDC_TIMER_13_BIT
-
-#define EEPROM_SIZE 1024  // ESP "eeprom"
-#define EEPROM_SIG "mjs!"
-/*
- * "EEPROM" on ESP
- * 0-127   (4x32) WLAN SSID
- * 128-255 (4x32) WLAN password
- * 256-271 (16) Controller model
- * 272-303 (32) ntp server
- * 304-305 (2)  ntp poll interval (uint_t 16)
- * 306-369 (64) ntp POSIX timestring
- * 370-401 (32) AP SSID
- * 402-433 (32) AP PSK
- * 434-449 (16) Admin name
- * 450-465 (16) Admin password
- * 466-481 (16) Upgrade name
- * 482-497 (16) Upgrade password
- * 498-513 (16) JSON password
- * 514-517 (4) Serial number
- * 518-549 (32) hostname
- * 550-1019  unused    
- * 1020-1023 (4)  Valid signature (EEPROM_SIG)
- */
-#define eeWLANSSID 0
-#define eeWLANPASS 128
-#define eeModel 256
-#define eeNtpServer 272
-#define eeNtpPoll 304
-#define eeNtpTZ 306
-#define eeAPSSID 370
-#define eeAPPSK 402
-#define eeAdminName 434
-#define eeAdminPass 450
-#define eeUpgradeName 466
-#define eeUpgradePass 482
-#define eeJsonPass 498
-#define eeSerialNum 514
-#define eeHostName 518
 
 // GPIO 2 or 33 for WROVER-B board
 #define WLAN_PIN_OLD 2  // up through board 2020.2
@@ -203,6 +163,11 @@ String ctlLogFileName = CTL_LOGFILE;
 #define SD_DETECT 26    // SD card inserted, only for SDCard0
 #define BOOT_SW 0       // GPIO0 connected to BOOT switch
 #define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
+#ifdef WROVER
+  #define USB_CC1_PIN 34  // USB Type-C CC1
+  #define USB_CC2_PIN 35
+  #define USB_PWR_DET 32  // to VCCIO
+#endif
 #define SD_CARD_LOG true //log to SD card
 bool sd_card_log = SD_CARD_LOG;
 bool sd_card_available = false;
@@ -228,6 +193,7 @@ bool needLogTime = true;  // whether we need to print time to the log
 #else
   int debug_level = 0;
 #endif
+/*
 string web_username = WEB_USERNAME;
 string web_password = WEB_PASSWORD;
 string json_password = JSON_PASSWORD;
@@ -236,9 +202,22 @@ string json_version_min = JSON_VERSION_MIN;
 string ap_ssid = AP_SSID;
 string ap_password = AP_PSK;
 string ap_SSID = AP_SSID;
-string root_username = UPDATE_USERNAME;
-string root_password = UPDATE_PASSWORD;
+string root_username = ROOT_USERNAME;
+string root_password = ROOT_PASSWORD;
 string serialNumber = SERIAL_NUMBER;
+*/
+String web_username = WEB_USERNAME;
+String web_password = WEB_PASSWORD;
+String json_password = JSON_PASSWORD;
+String json_version = JSON_VERSION;
+String json_version_min = JSON_VERSION_MIN;
+String ap_ssid = AP_SSID;
+String ap_password = AP_PSK;
+String ap_SSID = AP_SSID;
+String root_username = ROOT_USERNAME;
+String root_password = ROOT_PASSWORD;
+String serialNumber = SERIAL_NUMBER;
+
 const char *update_path = UPDATE_PATH;
 
 String esid[4];
@@ -252,10 +231,8 @@ enum ledStatusStates {lss_APCLIENT, lss_STATION, lss_IDLE, lss_NONE};
 ledStatusStates blinkyState = lss_NONE;
 boolean led_change_done = true;
 boolean noController = true;
-boolean mytz2skip = false; //testing
 boolean psRAMavail = false;
 boolean daytime = false;
-uint32_t mytz2skipMillis;
 uint8_t myWDT=120;
 unsigned long lastWLANtry;      // when we last tried to connected (or tried) to an AP
 int mbAddr = mbusSlave;
@@ -269,6 +246,8 @@ String my_MAC;
 String my_name;                 // for log file name
 String my_hostname;             // for networking
 String logLast="";
+#define LOG_FREQ  15            // minutes between log entries
+unsigned int log_freq = LOG_FREQ; 
 static char log_print_buff[512];
 File fsUploadFile;              // a File object to temporarily store the received file
 
@@ -281,6 +260,7 @@ WiFiMulti wifiMulti;
 //  WebServer server(80);
 HardwareSerial mbSerial(1);
 ledc_channel_config_t ledc_channel[2];  //
+Preferences preferences;
 
 //order here is important
 #include "TimeStuff.h"
@@ -293,15 +273,22 @@ ledc_channel_config_t ledc_channel[2];  //
 #include "RestPage.h"           // REST API
 #include "PS.h"                 // status, charge and other pages for Prostar models
 #include "WebPages.h"           // stuff to serve content
+#include "WebCmd.h"
 #include "Setups.h"
 #include "OTA.h"
 #include "Web.h"                // starts up web server
 
 
 void setup() {
-  pinMode(I2C_SDA_RESET ,INPUT);
+  pinMode(I2C_SDA_RESET, INPUT);
   pinMode(BOOT_SW, INPUT_PULLUP); // to read the boot switch
-
+  #ifdef WROVER
+    pinMode(USB_PWR_DET, INPUT);
+    adcAttachPin(USB_CC1_PIN);
+    adcAttachPin(USB_CC2_PIN);
+    analogSetPinAttenuation(USB_CC1_PIN, ADC_6db);
+    analogSetPinAttenuation(USB_CC2_PIN, ADC_6db);
+  #endif
   attachSDCardIRQ();            // get an interrupt when card inserted/removed
     
   WiFi.macAddress(mac);
@@ -320,8 +307,6 @@ void setup() {
     largeFlash = true;
   }
 
-  EEPROM.begin(EEPROM_SIZE);
-  delay(10);
   if (psramInit()){
     psRAMavail=true;
     debugMsg(F("PS-RAM available"),1);
@@ -330,10 +315,15 @@ void setup() {
     #endif
     #ifndef PS_RAM
       debugMsgln(F("(not using)"),1);
+      psRAMavail=false;
     #endif    
   }
-  getEeConfig(); // load config from eeprom
-  getWLANsFromEEPROM();
+  preferences.begin("eeprom", false);   // this bit can go away in the future
+  preferences.clear();                  // just here to clear old eeprom from nvs
+  preferences.end();
+
+  getPreferences();
+  getWLANs();
   setupWLAN();
   setupClocks();
   setupModbus();
@@ -366,7 +356,7 @@ void loop() {
   #ifndef DEBUG_ON
     serialPassthrough();
   #endif
-  AsyncMyOTA.loop();
+  asynchOTA.loop();
 // This handles connections to TCP/502 for Modbus TCP from MSView
   if (!modbusClient.connected()) {
     modbusClient = modbusTCP.available();
@@ -387,9 +377,7 @@ void loop() {
   }                                           // keep looping as long as BOOT is pressed
   if (boot_reset == 0) {                      // reset to defaults requested
     debugMsgln(F("BOOT held, resetting to defaults."),1);    
-    resetEEPROM();
-    logFile.flush();
-    delay(100);
+    resetPreferences();
     reboot();
   }
 
@@ -414,4 +402,5 @@ void loop() {
     }
   }
   myWDT = 60; // reset watchdog
+
 } // loop()

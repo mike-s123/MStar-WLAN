@@ -8,7 +8,7 @@
  * 
  * License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  */
-String getLocalJs() {                     // point to local.js in FILESYSTEM here
+String getLocalJs() {
   String js = F("<script src=\"/local.js\"></script>");
   return js;
 }

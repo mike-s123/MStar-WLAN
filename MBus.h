@@ -109,24 +109,21 @@ void rxEnable(bool state) {                                   // high = enabled 
 //  digitalWrite(RX_ENABLE_PIN, state);
 }
 
-void preTransmission() {  // callbacks for half-duplex MODBUS
-  rxEnable(false);
-  delay(10);                                // can't repeat requests too quickly, character time is
-                                            // 11 bits @ 9600 = 0.00114583 s, *3.5 char min interframe = 4.011 ms.
-//  mbSerial.flush();
-  while (mbSerial.available()) mbSerial.read(); // because flush doesn't work?
-  node.clearResponseBuffer();
+void preTransmission() {                        // callbacks for half-duplex MODBUS
+  rxEnable(false);                              // can't repeat requests too quickly, character time is
+  delayMicroseconds(4011);                      // 11 bits/char @ 9600 = 0.00114583 s, *3.5 = Modbus char min interframe = 4.011 ms.
 }
+
 void postTransmission() {
-//  uart_wait_tx_done(UART_NUM_1, 3);     // wait for uart 1 to empty, timeout is 3 RTOS ticks - ~30 ms
-                                          // doesn't work, results in "E (338308) uart: uart_wait_tx_done(1051): uart driver error"
-  int pre = mbSerial.availableForWrite();
-  while (mbSerial.availableForWrite() < 0x7f) ; // delay until tx buffer is empty (i.e. room for 0x7f chars)
-//  debugMsgln("postTransmission, availableForWrite (pre/post)="+String(pre)+"/" +String(mbSerial.availableForWrite()),1);
-  delayMicroseconds(2292);                // wait for final char to clock out (2 char times)
+//  uart_wait_tx_done(UART_NUM_1, 15);          // wait for uart 1 to empty, timeout is 3 RTOS ticks - ~150 ms, enough to empty full buffer (127)
+                                                // doesn't work, results in "E (338308) uart: uart_wait_tx_done(1051): uart driver error"
+  while (mbSerial.availableForWrite() < 0x7f) ; // delay until tx buffer is emptied (i.e. room for 0x7f chars)
+  delayMicroseconds(1719);                      // 1.5 char wait (1719 us) for final char to clock out
+                                                // 2005 (1.75),   4/130796 (0.003%) (1 index page)
+                                                // 1719 (1.5), 6/219810 (0.003%) (1 index page running)
+                                                // 1432 (1.25), lots of fails 64/66 (96.970%)
   rxEnable(true);
-//  mbSerial.flush();                       // make sure we didn't receive a glitch
-  delayMicroseconds(1200);
+//  mbSerial.flush();                           // make sure we didn't receive our own stuff
   while (mbSerial.available()) mbSerial.read(); // because flush doesn't work?
 }
 
@@ -666,13 +663,12 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
   query[6] = (uint8_t)((crc & 0xFF00) >> 8);  // add the CRC to the query
   debugMsgln("Mbus CRC out = " + String(crc,HEX),7);
 
-  bool good;
+  bool goodStart;
   for (int tries=1; tries < 3; tries++) {
-    good=false;
+    goodStart=false;
     preTransmission();
     mbSerial.flush(); // clear buffers
     mbSerial.write(query, 7);
-//    delay(9); // wait for it to be sent, should take ~8 ms (uart_wait_tx_done?)
     postTransmission();
     
     int startwait = 300; // up to 300 ms for start of a response.
@@ -688,14 +684,14 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
         char incoming = mbSerial.read();
         debugMsg(String(F("readDeviceID, mbSerial avail, count: ")) + String(uartchars,DEC),7); 
         debugMsgln(String(F(", char:")) + String(incoming, DEC),7);
-        response[count++] = incoming;
-        if (incoming != 0) good = true; // got a response other than null
+        if (incoming == mbAddr) goodStart = true; // first byte of response should be address
+        if (goodStart) response[count++] = incoming;
         doneTime = millis() + charwait; // started getting a response, change to char timeout
       }  //matches xx.available
       if (millis() > doneTime) { done = true; }  // no response or didn't get a char for a while
     } // while() - done getting response
     mbustries++;
-    if (good) {
+    if (goodStart) {
       tries=4;
     } else {
       mbuserrs++;

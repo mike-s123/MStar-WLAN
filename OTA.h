@@ -26,23 +26,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
 
-#ifndef AsyncMyOTA_h
-#define AsyncMyOTA_h
+#ifndef asynchOTA_h
+#define asynchOTA_h
 
 #include "Arduino.h"
 #include "stdlib_noniso.h"
-
 #include "WiFi.h"
 #include "AsyncTCP.h"
 #include "Update.h"
-//#include "esp_int_wdt.h"
-//#include "esp_task_wdt.h"
-
-//#include "Hash.h"
 #include "ESPAsyncWebServer.h"
 #include "FS.h"
-
-//#include "elegantWebpage.h"
 
 
 class AsyncMyOtaClass{
@@ -74,18 +67,7 @@ class AsyncMyOtaClass{
                 }
                 request->send(200, "application/json", "{\"id\": \""+_id+"\", \"hardware\": \"ESP32\"}");
             });
-/*
-            _server->on("/update", HTTP_GET, [&](AsyncWebServerRequest *request){
-                if(_authRequired){
-                    if(!request->authenticate(_username.c_str(), _password.c_str())){
-                        return request->requestAuthentication();
-                    }
-                }
-                AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", ELEGANT_HTML, ELEGANT_HTML_SIZE);
-                response->addHeader("Content-Encoding", "gzip");
-                request->send(response);
-            });
-*/
+
             _server->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request) {
                 if(_authRequired){
                     if(!request->authenticate(_username.c_str(), _password.c_str())){
@@ -108,32 +90,39 @@ class AsyncMyOtaClass{
                 }
 
                 if (!index) {
-                    if(!request->hasParam("MD5", true)) {
-                        return request->send(400, "text/plain", "MD5 parameter missing");
-                    }
+                  if(!request->hasParam("MD5", true)) {
+                      return request->send(400, "text/plain", "MD5 parameter missing");
+                  }
 
-                    if(!Update.setMD5(request->getParam("MD5", true)->value().c_str())) {
-                        return request->send(400, "text/plain", "MD5 parameter invalid");
-                    }
-                    
-                    debugMsgln("OTA filename:"+filename,2);
-                    String fs_name_id;
-                    if (FS_NAME == "littlefs") {
-                      fs_name_id = F(".littlefs.bin");
-                    } else {
-                      fs_name_id = F(".spiffs.bin");
-                    }
-                    int cmd = (filename.indexOf(fs_name_id) > -1 ) ? U_SPIFFS : U_FLASH;
-                    if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) {
-                      debugMsgln(F("OTA bad filename"),2);
-                      return request->send(400, "text/plain", "OTA bad filename or type");; // wrong image for ESP32
-                    }
-                    myWDT = 300; // allow up to 5 minutes to flash
-                    if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) { // Start with max available size
-//                      Update.printError(Serial);
-                      return request->send(400, "text/plain", "OTA could not begin");
-                    }
-
+                  if(!Update.setMD5(request->getParam("MD5", true)->value().c_str())) {
+                      return request->send(400, "text/plain", "MD5 parameter invalid");
+                  }
+                  
+                  debugMsgln("OTA filename:"+filename,2);
+                  String fs_name_id;
+                  if (FS_NAME == "littlefs") {
+                    fs_name_id = F(".littlefs.bin");
+                  } else {
+                    fs_name_id = F(".spiffs.bin");
+                  }
+                  int cmd = (filename.indexOf(fs_name_id) > -1 ) ? U_SPIFFS : U_FLASH;
+                  if (cmd == U_FLASH && !(filename.indexOf(F("esp32.bin")) > -1) ) {
+                    debugMsgln(F("OTA bad filename"),2);
+                    return request->send(400, "text/plain", "OTA bad filename or type");; // wrong image for ESP32
+                  }
+                  myWDT = 360; // allow up to 6 minutes to flash
+                  if (cmd == U_FLASH) {
+                    myWDT = 120; // allow up to 2 minutes to flash
+                    debugMsgln(F("Flash OTA"),1);
+                  } else {
+                    myWDT = 420; // allow up to 7 minutes to flash
+                    debugMsgln(F("Filesystem OTA"),1);
+                  }
+                  if (logFile) logFile.flush();
+                  if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) { // Start with max available size
+//                    Update.printError(Serial);
+                    return request->send(400, "text/plain", "OTA could not begin");
+                  }
                 }
 
                 // Write chunked data to the free sketch space
@@ -155,12 +144,7 @@ class AsyncMyOtaClass{
         }
 
         void loop(){
-            if(restartRequired){
-                yield();
-                delay(1000);
-                yield();
-                ESP.restart();
-            }
+            if(restartRequired) reboot();
         }
 
     private:
@@ -181,5 +165,5 @@ class AsyncMyOtaClass{
 
 };
 
-AsyncMyOtaClass AsyncMyOTA;
+AsyncMyOtaClass asynchOTA;
 #endif

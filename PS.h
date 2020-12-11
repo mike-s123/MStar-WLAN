@@ -343,39 +343,88 @@ void psLog() {
    *     9 SLAVE
    *     10 FIXED
    */
-  int registers[] = { 18,25,36,27,19,17,20,22,33 };
-  int numReg = sizeof(registers)/sizeof(registers[0]);
-  fullReg reg;
+  struct log_record {float BattV, NetA, TargetV, BattTemp, ArrayV, ArrayC, LoadV, LoadC; int State; float MaxP; int s1, s2, s3;} ;
+  //  static log_record log_accumulate[log_freq] = {};
+  static log_record * log_accumulate = NULL;
+  static unsigned int last_log_freq = 0;
+  static int log_record_num = 0;
+  if ( last_log_freq != log_freq ) {   //changed
+    log_record_num = 0;
+    free(log_accumulate);
+    if (psRAMavail) {
+      log_accumulate = (log_record *) ps_calloc(log_freq, sizeof(log_record));
+    } else {
+      log_accumulate = (log_record *) calloc(log_freq, sizeof(log_record));
+    }
+  }
+  last_log_freq = log_freq;
+  log_record log_consolidated = {};
+  String value;
   String logLine="";
   logLine.reserve(120);
-  for (int i=0; i<numReg; i++) {
-    mbGetFullReg(reg, registers[i]);
-    if (reg.value == "-0.00") { // can happen for very small negative values
-      logLine += "0.00";
-    } else {
-      logLine += reg.value;
-    }
-    if (registers[i] == 36) {
-      if (reg.value.toFloat() >= 0.1 && !daytime) {
-          debugMsgln(F("Start of daytime."),1);
-          daytime = true;
-      }
-      if (reg.value.toFloat() < 0.1 && daytime) {
-        debugMsgln(F("Start of nighttime."),1);
-        daytime = false;
-      }
-    }
-    if (i+1 < numReg) logLine += ",";
+
+  MBus_get_reg(18, value);
+  log_accumulate[log_record_num].BattV = value.toFloat();
+  MBus_get_reg(25, value);  
+  log_accumulate[log_record_num].NetA = value.toFloat();
+  MBus_get_reg(36, value);
+  log_accumulate[log_record_num].TargetV = value.toFloat();
+  if (log_accumulate[log_record_num].TargetV >= 0.1 && !daytime) {
+    debugMsgln(F("Start of daytime."),1);
+    daytime = true;
   }
+  if (log_accumulate[log_record_num].TargetV < 0.1 && daytime) {
+    debugMsgln(F("Start of nighttime."),1);
+    daytime = false;
+  }
+  MBus_get_reg(27, value);
+  log_accumulate[log_record_num].BattTemp = value.toFloat();
+  MBus_get_reg(19, value);
+  log_accumulate[log_record_num].ArrayV = value.toFloat();
+  MBus_get_reg(25, value);
+  log_accumulate[log_record_num].ArrayC = value.toFloat();
+  MBus_get_reg(20, value);
+  log_accumulate[log_record_num].LoadV = value.toFloat();
+  MBus_get_reg(22, value);
+  log_accumulate[log_record_num].LoadC = value.toFloat();
   if (model.startsWith(F("PS-MPPT"))) {
-    mbGetFullReg(reg, 62); // Array Max Output Power (found during sweep)
-    logLine += "," + reg.value;
+    MBus_get_reg(62, value); // Array Max Output Power (found during sweep)
+    log_accumulate[log_record_num].MaxP = value.toFloat();
   } 
-  logLine += ",0,0,0";  // Spares 1-3, reserved for future use, 
+  if (++log_record_num < log_freq) return; // we accumulate 
+  
+  log_record_num = 0; 
+  for (int i=0; i < log_freq; i++){  // calculate 15 minute averages
+    log_consolidated.BattV += log_accumulate[i].BattV / (float)log_freq;
+    log_consolidated.NetA += log_accumulate[i].NetA / (float)log_freq;
+    log_consolidated.TargetV += log_accumulate[i].TargetV / (float)log_freq;
+    log_consolidated.BattTemp += log_accumulate[i].BattTemp / (float)log_freq;
+    log_consolidated.ArrayV += log_accumulate[i].ArrayV / (float)log_freq;
+    log_consolidated.ArrayC += log_accumulate[i].ArrayC / (float)log_freq;
+    log_consolidated.LoadV += log_accumulate[i].LoadV / (float)log_freq;
+    log_consolidated.LoadC += log_accumulate[i].LoadC / (float)log_freq;
+    if ( log_accumulate[i].MaxP > log_consolidated.MaxP ) log_consolidated.MaxP = log_accumulate[i].MaxP; // maximum
+  }
+  
+  MBus_get_reg(33, value);
+  log_consolidated.State = value.toInt();
+  logLine = String(log_consolidated.BattV,2) + "," +
+            String(log_consolidated.NetA,2) + "," +
+            String(log_consolidated.TargetV,2) + "," +
+            String(log_consolidated.BattTemp,2) + "," +
+            String(log_consolidated.ArrayV,2) + "," +
+            String(log_consolidated.ArrayC,2) + "," +
+            String(log_consolidated.LoadV,2) + "," +
+            String(log_consolidated.LoadC,2) + "," +
+            String(log_consolidated.State) + "," 
+            ;
+  
+  if (model.startsWith(F("PS-MPPT"))) logLine += String(log_consolidated.State,2) + "," ;
+  logLine += "0,0,0";   // Spares 1-3, reserved for future use, 
                         // because MSView complains if the number of headers doesn't exactly match 
                         // the number of csv fields. This lets us add new fields in the future and 
                         // still have the existing log file still work with MSView.
-  if (logLine != logLast && logLine.indexOf(F("err")) < 0 ) { // only write an entry if something has changed and no error
+  if (logLine != logLast ) { // only write an entry if something has changed and no error
     ctl_logFile.print(myTZ.dateTime(ISO8601)+","); // ECMAScript/ISO8601: YYYY-MM-DDTHH:mm...
     ctl_logFile.println(logLine);
     logLast = logLine;

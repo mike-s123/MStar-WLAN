@@ -79,7 +79,7 @@ function setStaHostname ( hostname ) {
 }
 
 function setJSONpass ( pass ) {
-  var theUrl = "/cmd?setjsonpass=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
+  var theUrl = "/rootcmd?setjsonpass=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
   var xhr = new XMLHttpRequest() ;
   document.getElementById("jsonpass").innerHTML = pass;
   xhr.open ( "GET", theUrl, false ) ;
@@ -87,12 +87,13 @@ function setJSONpass ( pass ) {
 }
 
 function setCred ( where, user, pass ) {
-  var theUrl = "/cmd?setcred=" + where + "&user=" + encodeURIComponent(user) + "&pass=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
+  var theUrl = "/rootcmd?setcred=" + where + "&user=" + encodeURIComponent(user) + "&pass=" + encodeURIComponent(pass) + "&version=" + Math.random() ;
   var xhr = new XMLHttpRequest() ;
   if ( user.length > 0 ) { document.getElementById(where + "user").innerHTML = user; } ;
   if ( pass.length > 0 ) { document.getElementById(where + "pass").innerHTML = pass; } ;
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;
+  location.reload();
 }
 
 function setDebugLvl ( level ) {
@@ -102,6 +103,16 @@ function setDebugLvl ( level ) {
   var theLvl = level ;
   var xhr = new XMLHttpRequest() ;
   document.getElementById("debuglvl").innerHTML = level;
+  xhr.open ( "GET", theUrl, false ) ;
+  xhr.send() ;
+}
+
+function setLogFreq ( freq ) {
+  if (freq > 1440) {freq = 1440} ;
+  if (freq < 1) {freq = 1} ;
+  var theUrl = "/cmd?setlogfreq=" + encodeURIComponent(freq) + "&version=" + Math.random() ;
+  var xhr = new XMLHttpRequest() ;
+  document.getElementById("logfreq").innerHTML = freq;
   xhr.open ( "GET", theUrl, false ) ;
   xhr.send() ;
 }

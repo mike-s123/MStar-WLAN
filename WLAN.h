@@ -39,7 +39,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
         wifiMulti.addAP(ssid);
     }
   } else {                        // if we weren't given info, look it up
-    getWLANsFromEEPROM();
+    getWLANs();
     int i;
     for (i = 0; i<=3; i++) {
       if (esid[i] != "") {

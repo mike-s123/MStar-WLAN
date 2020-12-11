@@ -12,7 +12,7 @@ void debugMsgln(String msg, int level) {
     if (level <= debug_level) {
       Serial.println(msg);
       if (sd_card_available && logFile) {
-        if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" ");
+        if (needLogTime) logFile.print(myTZ.dateTime(ATOM)+" "+String(level)+"-");
         logFile.println(msg);
         needLogTime = true;
       } 
@@ -26,7 +26,7 @@ void debugMsg(String msg, int level) {
       Serial.print(msg);
       if (sd_card_available && logFile) {
         if (needLogTime) {
-          logFile.print(myTZ.dateTime(ATOM)+" ");
+          logFile.print(myTZ.dateTime(ATOM)+" "+String(level)+"-");
           needLogTime = false;
         }
         logFile.print(msg);
@@ -151,288 +151,131 @@ String formatIPAsString(IPAddress ip) {
   return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
 }
 
-/*
- *  This stores WLAN credentials in the first slot [0]
- */
-void storeWLANsInEEPROM(String qsid, String qpass, int idx=0, bool wlanSsid=false, bool wlanPsk=false) {
+void putWLANs(String qsid, String qpass, int idx=0, bool wlanSsid=false, bool wlanPsk=false) {
+  const char * ssidkey[4] = {"SSID1","SSID2","SSID3","SSID4"};
+  const char * pskkey[4] = {"SSIDpsk1","SSIDpsk2","SSIDpsk3","SSIDpsk4"};
+  preferences.begin("MStar-WLAN", false);
   if (wlanSsid) { // true if we will write SSID
-    debugMsgln("Writing eeprom slot "+String(idx)+" SSID " + qsid,3);
+    debugMsgln("pref put SSID slot "+String(idx)+" SSID " + qsid,3);
     if (idx < 0 || idx > 3) return;
     wlanRead = false;                   // now needs to be re-read
-    for (int i = 0; i < 32; i++) {
-      if (i < qsid.length()) {
-        EEPROM.write(eeWLANSSID + (32*idx) + i, qsid[i]);
-        debugMsgln("Wrote: " + String(qsid[i]),5);
-      } else {
-        EEPROM.write(eeWLANSSID + (32*idx) + i, 0);
-      }
-    }
+    preferences.putString(ssidkey[idx],qsid);
     esid[idx] = qsid; // update running config
   }
   if (wlanPsk) { // true if we will write psk
-    debugMsg("Writing eeprom slot "+String(idx)+" psk ",3);
+    debugMsg("pref put PSK slot "+String(idx)+" psk ",3);
     debugMsg(qpass,9);
     debugMsgln("",3);
-    for (int i = 0; i < 32; i++) {
-      if ( i < qpass.length()) {
-        EEPROM.write(eeWLANPASS + (32*idx) + i, qpass[i]);
-        debugMsgln("Wrote: " + String(qpass[i]),9);
-      } else {
-        EEPROM.write(eeWLANPASS + (32*idx) + i, 0);
-      }
-    }
+    preferences.putString(pskkey[idx],qpass);
     epass[idx]=qpass; // update running config
   }
-  EEPROM.commit();
+  preferences.end();
 }
 
-void getWLANsFromEEPROM() {
+void getWLANs() {
   if (wlanRead) return;
-  byte readByte;
+  const char * ssidkey[4] = {"SSID1","SSID2","SSID3","SSID4"};
+  const char * pskkey[4] = {"SSIDpsk1","SSIDpsk2","SSIDpsk3","SSIDpsk4"};
+  preferences.begin("MStar-WLAN", true);
   for (int j = 0; j<=3; j++){
-    esid[j] = "";
-    int i;
-    for (i = 0; i < 32; i++) {
-      readByte = EEPROM.read(eeWLANSSID + i+(j*32));
-      if (readByte == 0) {
-        break;
-      } else if ((readByte < 32) || (readByte > 126)) {
-        continue;
-      }
-      esid[j] += char(readByte);
-    }
+    esid[j] = preferences.getString(ssidkey[j],"");
     debugMsgln("Read SSID " + String(j) +":" + esid[j],3);
-    wlanRead = true;
-    wlanSet = false;
-  }
-  
-  for (int j = 0; j<=3; j++){
-    epass[j] = "";
-    for (int i = 0; i < 32; i++) {
-      readByte = EEPROM.read(eeWLANPASS + i + (j*32));
-      if (readByte == 0) {
-        break;
-      } else if ((readByte < 32) || (readByte > 126 )) {
-        continue;
-      }
-      epass[j] += char(readByte);
-    }
+    epass[j] = preferences.getString(pskkey[j],"");
     debugMsg("Read password:",9);
     debugMsg(epass[j],9); // only show password debug level 9+
     debugMsgln("",3);
   }
+  preferences.end();
+  wlanRead=true;
+  wlanSet=false;
 }
 
-int storeStringInEEPROM(String str, int address, int maxlen) {
-  debugMsgln("writing string to EEPROM address " + String(address),3);
-  for (int i = 0; i < maxlen; i++) {
-    if (i < str.length()) {
-      EEPROM.write(i+address, str[i]);
-    } else {
-      EEPROM.write(i+address, 0);
-    }
-  }
-  debugMsg("Wrote EEPROM string, addr: " +String(address),3);
-  debugMsg(" str:" + str,5);
-  debugMsgln("",3);
-  EEPROM.commit();
+void putModelPref(String model) {
+  debugMsgln("pref put model " + model +" ("+String(model.length())+")",3);
+  preferences.begin("MStar-WLAN", false);
+  server = preferences.putString("model",model);
+  preferences.end();
 }
 
-String getStringFromEEPROM(int address, int maxlen){ // note: std::string
-  String str = "";
-  byte readByte;
-  for (int i = 0; i < maxlen; i++) {
-    readByte = EEPROM.read(i+address);
-    if (readByte == 0) {
-      break;
-    } else if ((readByte < 32) || (readByte > 126)) { // no special chars
-      continue;
-    }
-    str += char(readByte);
-  }
-  debugMsg("Read EEPROM string, addr: " +String(address),3);
-  debugMsg(" str:" + str,5);
-  debugMsgln("",3);
-  return str;
-}
-
-void storeModelInEEPROM(String model) {
-  debugMsgln("writing eeprom model " + model +" ("+String(model.length())+")",3);
-  for (int i = 0; i < 16; i++)
-  {
-    if (i < model.length()) {
-      EEPROM.write(i+eeModel, model[i]);
-      debugMsgln("Wrote: " + String(model[i]),5);
-    } else {
-      EEPROM.write(i+eeModel, 0);
-    }
-  }
-  EEPROM.commit();
-}
-
-String getModelFromEEPROM() {
+String getModelPref() {
   String model = "";
-  byte readByte;
-  for (int i = 0; i < 16; i++)
-  {
-    readByte = EEPROM.read(i+eeModel);
-    if (readByte == 0) {
-      break;
-    } else if ((readByte < 32) || (readByte > 126)) {
-      continue;
-    }
-    model += char(readByte);
-  }
-  debugMsgln("EEPROM read model: " + model,3);
+  preferences.begin("MStar-WLAN", true);
+  model = preferences.getString("model",F("PS-PWM"));
+  preferences.end();
+  debugMsgln("pref read model: " + model,3);
   return model;
 }
 
-void storeNtpServerInEEPROM(String server) {
-  debugMsgln("eeprom writing NtpServer:" + server + " ("+String(server.length())+")",4);
-  for (int i = 0; i < 32; i++)
-  {
-    if (i < server.length()) {
-      EEPROM.write(i+eeNtpServer, server[i]);
-      debugMsgln("Wrote:" + String(server[i]),5);
-    } else {
-      EEPROM.write(i+eeNtpServer, 0);
-    }
-  }
-  EEPROM.commit();
+void putNtpServer(String server) {
+  debugMsgln("pref put NtpServer:" + server + " ("+String(server.length())+")",4);
+  preferences.begin("MStar-WLAN", false);
+  server = preferences.putString("NtpServer",server);
+  preferences.end();
 }
 
-String getNtpServerFromEEPROM() {
+String getNtpServer() {
   String server = "";
-  byte readByte;
-  for (int i = 0; i < 32; i++)
-  {
-    readByte = EEPROM.read(i+eeNtpServer);
-    if (readByte == 0) {
-      break;
-    } else if ((readByte < 32) || (readByte > 126)) {
-      continue;
-    }
-    server += char(readByte);
-  }
-  debugMsgln("eeprom read NtpServer: " + server,4);
+  preferences.begin("MStar-WLAN", true);
+  server = preferences.getString("NtpServer",F(NTP_DEFAULT_SERVER));
+  preferences.end();
+  debugMsgln("pref read NtpServer: " + server,4);
   return server;
 }
 
-void storeNtpTZInEEPROM(String tz) {
-  debugMsgln("eeprom writing NtpTZ:" + tz + " ("+String(tz.length())+")",3);
-  for (int i = 0; i < 64; i++)
-  {
-    if (i < tz.length()) {
-      EEPROM.write(i+eeNtpTZ, tz[i]);
-      debugMsgln("Wrote:" + String(tz[i]),5);
-    } else {
-      EEPROM.write(i+eeNtpTZ, 0);
-    }
-  }
-  EEPROM.commit();
+void putNtpTZ(String tz) {
+  debugMsgln("pref writing NtpTZ:" + tz + " ("+String(tz.length())+")",3);
+  preferences.begin("MStar-WLAN", false);
+  preferences.putString("NtpTZ",tz);
+  preferences.end();
 }
 
-String getNtpTZFromEEPROM() {
+String getNtpTZ() {
   String tz = "";
-  byte readByte;
-  for (int i = 0; i < 64; i++)
-  {
-    readByte = EEPROM.read(i+eeNtpTZ);
-    if (readByte == 0) {
-      break;
-    } else if ((readByte < 32) || (readByte > 126)) {
-      continue;
-    }
-    tz += char(readByte);
-  }
-  debugMsgln("eeprom read NtpTZ:" + tz,4);
+  preferences.begin("MStar-WLAN", true);
+  tz = preferences.getString("NtpTZ",F(NTP_DEFAULT_TZ));
+  preferences.end();
+  debugMsgln("pref read NtpTZ:" + tz,4);
   return tz;
 }
 
-void storeNtpPollInEEPROM(unsigned short int poll) {
-  debugMsgln("eeprom writing NtpPoll:" + String(poll),4);
-  EEPROM.write(eeNtpPoll, (poll >> 8));
-  EEPROM.write(eeNtpPoll+1, (poll & 0xff));
-  debugMsgln("Wrote:" + String(poll),5);
-  EEPROM.commit();
+void putNtpPoll(unsigned short int poll) {
+  debugMsgln("pref writing NtpPoll:" + String(poll),4);
+  preferences.begin("MStar-WLAN", false);
+  preferences.putUShort("NtpPoll",poll);
+  preferences.end();
 }
 
-unsigned short int getNtpPollFromEEPROM() {
-  unsigned short int poll = 0;
-  poll = EEPROM.read(eeNtpPoll) << 8;
-  poll += EEPROM.read(1 + eeNtpPoll);
-  debugMsgln("eeprom read NtpPoll: " + String(poll),4);
+unsigned short int getNtpPoll() {
+  unsigned short int poll;
+  preferences.begin("MStar-WLAN", true);
+  poll = preferences.getUShort("NtpPoll",NTP_DEFAULT_INTERVAL);
+  preferences.end();
+  debugMsgln("pref read NtpPoll: " + String(poll),4);
   return poll;
 }
 
-void wipeEEPROM() {
-  debugMsgln(F("Wiping EEPROM."),1);
-  for (int i = 0; i < EEPROM_SIZE; i++) {
-    EEPROM.write(i, 0);
-  }
-  EEPROM.commit();
+void resetPreferences(){
+  preferences.begin("MStar-WLAN", false);
+  preferences.clear();
+  preferences.end();
 }
 
-void resetEEPROM() {
-  wipeEEPROM();
-  debugMsgln(F("Resetting EEPROM."),1);
-  for (int i = 0; i<=3 ; i++) {
-    storeWLANsInEEPROM("", "", i, true, true);
-  }
-  storeModelInEEPROM(F("PS-PWM"));
-  storeNtpServerInEEPROM(F(NTP_DEFAULT_SERVER));
-  storeNtpPollInEEPROM(NTP_DEFAULT_INTERVAL);
-  storeNtpTZInEEPROM(F(NTP_DEFAULT_TZ));
-  std::string ap_SSID(AP_SSID);
-#ifdef AP_SSID_UNIQ
-  ap_SSID.append("-");
-  ap_SSID.append(my_MAC.c_str());
-#endif
-  storeStringInEEPROM(ap_SSID.c_str(), eeAPSSID, 32);
-  storeStringInEEPROM(F(AP_PSK), eeAPPSK, 32);
-  storeStringInEEPROM(F(WEB_USERNAME), eeAdminName, 16);
-  storeStringInEEPROM(F(WEB_PASSWORD), eeAdminPass, 16);
-  storeStringInEEPROM(F(UPDATE_USERNAME), eeUpgradeName, 16);
-  storeStringInEEPROM(F(UPDATE_PASSWORD), eeUpgradePass, 16);
-  storeStringInEEPROM(F(JSON_PASSWORD), eeJsonPass, 16);
-  storeStringInEEPROM(my_name, eeHostName, 32);
-
-  String chkstr = F(EEPROM_SIG);
-  for (int i = 0; i<=3 ; i++) {
-    EEPROM.write(i + EEPROM_SIZE -4, chkstr[i]);
-    debugMsgln("Wrote chkstr: " + chkstr[i],5);
-  }
-  EEPROM.commit();
-} 
-
-String checkEEPROM() {  
-/* 
- *  Check if valid, reset if not
- */
-  debugMsg(F("Check ESP EEPROM..."),1);
-  String chkstr = "";
-  for (int i = EEPROM_SIZE - 4; i < EEPROM_SIZE; i++) {
-    chkstr += char(EEPROM.read(i));
-  }
-  if (chkstr != F(EEPROM_SIG)) {
-    debugMsgln(F("invalid, resetting"),1);
-    resetEEPROM();      
-  } else {
-  debugMsgln(F("valid"),1);
-  }
-  return chkstr;
-}
-
-void getEeConfig(){
-  checkEEPROM();
-  ap_SSID = getStringFromEEPROM(eeAPSSID,32).c_str();
-  ap_password = getStringFromEEPROM(eeAPPSK,32).c_str();
-  web_username = getStringFromEEPROM(eeAdminName,16).c_str();
-  web_password = getStringFromEEPROM(eeAdminPass,16).c_str();
-  root_username = getStringFromEEPROM(eeUpgradeName,16).c_str();
-  root_password = getStringFromEEPROM(eeUpgradePass,16).c_str();
-  json_password = getStringFromEEPROM(eeJsonPass,16).c_str();
-  my_hostname = getStringFromEEPROM(eeHostName,32).c_str();
+void getPreferences(){
+  preferences.begin("MStar-WLAN", true);
+  ap_SSID = AP_SSID ;
+  #ifdef AP_SSID_UNIQ
+    ap_SSID += "-";
+    ap_SSID += my_MAC;
+  #endif
+  ap_SSID = preferences.getString("ap_SSID", ap_SSID);
+  ap_password = preferences.getString("ap_password", F(AP_PSK));
+  web_username = preferences.getString("web_username", F(WEB_USERNAME));
+  web_password = preferences.getString("web_password", F(WEB_PASSWORD));
+  root_username = preferences.getString("root_username", F(ROOT_USERNAME));
+  root_password = preferences.getString("root_password", F(ROOT_PASSWORD));
+  json_password = preferences.getString("json_password", F(JSON_PASSWORD));
+  my_hostname = preferences.getString("my_hostname", my_name);
+  preferences.end();
 }
 
 class IEEEf16  // Convert between float32 (IEEE754 Single precision binary32) and float16 (IEEE754 half precision binary16)
@@ -514,6 +357,11 @@ public:
 
 void reboot() {
   debugMsgln(F("Doing ESP.restart()"),1);
+  if (logFile) {
+    logFile.flush();
+    logFile.close();
+  }
+  delay(50);
   ESP.restart();         // this should do a soft reboot.
 }
 
@@ -759,3 +607,17 @@ void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint1
     }
   }
 }
+
+#ifdef WROVER
+  uint16_t checkUSBpower(){  // USB Type-C spec 2.0, table 4.36
+    if (!digitalRead(USB_PWR_DET)) return 0; // not getting power from USB
+    int vR;
+    int CC1 = analogReadMilliVolts(USB_CC1_PIN);
+    int CC2 = analogReadMilliVolts(USB_CC2_PIN);
+    (CC1 > CC2) ? vR = CC1 : vR = CC2;
+    if (vR < 200) return 100;     // vRa
+    if (vR < 660) return 500;     // vRd-USB
+    if (vR < 1230) return 1500;   // vRd-1.5
+    return 3000;                  // vRd-3.0
+  }
+#endif

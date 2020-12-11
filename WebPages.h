@@ -35,217 +35,6 @@ void setOtherPageHandler(AsyncWebServerRequest *request) {
   }
 }
 
-void cmdPageHandler(AsyncWebServerRequest *request) {                          
-/*
- *  Handles POST requests made to /cmd
- *  Used by JavaScript
- */
-  int addr, offset, slot, numArgs = request->args();
-  unsigned short int ntp_poll = -1;
-  String data, value, ssid, psk, response_message = F("OK"), rtcTime, ntp_item, \
-          ntp_svr = "", ntp_tz = "", var = "", where, user, pass, hostname;
-  string response_msg[10];
-  bool wlanPsk=false, wlanSsid=false;
-  enum commands { read_reg, write_reg, read_coil, write_coil, set_rtc, set_aging, set_wlan, \
-                  set_rtc_ntp, cfg_ntp, clr_dlog, clr_clog, set_apssid, set_cred, set_jsonpass, \
-                  set_appsk, set_hostname, set_debuglvl};
-  commands cmd;
-  debugMsg(F("SET args received:"),4);
-  debugMsgln(String(numArgs),4);
-  for (int i=0 ; i<numArgs ; i++) {
-    debugMsgln("SET arg#"+String(i)+", "+request->argName(i)+":"+request->arg(i),4);
-    if ( request->argName(i) == F("writereg") ) {
-      cmd = write_reg;
-      addr = request->arg(i).toInt();
-    } else if ( request->argName(i) == F("readreg") ) {
-      cmd = read_reg;
-      addr = request->arg(i).toInt();
-    } else if ( request->argName(i) == F("writecoil") ) {
-      cmd = write_coil;
-      addr = request->arg(i).toInt();
-    } else if ( request->argName(i) == F("readcoil") ) {
-      cmd = read_coil;
-      addr = request->arg(i).toInt();
-    } else if ( request->argName(i) == F("clr_dlog") ) {
-      cmd = clr_dlog;
-    } else if ( request->argName(i) == F("clr_clog") ) {
-      cmd = clr_clog;
-    } else if ( request->argName(i) == F("setrtc") ) {
-      cmd = set_rtc;
-      rtcTime = request->arg(i);
-    } else if ( request->argName(i) == F("setagingoffset") ) {
-      cmd = set_aging;
-      offset = request->arg(i).toInt();
-    } else if ( request->argName(i) == F("setwlan") ) {
-      cmd = set_wlan;
-      slot = request->arg(i).toInt();
-    } else if ( request->argName(i) == F("setapssid") ) {
-      cmd = set_apssid;
-      ssid = request->arg(i);
-    } else if ( request->argName(i) == F("setappsk") ) {
-      cmd = set_appsk;
-      pass = request->arg(i);
-    } else if ( request->argName(i) == F("setjsonpass") ) {
-      cmd = set_jsonpass;
-      pass = request->arg(i);
-    } else if ( request->argName(i) == F("setdebuglvl") ) {
-      cmd = set_debuglvl;
-      value = request->arg(i);
-    } else if ( request->argName(i) == F("sethostname") ) {
-      cmd = set_hostname;
-      hostname = request->arg(i);
-    } else if ( request->argName(i) == F("data") ) {
-      data = request->arg(i);
-    } else if ( request->argName(i) == F("ssid") ) {
-      wlanSsid = true;
-      ssid = request->arg(i);
-    } else if ( request->argName(i) == F("psk") ) {
-      wlanPsk = true;
-      psk = request->arg(i);
-    } else if ( request->argName(i) == F("setcred") ) {  //setcred=[web|secure]&user=xxxx&pass=xxxx
-      cmd = set_cred;
-      where = request->arg(i);
-    } else if ( request->argName(i) == F("user") ) {
-      user = request->arg(i);
-    } else if ( request->argName(i) == F("pass") ) {
-      pass = request->arg(i);
-    } else if ( request->argName(i) == F("setrtcntp") ) {
-      cmd = set_rtc_ntp;
-    } else if ( request->argName(i) == F("setntpcfg") ) {
-      debugMsgln(F("/cmd, setntpcfg received"),2);
-      cmd = cfg_ntp;
-      ntp_item = request->arg(i);
-    } else if ( request->argName(i) == F("ntp_svr") ) {
-      debugMsg(F("/cmd, setntpcfg received server:"),2);
-      debugMsgln(request->arg(i),2);
-      ntp_svr = request->arg(i);
-    } else if ( request->argName(i) == F("ntp_poll") ) {
-      debugMsg(F("/cmd, setntpcfg received poll:"),2);
-      debugMsgln(request->arg(i),2);
-      ntp_poll = request->arg(i).toInt();
-    } else if ( request->argName(i) == F("ntp_tz") ) {
-      debugMsg(F("/cmd, setntpcfg received tz:"),2);
-      debugMsgln(request->arg(i),2);
-      ntp_tz = request->arg(i);
-    }
-  }
-  
-  switch (cmd) {
-    case read_reg:  MBus_get_reg(addr, value);
-                    response_message = value;
-                    break;
-    case write_reg: MBus_write_reg(addr, data);
-                    break;
-    case read_coil: bool state;
-                    MBus_get_coil(addr, state);
-                    (state)?value=F("on"):value=F("off");
-                    response_message = value;
-                    break;
-    case write_coil: MBus_write_coil(addr, data);
-                    break;
-    case clr_clog:  if(sd_card_available) {
-                      debugMsgln(F("Clearing controller log"),3);
-                      if (SD.exists(ctlLogFileName)) {
-                        ctl_logFile.close();
-                        SD.remove(ctlLogFileName);
-                        refreshCtlLogFile();
-                        debugMsgln(F("Controller log cleared"),1);
-                      }; 
-                      response_message = getHTMLHead();
-                      response_message += F("Controller log cleared<script>setTimeout(() => { history.back(); }, 1500);</script>");
-                      response_message += getHTMLFoot();
-                      request->send(200, F("text/html"), response_message);
-                      return;
-                    }
-                    break;
-    case clr_dlog:  if(sd_card_available) {
-                      debugMsgln(F("Clearing debug log"),3);
-                      if (SD.exists(logFileName)) {
-                        logFile.close();
-                        SD.remove(logFileName);
-                        logFile = SD.open(logFileName,FILE_APPEND);
-                        debugMsgln(F("Debug log cleared"),1);
-                        logFile.flush();
-                        response_message = getHTMLHead();
-                        response_message += F("Debug log cleared<script>setTimeout(() => { history.back(); }, 1500);</script>");
-                        response_message += getHTMLFoot();
-                        request->send(200, F("text/html"), response_message);
-                        return;
-                      }
-                    }  
-                    break;
-    case set_rtc:   setRtcTime(rtcTime);
-                    break;
-    case set_aging: setAgingOffset(offset);
-                    break;
-    case set_wlan:  storeWLANsInEEPROM(ssid, psk, slot, wlanSsid, wlanPsk); // /cmd?setwlan=[0-3]&ssid=xxxx&psk=yyyy
-                    break;
-    case set_apssid: ap_SSID = ssid.c_str();
-                    storeStringInEEPROM(ap_SSID.c_str(), eeAPSSID, 32);
-                    break;
-    case set_appsk: ap_password = pass.c_str();
-                    storeStringInEEPROM(ap_password.c_str(), eeAPPSK, 32);
-                    break;
-    case set_jsonpass: json_password = pass.c_str();
-                    storeStringInEEPROM(pass, eeJsonPass, 16);
-                    break;
-    case set_debuglvl: debug_level = value.toInt();
-                    debugMsg(F("Debug level set to: "),1);
-                    debugMsgln(String(debug_level),1);
- //                   storeStringInEEPROM(pass, debug_level, xxx);
-                    break;
-    case set_hostname: 
-                    my_hostname = hostname.c_str();
-                    storeStringInEEPROM(my_hostname, eeHostName, 32);
-                    break;
-    case set_cred:  if (where == "root") {
-                      debugMsgln(F("set_cred root"),5);
-                      if (user.length() > 0) {
-                        root_username = user.c_str();
-                        storeStringInEEPROM(user, eeUpgradeName, 16);
-                      }
-                      if (pass.length() > 0) {
-                        root_password = pass.c_str();
-                        storeStringInEEPROM(pass, eeUpgradePass, 16);
-                      }
-                    } else if (where == "web") {
-                      debugMsgln(F("set_cred web"),5);
-                      if (user.length() > 0) {
-                        web_username = user.c_str();
-                        storeStringInEEPROM(user, eeAdminName, 16);
-                      }
-                      if (pass.length() > 0) {
-                        web_password = pass.c_str();
-                        storeStringInEEPROM(pass, eeAdminPass, 16);
-                      }                
-                    }
-                    break;
-    case set_rtc_ntp: setRtcTimeNTP();
-                    break;
-    case cfg_ntp:   if (ntp_svr != "") {
-                      ntpServer = ntp_svr;
-                      setServer(ntpServer);
-                      storeNtpServerInEEPROM(ntpServer);
-                    }
-                    if (ntp_poll != -1) {
-                      if (ntp_poll < 601) ntp_poll = 601;  // shorter is abusive
-                      if (ntp_poll > 65535) ntp_poll = 65535; // unsigned short int
-                      ntpInterval = ntp_poll;
-                      setInterval(ntpInterval);
-                      rtc_max_unsync = RTC_MAX_UNSYNC * sqrt(ntpInterval/600);
-                      storeNtpPollInEEPROM(ntpInterval);
-                    }
-                    if (ntp_tz != "") {
-                      ntpTZ = ntp_tz;
-                      myTZ.setPosix(ntpTZ);
-                      storeNtpTZInEEPROM(ntpTZ);
-                    }
-                    updateNTP();
-                    break;
-    default:        response_message = F("err");
-  }
-  request->send(200, F("text/plain"), response_message);
-}
 
 void platformPageHandler(AsyncWebServerRequest *request)
 /*
@@ -360,7 +149,13 @@ void platformPageHandler(AsyncWebServerRequest *request)
     response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg; C");
   }
   response_message += getTableRow2Col(F("Hall sensor"), String(hallRead()));
-
+  
+  #ifdef WROVER
+    response_message += getTableRow2Col(F("CC1 mV"), String(analogReadMilliVolts(USB_CC1_PIN)));
+    response_message += getTableRow2Col(F("CC2 mV"), String(analogReadMilliVolts(USB_CC2_PIN)));
+    response_message += getTableRow2Col(F("USB available mA"), String(checkUSBpower()));
+  #endif
+  
   if (model.startsWith(F("PS-"))) {  // TODO make this universal
     float mbv = 0;
     if (model == "PS-MPPT") {
@@ -489,7 +284,7 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   userbox += "\" onchange=\"setCred(\'web\',this.value,\'\')\">";  
   passbox = "<input type=\"text\" id=\"webpass\" size=\"16\" value=\"";
   passbox += web_password.c_str();
-  passbox += "\" onchange=\"setCred(\'web\',\'\',this.value))\">";  
+  passbox += "\" onchange=\"setCred(\'web\',\'\',this.value)\">";  
   response_message += getTableRow2Col(userbox.c_str(), passbox.c_str() );
   response_message += getTableFoot();
   response_message += getFormFoot(); 
@@ -513,9 +308,33 @@ void securityPageHandler(AsyncWebServerRequest *request) {
   response_message += "\" onchange=\"setJSONpass(this.value)\">";
   response_message += getFormFoot();
 
+  response_message += getHTMLFoot();
+
+  debugMsg(F("response_message size:"),7);
+  debugMsgln(String(response_message.length()),7);
+
+  request->send(200, F("text/html"), response_message);
+}
+
+void loggingPageHandler(AsyncWebServerRequest *request) {
+  debugMsgln(F("Entering /logging_config page."),2);
+  String response_message;
+  response_message.reserve(30000);
+  response_message = getHTMLHead();
+  response_message += getNavBar();
+  response_message += F("<center><img src=\"/img/logging.png\" alt=\"logging\"><br/>");
+  response_message += F("<h3>(Changes below are immediate)</h3></center>");
+
+  response_message += getFormHead("Controller log frequency");
+  response_message += "<label for=\"logfreq\">Minutes:</label>";
+  response_message += "<input type=\"number\" id=\"logfreq\" name=\"logfreq\" min=\"1\" max=\"255\" size=\"32\" value=\"";
+  response_message += String(log_freq);
+  response_message += "\" onchange=\"setLogFreq(this.value)\">";
+  response_message += getFormFoot();
+
 #ifdef DEBUG_ON
   response_message += getFormHead("Debug level");
-  response_message += "<label for=\"debuglvl\">Debug level (immediate but temporary):</label>";
+  response_message += "<label for=\"debuglvl\">Level:</label>";
   response_message += "<input type=\"number\" id=\"debuglvl\" name=\"debuglvl\" min=\"1\" max=\"9\" size=\"32\" value=\"";
   response_message += String(debug_level);
   response_message += "\" onchange=\"setDebugLvl(this.value)\">";
@@ -562,10 +381,10 @@ void wlanPageHandler(AsyncWebServerRequest *request)
       debugMsgln(F("Pushing old SSIDs"),3);
       for (int i=3; i>0; i--) {                                          // push older networks
         debugMsgln("copying ssid " + esid[i-1] + " to slot " + String(i),5);
-        storeWLANsInEEPROM(esid[i-1], epass[i-1], i, true, true);
+        putWLANs(esid[i-1], epass[i-1], i, true, true);
       }
        
-      storeWLANsInEEPROM(ssid, psk, 0, true, true);                      //save in slot 0 if we did
+      putWLANs(ssid, psk, 0, true, true);                      //save in slot 0 if we did
       debugMsgln("",2);
       debugMsgln(F("WiFi connected"),1);
       debugMsg(F("IP address: "),1);
@@ -636,7 +455,7 @@ void wlanPageHandler(AsyncWebServerRequest *request)
       esidvar[i] += String(i);
       esidvar[i] += "\" size=\"32\" value=\"";
       esidvar[i] += esid[i];
-      esidvar[i] += "\" onchange=\"setWlanSsid(";                   //storeWLANsInEEPROM
+      esidvar[i] += "\" onchange=\"setWlanSsid(";                   //putWLANs
       esidvar[i] += String(i);
       esidvar[i] += ", this.value";  
       esidvar[i] += ")\">&nbsp;";
@@ -650,7 +469,7 @@ void wlanPageHandler(AsyncWebServerRequest *request)
       epasvar[i] += String(i);
       epasvar[i] += "\" size=\"32\" value=\"";
       epasvar[i] += tpass;
-      epasvar[i] += "\" onchange=\"setWlanPsk(";                   //storeWLANsInEEPROM
+      epasvar[i] += "\" onchange=\"setWlanPsk(";                   //putWLANs
       epasvar[i] += String(i);
       epasvar[i] += ", this.value";  
       epasvar[i] += ")\">&nbsp;";
@@ -710,6 +529,7 @@ void utilityPageHandler(AsyncWebServerRequest *request)
 
   response_message += F("<hr><a href=\"/wlan_config\">Wireless and network settings</a>");
   response_message += F("<hr><a href=\"/security_config\">Security settings</a>");
+  response_message += F("<hr><a href=\"/logging_config\">Logging settings</a>");
   response_message += F("<hr><a href=\"/setTime\">Time settings</a>");
   response_message += F("<hr><a href=\"/documentation.htm\">Documentation</a>");
 //  response_message += F("<hr><a href=\"/edit\">File edit/view/upload (ctrl-s saves file)</a>");
@@ -762,7 +582,7 @@ void getfilePageHandler(AsyncWebServerRequest *request) {
   checkController();
   if (model=="") { 
     noController = true;
-    model = getModelFromEEPROM();
+    model = getModelPref();
       if (model == "") {
     model = "PS-MPPT";
   }
@@ -796,7 +616,9 @@ void resetAllPageHandler(AsyncWebServerRequest *request) {
   response_message += String(ap_ssid.c_str());
   response_message += F("</b> SSID and open <b>http://192.168.4.1</b> in a web browser to reconfigure.</div></div>");
   response_message += getHTMLFoot();
-  resetEEPROM();
+//  resetEEPROM();
+  resetPreferences();
+  
   /*
    * system_restore() - Reset to default settings of the following APIs : 
    * wifi_station_set_auto_connect, wifi_set_phy_mode, wifi_softap_set_config related, 
@@ -808,7 +630,6 @@ void resetAllPageHandler(AsyncWebServerRequest *request) {
   for ( int i = 0; i < 1000 ; i++ ) {
 //    server.handleClient();
     delayMicroseconds(1000);    // wait to deliver response
-    yield();
   }
   WiFi.disconnect();
   reboot();
@@ -830,7 +651,6 @@ void resetPageHandler(AsyncWebServerRequest *request) {
   for ( int i = 0; i < 1000 ; i++ ) {
 //    server.handleClient();
     delayMicroseconds(1000);    // wait to deliver response
-    yield();
   }
   reboot();
 }
@@ -962,7 +782,7 @@ void setTimePageHandler(AsyncWebServerRequest *request) {
   response_message += getSubmitButton(F("Lookup"));
   response_message += F("<br><hr/>");
   response_message += F("<a href=\"http://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html\" target=\"_blank\">");
-  response_message += F("POSIX time zone string reference,</a> e.g. US Eastern is <b>EST+5EDT,M3.2.0/2,M11.1.0/2</b>. ");
+  response_message += F("POSIX time zone string reference,</a> e.g. US Eastern is <b>EST+5EDT,M3.2.0,M11.1.0</b>. ");
   response_message += F("<br><hr/>");
   response_message += getFormFoot();
   

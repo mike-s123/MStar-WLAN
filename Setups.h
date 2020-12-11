@@ -6,6 +6,7 @@ void setupComms() {
   pinMode(RX_PIN, INPUT);
   delay(10);
   mbSerial.begin(9600, SERIAL_8N2, RX_PIN, TX_PIN, true);
+  gpio_set_drive_capability((gpio_num_t)TX_PIN, GPIO_DRIVE_CAP_3);
 //    remaps UART to appropriate pins for MODBUS
 //    pinMatrixOutAttach(TX_PIN, U1TXD_OUT_IDX, true, false);
 //    pinMatrixInAttach(RX_PIN, U1RXD_IN_IDX, true);
@@ -28,6 +29,7 @@ void setupComms() {
   }
 
   pinMode(RX_ENABLE_PIN, OUTPUT);            // used for half-duplex MODBUS
+  gpio_set_drive_capability((gpio_num_t)RX_ENABLE_PIN, GPIO_DRIVE_CAP_3); // maximum drive strength
   rxEnable(false);
   pinMode(WLAN_PIN, OUTPUT);  // LED
   pinMode(WLAN_PIN_OLD, OUTPUT);  // LED
@@ -57,11 +59,11 @@ void setupModbus() {
   model = getModel();
   if (model=="") { 
     noController = true;
-    model = getModelFromEEPROM();
+    model = getModelPref();
     if (model == "") {
       model = "PS-MPPT";
     }
-    debugMsg(F("Got model from EEPROM:"),1);
+    debugMsg(F("Got model preference:"),1);
     debugMsgln(model,1);
   } else {
     debugMsg(F("Got model from mbus:"),1);
