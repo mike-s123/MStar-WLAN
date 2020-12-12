@@ -120,7 +120,7 @@ void postTransmission() {
   while (mbSerial.availableForWrite() < 0x7f) ; // delay until tx buffer is emptied (i.e. room for 0x7f chars)
   delayMicroseconds(1719);                      // 1.5 char wait (1719 us) for final char to clock out
                                                 // 2005 (1.75),   4/130796 (0.003%) (1 index page)
-                                                // 1719 (1.5), 6/219810 (0.003%) (1 index page running)
+                                                // 1719 (1.5), 11/132644 (0.008%) (1 index page running)
                                                 // 1432 (1.25), lots of fails 64/66 (96.970%)
   rxEnable(true);
 //  mbSerial.flush();                           // make sure we didn't receive our own stuff

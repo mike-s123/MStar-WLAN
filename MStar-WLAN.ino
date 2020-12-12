@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201210"
+#define SOFTWARE_VERSION "v2.201211"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -117,7 +117,7 @@ String ctlLogFileName = CTL_LOGFILE;
 // definitions
 //---------------------------
 
-#define WROVER  // if using WROVER-B
+#define WROVER  // if using WROVER-B, mot devkit
 //security
 #define WEB_USERNAME "admin"
 #define WEB_PASSWORD "setup"

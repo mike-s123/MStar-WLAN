@@ -275,6 +275,8 @@ void getPreferences(){
   root_password = preferences.getString("root_password", F(ROOT_PASSWORD));
   json_password = preferences.getString("json_password", F(JSON_PASSWORD));
   my_hostname = preferences.getString("my_hostname", my_name);
+  log_freq = preferences.getUInt("log_freq",LOG_FREQ);
+  debug_level = preferences.getUInt("debug_level",DEBUG_ON);
   preferences.end();
 }
 
@@ -554,6 +556,7 @@ void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint1
    * 
    * blinktime is total time for a blink, divided between rising and falling brightness
    * call with parameters to start or change pattern, blinky(1,ULONG_MAX,0,0) to turn off fully, blinky(1,ULONG_MAX,255,255) for on.
+   * blinky(1000, 3000, 127, 63) - 1000 ms blink every 3000 ms, between 1/2 (127) and 1/4 (63) brightness
    * call without parameters in loop() to maintain blinking. Ramping is handled in hardware, and we setup
    * an interrupt to signal when complete, so we only need to do something here if changing parameters, or
    * a ramp is complete (so we can ramp in the other direction, or pause...).
@@ -566,7 +569,6 @@ void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint1
   static uint32_t duty;
   static uint16_t ramptime, cycletime=1000;
   static uint64_t nextCycleTime = millis()+cycletime; // when the next cycle will start
-//  if ( (!blinktime && !repeattime && !led_change_done) && (( millis() > nextCycleTime ) && !ramping_up) ) {
   if ( (!blinktime && !repeattime && !led_change_done) ) {
     return; // no change requested, and we're not done ramping, and waiting for end of cycle
   } else {
