@@ -9,7 +9,7 @@
  * License CC-BY-NC, https://creativecommons.org/licenses/by-nc/4.0/legalcode
  */
 String getLocalJs() {
-  String js = F("<script src=\"/local.js\"></script>");
+  String js = F("<script src=\"/js/local.js\"></script>");
   return js;
 }
 
@@ -64,6 +64,7 @@ String getNavBar() {
   navbar += F("</div>");
   navbar += F("<div id=\"navbar\" class=\"navbar-collapse collapse\"><ul class=\"nav navbar-nav navbar-right\">");
   navbar += F("<li><a href=\"/status\">Status</a></li>");
+  if (sd_card_available) navbar += F("<li><a href=\"/chart\">Chart</a></li>");  // chart only available with SD card
   navbar += F("<li><a href=\"/setcharge\">Charge Settings</a></li>");
   navbar += F("<li><a href=\"/setother\">Other Settings</a></li>");
   navbar += F("<li><a href=\"/platform\">Platform</a></li>");

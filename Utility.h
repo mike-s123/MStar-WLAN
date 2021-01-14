@@ -3,9 +3,15 @@
 // ----------------------------------------------------------------------------------------------------
 
 
-void rxEnable(bool state); // forward declarations
+void rxEnable(bool state); 
 void checkController();
 void psLog();
+void PSopenLogFile();
+int psGetSn();
+void psGetCtlLogFileName();
+String getJsButton(String buttonText, String onClick);
+bool controllerNeedsReset();
+// end forward declarations
 
 void debugMsgln(String msg, int level) {
   #ifdef DEBUG_ON
@@ -63,7 +69,6 @@ void setupDebug() {
   #endif
 }
 
-int psGetSn(); //fwd
 int getSn() {
   checkController();
   if (!noController) {
@@ -73,7 +78,6 @@ int getSn() {
   }
 }
 
-void psGetCtlLogFileName(); //fwd dec
 void getCtlLogFileName() {
   if (!noController) {
     if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
@@ -92,15 +96,22 @@ void ctlLog() {
   }
 }
 
-void PSopenLogFile(); // fwd dec
 void refreshCtlLogFile(){
-  if (!noController) {
+//  if (!noController) {
     if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
       PSopenLogFile();
     }
-  }
+//  }
 }
 
+void savePsLogDaily();
+void stopLogDaily() {
+  if (!noController) {
+    if ( model.startsWith("PS-")) {  // break out different controller families TODO more families
+      savePsLogDaily();
+    }
+  }
+}
 void setupPassthru() {
 /*
  * Try to pass serial from USB side (softserial because we swapped UART pins)
@@ -154,7 +165,7 @@ String formatIPAsString(IPAddress ip) {
 void putWLANs(String qsid, String qpass, int idx=0, bool wlanSsid=false, bool wlanPsk=false) {
   const char * ssidkey[4] = {"SSID1","SSID2","SSID3","SSID4"};
   const char * pskkey[4] = {"SSIDpsk1","SSIDpsk2","SSIDpsk3","SSIDpsk4"};
-  preferences.begin("MStar-WLAN", false);
+  preferences.begin(PREF_REALM);
   if (wlanSsid) { // true if we will write SSID
     debugMsgln("pref put SSID slot "+String(idx)+" SSID " + qsid,3);
     if (idx < 0 || idx > 3) return;
@@ -176,14 +187,14 @@ void getWLANs() {
   if (wlanRead) return;
   const char * ssidkey[4] = {"SSID1","SSID2","SSID3","SSID4"};
   const char * pskkey[4] = {"SSIDpsk1","SSIDpsk2","SSIDpsk3","SSIDpsk4"};
-  preferences.begin("MStar-WLAN", true);
+  preferences.begin(PREF_REALM, true);
   for (int j = 0; j<=3; j++){
     esid[j] = preferences.getString(ssidkey[j],"");
-    debugMsgln("Read SSID " + String(j) +":" + esid[j],3);
+    debugMsgln("Read SSID " + String(j) +": " + esid[j],3);
     epass[j] = preferences.getString(pskkey[j],"");
-    debugMsg("Read password:",9);
+    debugMsg("Read password: ",9);
     debugMsg(epass[j],9); // only show password debug level 9+
-    debugMsgln("",3);
+    debugMsgln("",9);
   }
   preferences.end();
   wlanRead=true;
@@ -192,14 +203,14 @@ void getWLANs() {
 
 void putModelPref(String model) {
   debugMsgln("pref put model " + model +" ("+String(model.length())+")",3);
-  preferences.begin("MStar-WLAN", false);
+  preferences.begin(PREF_REALM);
   server = preferences.putString("model",model);
   preferences.end();
 }
 
 String getModelPref() {
   String model = "";
-  preferences.begin("MStar-WLAN", true);
+  preferences.begin(PREF_REALM, true);
   model = preferences.getString("model",F("PS-PWM"));
   preferences.end();
   debugMsgln("pref read model: " + model,3);
@@ -207,15 +218,15 @@ String getModelPref() {
 }
 
 void putNtpServer(String server) {
-  debugMsgln("pref put NtpServer:" + server + " ("+String(server.length())+")",4);
-  preferences.begin("MStar-WLAN", false);
+  debugMsgln("pref put NtpServer: " + server + " ("+String(server.length())+")",4);
+  preferences.begin(PREF_REALM);
   server = preferences.putString("NtpServer",server);
   preferences.end();
 }
 
 String getNtpServer() {
   String server = "";
-  preferences.begin("MStar-WLAN", true);
+  preferences.begin(PREF_REALM, true);
   server = preferences.getString("NtpServer",F(NTP_DEFAULT_SERVER));
   preferences.end();
   debugMsgln("pref read NtpServer: " + server,4);
@@ -223,31 +234,31 @@ String getNtpServer() {
 }
 
 void putNtpTZ(String tz) {
-  debugMsgln("pref writing NtpTZ:" + tz + " ("+String(tz.length())+")",3);
-  preferences.begin("MStar-WLAN", false);
+  debugMsgln("pref writing NtpTZ: " + tz + " ("+String(tz.length())+")",3);
+  preferences.begin(PREF_REALM);
   preferences.putString("NtpTZ",tz);
   preferences.end();
 }
 
 String getNtpTZ() {
   String tz = "";
-  preferences.begin("MStar-WLAN", true);
+  preferences.begin(PREF_REALM, true);
   tz = preferences.getString("NtpTZ",F(NTP_DEFAULT_TZ));
   preferences.end();
-  debugMsgln("pref read NtpTZ:" + tz,4);
+  debugMsgln("pref read NtpTZ: " + tz,4);
   return tz;
 }
 
 void putNtpPoll(unsigned short int poll) {
-  debugMsgln("pref writing NtpPoll:" + String(poll),4);
-  preferences.begin("MStar-WLAN", false);
+  debugMsgln("pref writing NtpPoll: " + String(poll),4);
+  preferences.begin(PREF_REALM);
   preferences.putUShort("NtpPoll",poll);
   preferences.end();
 }
 
 unsigned short int getNtpPoll() {
   unsigned short int poll;
-  preferences.begin("MStar-WLAN", true);
+  preferences.begin(PREF_REALM, true);
   poll = preferences.getUShort("NtpPoll",NTP_DEFAULT_INTERVAL);
   preferences.end();
   debugMsgln("pref read NtpPoll: " + String(poll),4);
@@ -255,13 +266,13 @@ unsigned short int getNtpPoll() {
 }
 
 void resetPreferences(){
-  preferences.begin("MStar-WLAN", false);
+  preferences.begin(PREF_REALM);
   preferences.clear();
   preferences.end();
 }
 
 void getPreferences(){
-  preferences.begin("MStar-WLAN", true);
+  preferences.begin(PREF_REALM, true);
   ap_SSID = AP_SSID ;
   #ifdef AP_SSID_UNIQ
     ap_SSID += "-";
@@ -277,6 +288,8 @@ void getPreferences(){
   my_hostname = preferences.getString("my_hostname", my_name);
   log_freq = preferences.getUInt("log_freq",LOG_FREQ);
   debug_level = preferences.getUInt("debug_level",DEBUG_ON);
+  celsius = preferences.getBool("celsius",CELSIUS);
+  serialNumber = preferences.getString("serial_number", F(SERIAL_NUMBER)); // change with http://xxx/cmd?set_sn=xxxxxxxxx
   preferences.end();
 }
 
@@ -393,11 +406,8 @@ String get_reset_reason(int cpu) {
   return reasonString;
 }
 
-String getJsButton(String buttonText, String onClick); // fwd declaration
-
 String promptReset() {
   String response_message = "";
-  bool controllerNeedsReset(); // fwd declaration
   if (controllerNeedsReset()) {
     debugMsgln(F("promptReset: reset needed"),4);
     response_message = F("<div class=\"controller\">");
@@ -569,7 +579,7 @@ void blinky(unsigned long int blinktime=0, unsigned long int repeattime=0, uint1
   static uint32_t duty;
   static uint16_t ramptime, cycletime=1000;
   static uint64_t nextCycleTime = millis()+cycletime; // when the next cycle will start
-  if ( (!blinktime && !repeattime && !led_change_done) ) {
+  if ( !(blinktime || repeattime || led_change_done) ) {
     return; // no change requested, and we're not done ramping, and waiting for end of cycle
   } else {
     if (blinktime) ramptime = blinktime/2;

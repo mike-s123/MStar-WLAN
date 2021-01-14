@@ -1,6 +1,6 @@
 REST API docs
 
-Note: while commas (",") are shown in the examples below, they may need to be encoded (e.g. as %2C) to work.
+Note: while commas (",") are shown in the examples below, they may need to be encoded (e.g. as %2C) to work, due to a flaw in the ESPAsyncWebServer library.
 
 ==================================================================================				
 Format:

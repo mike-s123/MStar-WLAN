@@ -1,6 +1,12 @@
 # MStar-WLAN
 
-**If you know Chart.js, and/or ace.js** (the editor) **and want to contribute, contact me. There may be free hardware in it for you.**
+### What's new
+
+Now supports collecting data in an [RRD](https://oss.oetiker.ch/rrdtool/), and charting that data using [JavascriptRRD](http://javascriptrrd.sourceforge.net). The interval for traditional logging can now be set. Updated hardware for USB Type-C.
+
+![image of chart](https://raw.githubusercontent.com/mike-s123/MStar-WLAN/master/pics/chart.png)
+
+## Overview
 
 This project includes both a software and hardware design for interfacing to a [Morningstar](https://www.morningstarcorp.com/) solar controller via wireless LAN (WiFi). It's 99.99% working, with features still being added. The development core is an ESP32-WROVER-B 16MB (~$5 from Mouser) or an ESP32 DevkitC v4. A complete build should be ~$40, ignoring your time. Those platforms were chosen because they're available with a relatively large flash (16 MiB) for storing files, which allows having documentation and support for multiple solar controllers on-board. Supports MS-View compatible logging of controller info to an SD card, in addition to a debugging log. There's support for monitoring and configuration via a web interface, Modbus/TCP, and a RESTful JSON API. The UI fits well on a cell phone screen.
 
@@ -80,11 +86,11 @@ More info may be found under the data directory.
 
 ## Current work
 
-The hardware supports one of the cheap Chinese DS3231 Real Time Clock boards. The software can be configured to connect to an NTP server, and if it does it will keep the RTC in sync (and trim its oscillator more accurately, too!). Either a good network connection is needed (for NTP), or an RTC, for accurate logging. If someone who knows Chart.js is interested, please jump in!
+The hardware supports one of the cheap Chinese DS3231 Real Time Clock boards. The software can be configured to connect to an NTP server, and if it does it will keep the RTC in sync (and trim its oscillator more accurately, too!). Either a good network connection is needed (for NTP), or an RTC, for accurate logging. 
 
 ## Important future directions
 
-Possible additions: Include support for additional controllers (if someone has a broken one which might still talk MODBUS, feel free to donate). <s>Allow changing user/pass for config and update.</s> Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). <s>Logging/</s>graphing (anyone good at jquery?). Support for simultaneous connection to multiple controllers. <s>Async web server.</s> Chunked responses. Provide "one click" charging settings for different batteries. Backup/restore settings. <s>Support connection to multiple, alternate SSIDs</s> (done). MQTT. SNMP. Serial passthrough, to allow a direct MS-View connection and firmware upgrades via USB. <s>Move large files to SD card.</s> ???.
+Possible additions: Include support for additional controllers (if someone has a broken one which might still talk MODBUS, feel free to donate). <s>Allow changing user/pass for config and update.</s> Static IP config. SMTP - email notifications for error or out-of-range conditions (or even daily updates). <s>Logging/graphing.</s> Support for simultaneous connection to multiple controllers. <s>Async web server.</s> Chunked responses. Provide "one click" charging settings for different batteries. Backup/restore settings. <s>Support connection to multiple, alternate SSIDs</s> (done). MQTT. SNMP. Serial passthrough, to allow a direct MS-View connection and firmware upgrades via USB. <s>Move large files to SD card.</s> ???.
  
 ## Author
 

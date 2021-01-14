@@ -45,8 +45,8 @@ class AsyncMyOtaClass{
         void setID(const char* id){
             _id = id;
         }
-
-        void begin(AsyncWebServer *server, const char* username = "", const char* password = ""){
+ 
+         void begin(AsyncWebServer *server, const char* username = "", const char* password = ""){
             _server = server;
 
             if(strlen(username) > 0){
@@ -81,6 +81,7 @@ class AsyncMyOtaClass{
                 response->addHeader("Access-Control-Allow-Origin", "*");
                 request->send(response);
                 restartRequired = true;
+         
             }, [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
                 //Upload handler chunks in data
                 if(_authRequired){
@@ -98,7 +99,7 @@ class AsyncMyOtaClass{
                       return request->send(400, "text/plain", "MD5 parameter invalid");
                   }
                   
-                  debugMsgln("OTA filename:"+filename,2);
+                  debugMsgln("OTA filename: "+filename,2);
                   String fs_name_id;
                   if (FS_NAME == "littlefs") {
                     fs_name_id = F(".littlefs.bin");

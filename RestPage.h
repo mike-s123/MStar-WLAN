@@ -7,7 +7,7 @@
  */
 
 void jsonErr(AsyncWebServerRequest *request, String info, String message="bad request", int code=400 ) {
-  String response_message;
+  String response_message((char *)0);
   response_message.reserve(1000);
   response_message = F("{\"error\": {\"code\":");
   response_message += String(code);
@@ -24,30 +24,31 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
 */
 #define MBUS_MULTI_TIMEOUT 5000 // for reading multiple coils/registers.
 
-  debugMsgln(F("Entering /rest page."),2);
+  debugMsgln(F("Entering /rest page."),3);
   bool ok = false;
   if ( request->hasArg(F("json")) ) {  //Check if command received
     DynamicJsonDocument jsonIn(2000);
     DeserializationError jsonDesErr = deserializeJson(jsonIn, request->arg(F("json")).c_str() );
     String cmd = jsonIn[F("cmd")];
     String pass = jsonIn[F("pass")];
-    #ifdef PS_RAM
-      struct SpiRamAllocator {
-        void* allocate(size_t size) {
-          return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
-        }
-        void deallocate(void* pointer) {
-          heap_caps_free(pointer);
-        }
-      };
-      using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;
-      SpiRamJsonDocument jsonOut(256000);
-      debugMsgln("REST SPIRAM free heap: "+ String(ESP.getFreePsram()),3);
-    #endif
-    #ifndef PS_RAM
-      DynamicJsonDocument jsonOut(65536);    // bigger is better
-      debugMsgln("REST RAM free heap: "+String(ESP.getFreeHeap()),3);
-    #endif
+    
+    struct SpiRamAllocator {
+      void* allocate(size_t size) {
+        if (psRAMavail) return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+        else return (malloc(size));
+      }
+      void deallocate(void* pointer) {
+        if (psRAMavail) heap_caps_free(pointer);
+        else free(pointer);
+      }
+    };
+    using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;
+    uint32_t jsonOutSize;
+    (psRAMavail) ? jsonOutSize = 0x40000 : jsonOutSize = 0x10000;
+    SpiRamJsonDocument jsonOut(jsonOutSize);
+    debugMsgln("REST SPIRAM free heap: "+ String(ESP.getFreePsram()),3);
+    debugMsgln("REST RAM free heap: "+String(ESP.getFreeHeap()),3);
+
     if ( cmd == F("readRegs") ) {
       int count = 0;
       JsonArray arr = jsonIn["registers"];
@@ -297,7 +298,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
           for ( int i = 0 ;  i<32 ; i++ ) {
             if ( item.alarm_daily & alarmbit ) {
               debugMsgln("alarmbit="+String(alarmbit,HEX),4);
-              debugMsgln("mbAlarmMsg-:" + String(i) + ":" + mbAlarmMsg[i],4);
+              debugMsgln("mbAlarmMsg-: " + String(i) + ": " + mbAlarmMsg[i],4);
               if ( mbAlarmMsg[i] != "n/a" && alarmNum <= 10 ) {   // skip unknowns, no more than 10 faults          
                 alarm[String(alarmNum)] = mbAlarmMsg[i];
                 alarmNum++;
@@ -354,7 +355,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
     }
 
     if (ok) {  
-      String response_message;
+      String response_message((char *)0);
       response_message.reserve(65535); //94000 
       #ifdef PS_RAM
         debugMsgln("REST2 SPIRAM free heap: "+ String(ESP.getFreePsram()),4);
@@ -366,7 +367,7 @@ void restPageHandler(AsyncWebServerRequest *request) {                          
       if ( back != "true" ) {
         debugMsgln(F("Sending json response"),3);
         serializeJsonPretty(jsonOut,response_message);
-        debugMsgln("REST sending JSON, length:"+String(response_message.length()),4);
+        debugMsgln("REST sending JSON, length: "+String(response_message.length()),4);
         AsyncWebServerResponse *response = request->beginResponse(200, F("application/json"), response_message);
         response->addHeader("Server","ESP Async Web Server");
         request->send(response);

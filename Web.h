@@ -36,6 +36,19 @@ void startWeb() {
     statusPageHandler(request);
   });
   
+  server.on("/chart", HTTP_GET, [](AsyncWebServerRequest *request){
+    chartPageHandler(request);
+    //request->redirect("/Chart/Chart.html");
+  });
+
+  rrdHandler = server.on("/controller.rrd", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->redirect(ctlRrdFileName.c_str());
+  });
+
+  drrdHandler = server.on("/controllerd.rrd", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->redirect(ctlDRrdFileName.c_str());
+  });
+
   server.on("/platform", HTTP_GET, [](AsyncWebServerRequest *request){
     return platformPageHandler(request);
   });
@@ -181,36 +194,39 @@ void startWeb() {
   });
 
   server.onNotFound([](AsyncWebServerRequest *request) {  // If the client requests any URI
-    debugMsgln("File not found on flash, trying SD Card:" + request->url(),4);
+    debugMsgln("File not found on flash, trying SD Card: " + request->url(),4);
     sdPageHandler(request->url(), request);
   });
 
-  // cache for 12 hours.
-  server.serveStatic("/ctl/",             FILESYSTEM, "/ctl/",          "max-age=43200");
-  server.serveStatic("/img/",             FILESYSTEM, "/img/",          "max-age=43200");
-//  server.serveStatic("/ace.js",           FILESYSTEM, "/ace.js",        "max-age=43200");
-//  server.serveStatic("/jquery.min.js",    FILESYSTEM, "/jquery.min.js", "max-age=43200");
-//  server.serveStatic("/mode-html.js",     FILESYSTEM, "/mode-html.js",  "max-age=43200");
-  server.serveStatic("/favicon.ico",      FILESYSTEM, "/favicon.ico",   "max-age=43200");
+  // cache for 12 hours. ).setCacheControl("max-age=43200")
+  server.serveStatic("/js/javascriptrrd.wlibs.js", SD, "/js/javascriptrrd.wlibs.js").setCacheControl("max-age=43200");  
+  server.serveStatic("/ctl/",             FILESYSTEM, "/ctl/").setCacheControl("max-age=43200");
+  server.serveStatic("/img/",             FILESYSTEM, "/img/").setCacheControl("max-age=43200");
+//  server.serveStatic("/ace.js",           FILESYSTEM, "/ace.js").setCacheControl("max-age=43200");
+//  server.serveStatic("/jquery.min.js",    FILESYSTEM, "/jquery.min.js").setCacheControl("max-age=43200");
+//  server.serveStatic("/mode-html.js",     FILESYSTEM, "/mode-html.js").setCacheControl("max-age=43200");
+  server.serveStatic("/favicon.ico",      FILESYSTEM, "/favicon.ico").setCacheControl("max-age=43200");
   #ifndef PROGMEM_FILES
-    server.serveStatic("/local.js",         FILESYSTEM, "/local.js",      "max-age=43200");
-    server.serveStatic("/local.css",        FILESYSTEM, "/local.css",     "max-age=43200");
+    server.serveStatic("/js/local.js",         FILESYSTEM, "/js/local.js").setCacheControl("max-age=43200");
+    server.serveStatic("/local.css",        FILESYSTEM, "/local.css").setCacheControl("max-age=43200");
   #endif  
   server.serveStatic("/",                   FILESYSTEM, "/");   // everything else in flash
 
-  debugMsgln("ESP32 server.ons done",1);
-
   server.on("/sd/", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    debugMsgln("server.on(/sd/):" + request->url(),3);
+    debugMsgln("server.on(/sd/): " + request->url(),3);
     sdPageHandler(request->url(), request);
   });
 
   #ifdef PROGMEM_FILES
-    server.on("/OTA.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    //#define PREFER_SD  // define to check for files on SD first
+    server.on("/js/OTA.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      #ifdef PREFER_SD
       if (sd_card_available && loadFromSdCard(request->url(), request)) {   // look on SD Card first
-        debugMsgln("server.on(/OTA.js from SD Card)",3);
-      } else {
-        debugMsgln("server.on(/OTA.js from PROGMEM)",3);
+        debugMsgln("server.on(/js/OTA.js from SD Card)",3);
+      } else 
+      #endif
+      {  
+        debugMsgln("server.on(/js/OTA.js from PROGMEM)",3);
         AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", OTA_js_gz, sizeof(OTA_js_gz));
         response->addHeader("Content-Encoding", "gzip");
         response->addHeader("Cache-Control", "max-age=43200");
@@ -218,10 +234,13 @@ void startWeb() {
       }
     });
     
-    server.on("/local.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    server.on("/js/local.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      #ifdef PREFER_SD
       if (sd_card_available && loadFromSdCard(request->url(), request)) {   // look on SD Card first
         debugMsgln("server.on(/local.js from SD Card)",3);
-      } else {
+      } else 
+      #endif
+      {
         debugMsgln("server.on(/local.js from PROGMEM)",3);
         AsyncWebServerResponse *response = request->beginResponse_P(200, "application/javascript", local_js, sizeof(local_js));
         response->addHeader("Cache-Control", "max-age=43200");
@@ -230,15 +249,33 @@ void startWeb() {
     });
 
     server.on("/local.css", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      #ifdef PREFER_SD
       if (sd_card_available && loadFromSdCard(request->url(), request)) {   // look on SD Card first
         debugMsgln("server.on(/local.css from SD Card)",3);
-      } else {
+      } else 
+      #endif
+      {
         debugMsgln("server.on(/local.css from PROGMEM)",3);
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", local_css, sizeof(local_css));
         response->addHeader("Cache-Control", "max-age=43200");
         request->send(response);
       }
     });
+    
+    server.on("/js/draw.js", HTTP_GET, [] (AsyncWebServerRequest *request) {
+      #ifdef PREFER_SD
+      if (sd_card_available && loadFromSdCard(request->url(), request)) {   // look on SD Card first
+        debugMsgln("server.on(/draw.js from SD Card)",3);
+      } else 
+      #endif
+      {
+        debugMsgln("server.on(/draw.js from PROGMEM)",3);
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", draw_js, sizeof(draw_js));
+        response->addHeader("Cache-Control", "max-age=43200");
+        request->send(response);
+      }
+    });
+
   #endif
 
   asynchOTA.begin(&server, root_username.c_str(), root_password.c_str());
@@ -251,6 +288,8 @@ void startWeb() {
     }
     return updatePageHandler(request);
   });
+
+  debugMsgln("ESP32 server.ons done",2);
 
   server.begin();
   debugMsgln(F("HTTP server started"),1);

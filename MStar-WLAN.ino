@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.201211"
+#define SOFTWARE_VERSION "v2.210114"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -30,7 +30,7 @@ using namespace std;
                      REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
                      Change to littlefs. Improve OTA. Serve important stuff from PROGMEM.<br/>\
                      Settable debug level. REST timeout. Modbus reliability. EEPROM>Preferences. <br/>\
-                     Set controller logging period."
+                     Set controller logging period. Fahrenheit display. RRD/charting. Prep for email."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords
@@ -41,7 +41,8 @@ using namespace std;
   //#define DEBUG_ESP_CORE
   //#define EZT_DEBUG DEBUG           // for EZTime
 #endif
-
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x) // see https://stackoverflow.com/questions/240353/convert-a-preprocessor-token-to-a-string
 /*
  * If we define WIFI_MODE_AP_STA, it will both be an AP and try to connect as a station.
  * If not defined, we're a station if able to connect to a configured WLAN, otherwise
@@ -51,7 +52,7 @@ using namespace std;
 #define WIFI_MODE_AP_STA                // define to run AP while also connected as station
 #define PS_RAM    // use WROVER PS-RAM
 #include <string>
-//#include <sstream>
+#include <sstream>
 #include <Preferences.h>
 #include <FS.h>       // 1.0
 #include <Wire.h>     // 1.0.1
@@ -60,43 +61,36 @@ using namespace std;
 #include <WiFi.h>               // 1.0
 #include <WiFiMulti.h>          //
 #include <AsyncTCP.h>           // 1.0.3
-#include "ESPAsyncWebServer.h"
 #include <WebAuthentication.h> 
 #include <ESPmDNS.h>
+//#include <ESP32Ping.h>          // https://github.com/marian-craciunescu/ESP32Ping
 #include <Update.h>
-#include <FS.h>
+#include <FFat.h>                 // Needed for rrdtool
+#include "esp_err.h"
+#include "esp_log.h"
+#include "esp_vfs_fat.h"
 #define USE_LITTLEFS
 #ifdef USE_LITTLEFS
   #define FILESYSTEM LITTLEFS
   #define FS_NAME "littlefs"
-  #include <LITTLEFS.h>         // GPL v2, https://spdx.org/licenses/BSD-3-Clause.html
+  #include <LITTLEFS.h>         // GPL v2, https://spdx.org/licenses/BSD-3-Clause.html, LGPL https://github.com/marian-craciunescu/ESP32Ping/blob/master/LICENSE
 #else
   #define FILESYSTEM SPIFFS
   #define FS_NAME "SPIFFS"
   #include <SPIFFS.h>
-#endif 
-#define PROGMEM_FILES               // serves important files from PROGMEM instead of flash,
-                                    // reduces dependence on filesystem. OTA.js, local.js, local.css
-                                    // if files are found on SD Card, they will be used instead
+#endif
+#include <SFFS.h>         // from Arduino IDE, BSD 3-Clause License https://github.com/pholmes2012/Simple_FRAM_FileSystem/blob/master/LICENSE 
 
 #include <SD.h>                 // 1.0.5
+#include <rrd.h>                // 1.0.1 - https://github.com/lbernstone/rrdtool_ESP32/ GPLv2
 #include <SPI.h>
 #include <sys/time.h>
 //  #include "SdFat.h"
 #include <HardwareSerial.h>
 #include "driver/uart.h"
 //#include "StreamUtils.h"              // 1.5.0 https://github.com/bblanchon/ArduinoStreamUtils (MIT License)
-File logFile;                         // platform log file
-String logFileName;
-File ctl_logFile;                     // controller log file
-#define CTL_LOGFILE "/ctl.csv"        // default, must start with /
-String ctlLogFileName = CTL_LOGFILE;
-#ifdef EZT_DEBUG
-  File ezt_logFile;                   // ez-time log file
-  #define EZT_LOGFILE "/eztime.log"   // must start with /
-#endif
-
-#include <ArduinoJson.h>   // Benoit Blanchon 6.17.2, via IDE
+#include <ESP_Mail_Client.h>            // 1.0.13 https://github.com/mobizt/ESP-Mail-Client (MIT License)
+#include <ArduinoJson.h>                // Benoit Blanchon 6.17.2, via IDE
 #include <WiFiClient.h>
 //#include <WiFiClientSecure.h>
 //#include <WiFiClientSecureAxTLS.h>
@@ -113,11 +107,31 @@ String ctlLogFileName = CTL_LOGFILE;
 #include "soc/ledc_reg.h"
 #include "soc/rtc_wdt.h"
 
+
+
+#define PROGMEM_FILES               // serves important files from PROGMEM instead of flash,
+                                    // reduces dependence on filesystem. OTA.js, local.js, local.css
+                                    // if files are found on SD Card, they will be used instead
+File logFile;                         // platform log file
+String logFileName;
+File ctl_logFile;                     // controller log file
+#define CTL_LOGFILE "/ctl00000000.csv"        // default, must start with /
+String ctlLogFileName = CTL_LOGFILE;
+#ifdef EZT_DEBUG
+  File ezt_logFile;                   // ez-time log file
+  #define EZT_LOGFILE "/eztime.log"   // must start with /
+#endif
+
+
 //---------------------------
 // definitions
 //---------------------------
 
-#define WROVER  // if using WROVER-B, mot devkit
+#define PREF_REALM "MStar-WLAN"  // realm (namespace) for preferences
+#define WROVER  // if using WROVER-B, not devkit
+#define CELSIUS true   // display Celsius or Fahrenheit
+// change with http://xxx/cmd?celsius=false  (or true)
+
 //security
 #define WEB_USERNAME "admin"
 #define WEB_PASSWORD "setup"
@@ -147,28 +161,29 @@ String ctlLogFileName = CTL_LOGFILE;
 #define LEDC_timerbits          LEDC_TIMER_13_BIT
 
 // GPIO 2 or 33 for WROVER-B board
-#define WLAN_PIN_OLD 2  // up through board 2020.2
-#define WLAN_PIN 33 // from 2020.10
-#define RX_ENABLE_PIN 25  // RxEna to IO25, pin 10
-#define RX_PIN 27         // RxD to IO27, pin 12
-#define TX_PIN 4          // Txd to IO4, pin 26
-#define SDA_PIN 15        // GPIO 15  I2C SDA
-#define SCL_PIN 13        // GPIO 13  I2C SCL
-#define SPI_SCLK 18       // these are default pins for VSPI
-#define SPI_MISO 19       // just here for documentation
-#define SPI_MOSI 23
-#define SD_CARD0_CS 5        // CS for SDCard0
-#define SD_CARD1_CS 32 // for SDCard1, connected to header
-#define SD_CARD_TO_USE 0  // Which SD card to use
-#define SD_DETECT 26    // SD card inserted, only for SDCard0
-#define BOOT_SW 0       // GPIO0 connected to BOOT switch
-#define I2C_SDA_RESET 21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
+#define WLAN_PIN_OLD  GPIO_NUM_2  // up through board 2020.2
+#define WLAN_PIN      GPIO_NUM_33 // from 2020.10
+#define RX_ENABLE_PIN GPIO_NUM_25 // RxEna to IO25, pin 10
+#define RX_PIN        GPIO_NUM_27 // RxD to IO27, pin 12
+#define TX_PIN        GPIO_NUM_4  // Txd to IO4, pin 26
+#define SDA_PIN       GPIO_NUM_15 // GPIO 15  I2C SDA
+#define SCL_PIN       GPIO_NUM_13 // GPIO 13  I2C SCL
+#define SPI_SCLK      GPIO_NUM_18 // these are default pins for VSPI (SPI3)
+#define SPI_MISO      GPIO_NUM_19 // just here for documentation
+#define SPI_MOSI      GPIO_NUM_23
+#define SD_CARD_CS    GPIO_NUM_5  // CS for SDCard
+#define FRAM_CS       GPIO_NUM_22
+#define SD_DETECT     GPIO_NUM_26 // SD card inserted, only for SDCard0
+#define BOOT_SW       GPIO_NUM_0  // GPIO0 connected to BOOT switch
+#define I2C_SDA_RESET GPIO_NUM_21 // https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html
 #ifdef WROVER
-  #define USB_CC1_PIN 34  // USB Type-C CC1
-  #define USB_CC2_PIN 35
-  #define USB_PWR_DET 32  // to VCCIO
+  #define USB_CC1_PIN GPIO_NUM_34  // USB Type-C CC1
+  #define USB_CC2_PIN GPIO_NUM_35
+  #define USB_PWR_DET GPIO_NUM_32  // to VCCIO
 #endif
-#define SD_CARD_LOG true //log to SD card
+#define SD_CARD_LOG true           //log to SD card
+#define CTLRRDFILENAME  /ctl00000000.rrd    // must start with /
+#define CTLDRRDFILENAME /ctl00000000d.rrd    // must start with /
 bool sd_card_log = SD_CARD_LOG;
 bool sd_card_available = false;
 volatile bool sd_card_changed = false;
@@ -232,13 +247,23 @@ ledStatusStates blinkyState = lss_NONE;
 boolean led_change_done = true;
 boolean noController = true;
 boolean psRAMavail = false;
-boolean daytime = false;
+boolean FRAMavail = false;
+boolean daytime = true;
+boolean celsius = CELSIUS;  // temperature in Celsius?
+boolean vfs_fat_registered = false;
 uint8_t myWDT=120;
+time_t bootTime, nightTime;
 unsigned long lastWLANtry;      // when we last tried to connected (or tried) to an AP
 int mbAddr = mbusSlave;
 String model = MODEL;
 String fullModel = MODEL;
 String ctlSerialNum = "00000000";
+string sd_vfs_path = "/sdvfs";
+string ctlRrdFileName = TOSTRING(CTLRRDFILENAME);
+string ctlRrdFileFullPath = sd_vfs_path + ctlRrdFileName;
+string ctlDRrdFileName = TOSTRING(CTLDRRDFILENAME);
+string ctlDRrdFileFullPath = sd_vfs_path + ctlDRrdFileName;
+
 unsigned long mbustries, mbuserrs, mbuserrs_recovered, lastFound = millis();
 float vary;
 byte mac[6];
@@ -249,6 +274,7 @@ String logLast="";
 #define LOG_FREQ  15            // minutes between log entries
 unsigned int log_freq = LOG_FREQ; 
 static char log_print_buff[512];
+FATFS* FATfs = NULL;
 File fsUploadFile;              // a File object to temporarily store the received file
 
 String referrer; 
@@ -256,6 +282,8 @@ ModbusMaster node;
 WiFiServer modbusTCP(502);
 WiFiClient modbusClient;
 AsyncWebServer server(80);
+AsyncCallbackWebHandler rrdHandler;
+AsyncCallbackWebHandler drrdHandler;
 WiFiMulti wifiMulti;
 //  WebServer server(80);
 HardwareSerial mbSerial(1);
@@ -273,6 +301,7 @@ Preferences preferences;
 #include "RestPage.h"           // REST API
 #include "PS.h"                 // status, charge and other pages for Prostar models
 #include "WebPages.h"           // stuff to serve content
+
 #include "WebCmd.h"
 #include "Setups.h"
 #include "OTA.h"
@@ -318,6 +347,8 @@ void setup() {
       psRAMavail=false;
     #endif    
   }
+
+ 
   preferences.begin("eeprom", false);   // this bit can go away in the future
   preferences.clear();                  // just here to clear old eeprom from nvs
   preferences.end();
@@ -331,11 +362,12 @@ void setup() {
   debugMsgln("Getting modbus info for " + model,1);
   getFile(model);
   if (getSn()) {
-    debugMsg(F("Serial number:"),1);
+    debugMsg(F("Controller serial number: "),1);
     debugMsgln(ctlSerialNum,1);
   } else {
     debugMsgln(F("Failed to get serial number."),1);
   }
+  
   refreshCtlLogFile();
 
   server.begin();

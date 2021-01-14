@@ -13,6 +13,35 @@ void statusPageHandler (AsyncWebServerRequest *request) {
   }
 }
 
+void chartPageHandler(AsyncWebServerRequest *request)
+/*
+ * Returns a page to chart rrd files.
+ */
+{
+  debugMsgln(F("Entering /chart page."),3);
+  checkController();
+
+  String response_message((char *)0);
+  response_message.reserve(3000);
+  
+  response_message = getHTMLHead();
+  response_message += getNavBar();
+  response_message += "<script asynch type=\"text/javascript\" src=\"/js/javascriptrrd.wlibs.js\"></script>"
+                  //    "<script asynch type=\"text/javascript\" src=\"/js/jquery.flot.touch.js\"></script>"
+                      "<script asynch type=\"text/javascript\" src=\"/js/draw.js\"></script>"
+                      "<h1 id=\"title\">Historical charts.</h1>";
+  if (!strcmp(ctlRrdFileName.c_str(), TOSTRING(CTLRRDFILENAME))) {
+    response_message += " (demo data)";
+  }
+  response_message += "<div id=\"controllergraph\"><h4>Loading... (~15 seconds).</h4></div>"
+                      "<hr><div id=\"controllerdgraph\"><h4>Loading... (~15 seconds).</h4></div>"   // Daily
+                      "<script type=\"text/javascript\">draw();</script>";
+  response_message += getHTMLFoot();
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
+  request->send(200, F("text/html"), response_message);
+}
+
 void setChargePageHandler(AsyncWebServerRequest *request) {
 /*  
  *   Page to set controller charging settings.
@@ -41,11 +70,11 @@ void platformPageHandler(AsyncWebServerRequest *request)
  * Returns a page with info on the ESP platform.
  */
 {
-  debugMsgln(F("Entering /platform page."),2);
+  debugMsgln(F("Entering /platform page."),3);
   checkController();
 
-  String response_message;
-  response_message.reserve(4000);
+  String response_message((char *)0);
+  response_message.reserve(8000);
   response_message = getHTMLHead();
   response_message += getNavBar();
   response_message += F("<center><img src=\"/img/wrover.png\" alt=\"ESP32\"></center>");
@@ -56,12 +85,22 @@ void platformPageHandler(AsyncWebServerRequest *request)
     response_message += getTableRow2Col(F("Current Time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850));
   }
   // Make the uptime readable
-  long upSecs = millis() / 1000;
+  time_t upSecs = UTC.now() - bootTime;
   long upDays = upSecs / 86400;
   long upHours = (upSecs - (upDays * 86400)) / 3600;
   long upMins = (upSecs - (upDays * 86400) - (upHours * 3600)) / 60;
   upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
-  String uptimeString = ""; uptimeString += upDays; uptimeString += F(" days, "); uptimeString += upHours, uptimeString += F(" hours, "); uptimeString += upMins; uptimeString += F(" mins, "); uptimeString += upSecs; uptimeString += F(" secs");
+  String uptimeString = ""; 
+  if (upDays) {
+    uptimeString += upDays; uptimeString += F(" d, "); 
+  }
+  if ( upDays || upHours ) {
+    uptimeString += upHours, uptimeString += F(" h, "); 
+  }  
+  if ( upDays || upHours || upMins ) {
+    uptimeString += upMins; uptimeString += F(" m, "); 
+  }
+  uptimeString += upSecs; uptimeString += F(" s");
   response_message += getTableRow2Col(F("Uptime"), uptimeString);
   response_message += getTableRow2Col(F("Modbus errors/tries"), String(mbuserrs)+"/"+String(mbustries)+" ("+String(((double)mbuserrs/(double)mbustries)*100.,3)+"%)");
 
@@ -73,7 +112,9 @@ void platformPageHandler(AsyncWebServerRequest *request)
     response_message += getTableRow2Col(F("WLAN MAC"), WiFi.macAddress());
     response_message += getTableRow2Col(F("WLAN SSID"), WiFi.SSID());
   }
-    response_message += getTableRow2Col(F("WLAN RSSI"), String(WiFi.RSSI())+" dBm");
+  response_message += getTableRow2Col(F("WLAN RSSI"), String(WiFi.RSSI())+" dBm");
+  float pwr = WiFi.getTxPower()/4.0;
+  response_message += getTableRow2Col(F("Tx power"), String(pwr)+" dBm" );
   if ( WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
     IPAddress softapip = WiFi.softAPIP();
     response_message += getTableRow2Col(F("AP IP"), formatIPAsString(softapip));
@@ -81,25 +122,23 @@ void platformPageHandler(AsyncWebServerRequest *request)
     response_message += getTableRow2Col(F("AP SSID"), ap_ssid.c_str());
     response_message += getTableRow2Col(F("Clients connected"),String(WiFi.softAPgetStationNum()));
   }
-  float pwr = WiFi.getTxPower()/4.0;
-  response_message += getTableRow2Col(F("Tx power"), String(pwr)+" dBm" );
   if (sd_card_available) {
-    if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Debug log file"), \
+    if (sd_card_log && sd_card_available && logFile) response_message += getTableRow2Col(F("Platform log file"), \
       "<a href=\"/sd" + logFileName + "\" target=\"_blank\">" + "/sd" + logFileName + "</a>" + \
       "&nbsp;&nbsp;" + \
       "<a href=\"/sd" + logFileName + "\" download>" + "(download)" + "</a>");
-    if (sd_card_log && sd_card_available && ctl_logFile) response_message += getTableRow2Col(F("Controller log file"), \
+    if (sd_card_log && sd_card_available && ctl_logFile && !noController) response_message += getTableRow2Col(F("Controller log file"), \
       "<a href=\"/sd" + ctlLogFileName + "\" target=\"_blank\">" + "/sd" + ctlLogFileName + "</a>" + \
       "&nbsp;&nbsp;" + \
       "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
   }
-  response_message += getTableRow2Col(F("Serial Number"), serialNumber.c_str());
+  response_message += getTableRow2Col(F("Platform serial number"), serialNumber.c_str());
   response_message += getTableFoot();
   
 // Platform info  
   response_message += getTableHead2Col(F("Platform Information"), F("Name"), F("Value"));
   response_message += getTableRow2Col(F("Firmware Version"), SOFTWARE_VERSION);
-  response_message += getTableRow2Col(F("Compiled on"), myTZ.dateTime(compileTime(), RFC850));
+  response_message += getTableRow2Col(F("Compiled on"), dateTime(compileTime(), RFC850));
   response_message += getTableRow2Col(F("Arduino IDE version"), String(ARDUINO));
   response_message += getTableRow2Col(F("ESP SDK version"), String(ESP.getSdkVersion()));
   response_message += getTableRow2Col(F("Build notes"), F(BUILD_NOTES));
@@ -123,9 +162,12 @@ void platformPageHandler(AsyncWebServerRequest *request)
   String ota = formatBytes(ESP.getFreeSketchSpace());
   if ( largeFlash ) { ota += F(" (OTA update capable)"); }
   response_message += getTableRow2Col(F("Free sketch size"), ota);
-  response_message += getTableRow2Col(F("Internal total heap"), formatBytes(ESP.getHeapSize()));
-  response_message += getTableRow2Col(F("Internal free heap"), formatBytes(ESP.getFreeHeap()));
-  response_message += getTableRow2Col(F("Internal min free heap"), formatBytes(ESP.getMinFreeHeap()));
+  response_message += getTableRow2Col(F("Internal total heap"), formatBytes(ESP.getHeapSize() ));
+  response_message += getTableRow2Col(F("Internal free heap"), formatBytes(ESP.getFreeHeap() ));
+  response_message += getTableRow2Col(F("Internal min free heap"), formatBytes(ESP.getMinFreeHeap() ));
+  preferences.begin(PREF_REALM, true);
+  response_message += getTableRow2Col(F("nvs free entries"), String(preferences.freeEntries()) );
+  preferences.end();
   String fs = FS_NAME;
   fs += " size";
   response_message += getTableRow2Col(fs, formatBytes(FILESYSTEM.totalBytes()));
@@ -146,7 +188,11 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += getTableRow2Col(F("Last reset reason CPU 0"), get_reset_reason(0));
   response_message += getTableRow2Col(F("Last reset reason CPU 1"), get_reset_reason(1));
   if (rtcPresent) {
-    response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +"&deg; C");
+    if (celsius) {
+      response_message += getTableRow2Col(F("RTC Temp"), String(getRtcTemp(), 2) +" &deg;C");
+    } else { 
+      response_message += getTableRow2Col(F("RTC Temp"), String(((getRtcTemp() * 9.0/5.0)+32.0),1) +" &deg;F");
+    }
   }
   response_message += getTableRow2Col(F("Hall sensor"), String(hallRead()));
   
@@ -170,15 +216,15 @@ void platformPageHandler(AsyncWebServerRequest *request)
 
   response_message += getHTMLFoot();
   
-  debugMsg(F("response_message size:"),7);
-  debugMsgln(String(response_message.length()),7);
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
   request->send(200, F("text/html"), response_message);
 }
 
 void allregsPageHandler(AsyncWebServerRequest *request)
 {
-  debugMsgln(F("Entering /allregs page."),2);
-  String response_message;
+  debugMsgln(F("Entering /allregs page."),3);
+  String response_message((char *)0);
   response_message.reserve(8500);
   response_message = getHTMLHead();
   response_message += getNavBar();
@@ -235,8 +281,8 @@ void allregsPageHandler(AsyncWebServerRequest *request)
 }
 
 void allcoilsPageHandler(AsyncWebServerRequest *request) {
-  debugMsgln(F("Entering /allcoils page."),2);
-  String response_message;
+  debugMsgln(F("Entering /allcoils page."),3);
+  String response_message((char *)0);
   response_message.reserve(3000);
   response_message = getHTMLHead();
   response_message += getNavBar();
@@ -268,9 +314,9 @@ void allcoilsPageHandler(AsyncWebServerRequest *request) {
 }
 
 void securityPageHandler(AsyncWebServerRequest *request) {
-  debugMsgln(F("Entering /security_config page."),2);
-  String response_message;
-  response_message.reserve(30000);
+  debugMsgln(F("Entering /security_config page."),3);
+  String response_message((char *)0);
+  response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
   response_message += F("<center><img src=\"/img/lock.png\" alt=\"lock\"><br/>");
@@ -310,16 +356,16 @@ void securityPageHandler(AsyncWebServerRequest *request) {
 
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),7);
-  debugMsgln(String(response_message.length()),7);
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
 
   request->send(200, F("text/html"), response_message);
 }
 
 void loggingPageHandler(AsyncWebServerRequest *request) {
-  debugMsgln(F("Entering /logging_config page."),2);
-  String response_message;
-  response_message.reserve(30000);
+  debugMsgln(F("Entering /logging_config page."),3);
+  String response_message((char *)0);
+  response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
   response_message += F("<center><img src=\"/img/logging.png\" alt=\"logging\"><br/>");
@@ -343,8 +389,8 @@ void loggingPageHandler(AsyncWebServerRequest *request) {
 
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),7);
-  debugMsgln(String(response_message.length()),7);
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
 
   request->send(200, F("text/html"), response_message);
 }
@@ -355,26 +401,26 @@ void loggingPageHandler(AsyncWebServerRequest *request) {
 void wlanPageHandler(AsyncWebServerRequest *request)
 {
   String ssid, psk;
-  debugMsgln(F("Entering /wlan_config page."),2);
+  debugMsgln(F("Entering /wlan_config page."),3);
 
   // Check if there are any GET parameters, if there are, we are configuring
   if (request->hasArg(F("ssid"))) {
       ssid = request->arg("ssid");
       WiFi.persistent(true);
     debugMsgln(F("Configuring WiFi"),2);
-    debugMsg(F("New SSID entered:"),2);
+    debugMsg(F("New SSID entered: "),2);
     debugMsgln(ssid,2);
     
     if (request->hasArg(F("psk")))  {
       psk = request->arg(F("psk"));
-      debugMsg(F("New PSK entered:"),4);
+      debugMsg(F("New PSK entered: "),4);
       debugMsg(psk,9);
       debugMsgln("",4);
     }
 
-    debugMsg("ssid length:",2);
+    debugMsg("ssid length: ",2);
     debugMsgln(String(strlen(ssid.c_str())),2);
-    debugMsg("psk length:",2);
+    debugMsg("psk length: ",2);
     debugMsgln(String(strlen(psk.c_str())),2);
     
     if (connectToWLAN(ssid.c_str(), psk.c_str())) {                // try to connect
@@ -403,15 +449,15 @@ void wlanPageHandler(AsyncWebServerRequest *request)
   // Get number of visible access points
   int ap_count = WiFi.scanNetworks();
 
-  String response_message;
-  response_message.reserve(30000);
+  String response_message((char *)0);
+  response_message.reserve(8000);
   response_message = getHTMLHead();
   response_message += getNavBar();
 
   // form header
   response_message += getFormHead(F("Scan results"));
   response_message += F("<div><center>(If connection is successful, pushed onto top of list below)</center></div><br/>");
-  response_message += getDropDownHeader(F("WiFi:"), F("ssid"), true);
+  response_message += getDropDownHeader(F("WiFi: "), F("ssid"), true);
 
   if (ap_count == 0)
   {
@@ -486,7 +532,7 @@ void wlanPageHandler(AsyncWebServerRequest *request)
   response_message += "\" onchange=\"setStaHostname(this.value)\">";
   response_message += getFormFoot();
 
-   response_message += getFormHead("AP SSID");
+  response_message += getFormHead("AP SSID");
   response_message += "<label for=\"apSSID\">SSID:</label>";
   response_message += "<input type=\"text\" id=\"apSSID\" name=\"apSSID\" size=\"32\" value=\"";
   response_message += ap_SSID.c_str();
@@ -502,8 +548,8 @@ void wlanPageHandler(AsyncWebServerRequest *request)
 
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),7);
-  debugMsgln(String(response_message.length()),7);
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
 
   request->send(200, F("text/html"), response_message);
 
@@ -514,10 +560,10 @@ void wlanPageHandler(AsyncWebServerRequest *request)
 */
 void utilityPageHandler(AsyncWebServerRequest *request)
 {
-  debugMsgln(F("Entering /utility page."),2);
+  debugMsgln(F("Entering /utility page."),3);
 
-  String response_message;
-  response_message.reserve(2000);
+  String response_message((char *)0);
+  response_message.reserve(4000);
   response_message = getHTMLHead();
   response_message += getNavBar();
 
@@ -542,28 +588,44 @@ void utilityPageHandler(AsyncWebServerRequest *request)
 
 
   response_message += F("<hr><a href=\"/getfile\">Check controller and reread files</a>");
-  response_message += F("<hr><a href=\"/reset\">Restart WLAN module</a>");
+  response_message += F("<hr><a href=\"/reset\">Restart platform</a>");
   if ( largeFlash ) {
     response_message += F("<hr><a href=\"");
     response_message += update_path;
-    response_message += F("\">Update WLAN module firmware</a>");
+    response_message += F("\">Update firmware</a><br/><hr>");
   }
 
-  response_message += F("<hr><h3>Use with caution!</h3>");
+  response_message += getRadioGroupHeader("Display temperature in: ");
+  response_message += getRadioButton("c_scale", "Celsius", "true", celsius);
+  response_message += getRadioButton("c_scale", "Fahrenheit", "false", !celsius);
+  response_message += getRadioGroupFooter();
+  response_message += "<script>"
+                      "function set_celsius() {"
+                      "var theUrl = '/cmd?celsius=' ; "
+                      "theUrl += document.getElementsByName(\"c_scale\")[0].checked;"
+                      "var xhr = new XMLHttpRequest() ;"
+                      "xhr.open ( \"GET\", theUrl, false ) ; xhr.send() ;"
+                      "setTimeout(location.reload(),500); "
+                      "}"
+                      "</script>";
+  response_message += getJsButton(F("Set"), "set_celsius()" );
 
-  response_message += F("<hr><a href=\"/cmd?clr_dlog\">Clear debug log</a>");
+  response_message += F("<br/><hr><hr><h3>Use with caution!</h3>");
+
+  response_message += F("<hr><a href=\"/cmd?clr_dlog\">Clear platform log</a>");
   response_message += F("<hr><a href=\"/cmd?clr_clog\">Clear controller log</a>");
+  response_message += F("<hr><a href=\"/cmd?clr_crrd\">Clear controller historical database (RRD)</a>");
   response_message += F("<hr><a href=\"/rest?json={%22addr%22:254%2c%22cmd%22:");
   response_message += F("%22writeSingleCoil%22%2c%22valu%22:%22on%22%2c%22pass%22:%22");
   response_message += json_password.c_str();
   response_message += F("%22%2c%22back%22:%22true%22}\">Reset solar controller to factory defaults</a>");
-  response_message += F("<hr><a href=\"/resetall\">Clear config and restart WLAN module</a>");
+  response_message += F("<hr><a href=\"/resetall\">Clear config and restart</a>");
 
   response_message += F("</font></div>");
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),7);
-  debugMsgln(String(response_message.length()),7);
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
 
   request->send(200, F("text/html"), response_message);
 }
@@ -572,9 +634,9 @@ void utilityPageHandler(AsyncWebServerRequest *request)
    Reset the ESP card
 */
 void getfilePageHandler(AsyncWebServerRequest *request) {
-  debugMsgln(F("Entering /getfile page."),2);
+  debugMsgln(F("Entering /getfile page."),3);
 
-  String response_message;
+  String response_message((char *)0);
   response_message.reserve(2000);
   response_message = getHTMLHead();
   response_message += getNavBar();
@@ -586,10 +648,10 @@ void getfilePageHandler(AsyncWebServerRequest *request) {
       if (model == "") {
     model = "PS-MPPT";
   }
-  debugMsg(F("EEPROM got model:"),1);
+  debugMsg(F("EEPROM got model: "),1);
   debugMsgln(model,1);
   } else {
-    debugMsg(F("Got model from mbus:"),1);
+    debugMsg(F("Got model from mbus: "),1);
     debugMsgln(model,1);
     noController = false;
   }
@@ -604,9 +666,9 @@ void getfilePageHandler(AsyncWebServerRequest *request) {
    Reset the EEPROM and stored values
 */
 void resetAllPageHandler(AsyncWebServerRequest *request) {
-  debugMsgln(F("Entering /resetall page."),2);
+  debugMsgln(F("Entering /resetall page."),3);
 
-  String response_message;
+  String response_message((char *)0);
   response_message.reserve(2000);
   response_message = getHTMLHead();
   response_message += getNavBar();
@@ -639,7 +701,7 @@ void resetPageHandler(AsyncWebServerRequest *request) {
   debugMsgln(F("Entering /reset page."),2);
   logFile.flush();
   
-  String response_message;
+  String response_message((char *)0);
   response_message.reserve(2000);
   response_message = getHTMLHead();
   response_message += getNavBar();
@@ -657,7 +719,7 @@ void resetPageHandler(AsyncWebServerRequest *request) {
 
 void setTimePageHandler(AsyncWebServerRequest *request) {
  //   Page to set RTC.
-  debugMsgln(F("Entering /setTime page."),2);
+  debugMsgln(F("Entering /setTime page."),3);
   String serverArg = "";
 
   if (request->hasArg("tzname")) {          // for POSIX lookup
@@ -673,7 +735,7 @@ void setTimePageHandler(AsyncWebServerRequest *request) {
   
   checkController();
   String response_message, inputvar;
-  response_message.reserve(4000);
+  response_message.reserve(8000);
   response_message = getHTMLHead();
   response_message += getNavBar();
 
@@ -785,16 +847,16 @@ void setTimePageHandler(AsyncWebServerRequest *request) {
   response_message += F("POSIX time zone string reference,</a> e.g. US Eastern is <b>EST+5EDT,M3.2.0,M11.1.0</b>. ");
   response_message += F("<br><hr/>");
   response_message += getFormFoot();
-  
+
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),7);
-  debugMsgln(String(response_message.length()),7);
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
   request->send(200, F("text/html"), response_message);
 }
 
 bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
-  debugMsgln("loadFromSdCard, file:"+path,4);
+  debugMsgln("loadFromSdCard, file: "+path,4);
   String dataType = "text/plain";
   if (path.endsWith("/")) {
     path += "index.htm";
@@ -829,7 +891,7 @@ bool loadFromSdCard(String path, AsyncWebServerRequest *request) {
 }
 
 void sdPageHandler(String URI, AsyncWebServerRequest *request ){
-  debugMsgln("sdPageHandler URI:"+URI,4);
+  debugMsgln("sdPageHandler URI: "+URI,4);
   String relative_uri = URI;
   relative_uri.replace("/sd/","/");
   if (sd_card_available && loadFromSdCard(relative_uri, request)) {
@@ -858,19 +920,19 @@ void sdPageHandler(String URI, AsyncWebServerRequest *request ){
 }
 
 void updatePageHandler(AsyncWebServerRequest *request) {
-  debugMsgln(F("Entering /update page."),2);
-  String response_message;
+  debugMsgln(F("Entering /update page."),3);
+  String response_message((char *)0);
   response_message.reserve(3000);
   response_message = getHTMLHead();
   response_message += getNavBar();
   response_message += "<noscript><strong>We're sorry but OTA doesn't work properly without JavaScript enabled."
                       " Please enable it to continue.</strong></noscript><div id=\"app\"></div>"
-                      "<script src=\"/OTA.js\"> defer</script>";
-  response_message += "<center><h3>Over-The-Air updater</h2></center>";
+                      "<script defer src=\"/js/OTA.js\"> </script>";
+  response_message += "<center><h3>Over-The-Air updater</h3></center>";
   response_message += getHTMLFoot();
 
-  debugMsg(F("response_message size:"),7);
-  debugMsgln(String(response_message.length()),7);
+  debugMsg(F("response_message size: "),3);
+  debugMsgln(String(response_message.length()),3);
   if (logFile) logFile.flush();
   if (ctl_logFile) ctl_logFile.flush();
   request->send(200, F("text/html"), response_message);

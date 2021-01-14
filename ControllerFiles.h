@@ -2,7 +2,7 @@
 // functions to read the controller .csv file
 
 void getRegFromFile(String model) {
-  debugMsgln("Reading registers from /ctl/" + model + ".csv",1);
+  debugMsgln("Reading registers from /ctl/" + model + ".csv",3);
   File regFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!regFile) {
     debugMsgln("register file not found!",1);
@@ -56,7 +56,7 @@ void getRegFromFile(String model) {
                 } else if (val == "W") {
                   mbRegUnit[row] = Watt;
                 } else if (val == "C") {
-                  mbRegUnit[row] = Celcius;
+                  mbRegUnit[row] = Celsius;
                 } else if (val == "secs") {
                   mbRegUnit[row] = seconds;
                 } else if (val == "hours") {
@@ -134,7 +134,7 @@ void getRegFromFile(String model) {
 }
 
 void getCoilFromFile(String model) {
-  debugMsgln("Reading coils from /ctl/" + model + ".csv",5);
+  debugMsgln("Reading coils from /ctl/" + model + ".csv",3);
   File coilFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!coilFile) {
     debugMsgln(F("Coil file not found!"),1);
@@ -189,7 +189,7 @@ void getCoilFromFile(String model) {
 }
 
 void getAlarmFromFile(String model) {
-  debugMsgln("Reading alarms from /ctl/" + model + ".csv",1);
+  debugMsgln("Reading alarms from /ctl/" + model + ".csv",3);
   File alarmFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!alarmFile) {
     debugMsgln(F("Alarm file not found!"),1);
@@ -231,7 +231,7 @@ void getAlarmFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbAlarmMsg[myBit] = val;
-                      debugMsgln("set mbAlarmMsg-" + String(myBit) + ":" + mbAlarmMsg[myBit],6);
+                      debugMsgln("set mbAlarmMsg-" + String(myBit) + ": " + mbAlarmMsg[myBit],6);
                 break;
             }
             pos = delim + 1;
@@ -246,7 +246,7 @@ void getAlarmFromFile(String model) {
 }
 
 void getArrayFromFile(String model) {
-  debugMsgln("Reading array faults from /ctl/" + model + ".csv",1);
+  debugMsgln("Reading array faults from /ctl/" + model + ".csv",3);
   File arrayFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!arrayFile) {
     debugMsgln(F("Array file not found!"),1);
@@ -288,7 +288,7 @@ void getArrayFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbArrayMsg[myBit] = val;
-                      debugMsgln("set mbArrayMsg-" + String(myBit) + ":" + mbArrayMsg[myBit],6);
+                      debugMsgln("set mbArrayMsg-" + String(myBit) + ": " + mbArrayMsg[myBit],6);
                 break;
             }
             pos = delim + 1;
@@ -303,7 +303,7 @@ void getArrayFromFile(String model) {
 }
 
 void getLoadFromFile(String model) {
-  debugMsgln("Reading load faults from /ctl/" + model + ".csv",1);
+  debugMsgln("Reading load faults from /ctl/" + model + ".csv",3);
   File loadFile = FILESYSTEM.open("/ctl/" + model + ".csv", "r");
   if (!loadFile) {
     debugMsgln(F("load file not found!"),1);
@@ -345,7 +345,7 @@ void getLoadFromFile(String model) {
               case 1: myBit = val.toInt();
                 break;
               case 2: mbLoadMsg[myBit] = val;
-                      debugMsgln("set mbLoadMsg-" + String(myBit) + ":" + mbLoadMsg[myBit],6);
+                      debugMsgln("set mbLoadMsg-" + String(myBit) + ": " + mbLoadMsg[myBit],6);
                 break;
             }
             pos = delim + 1;

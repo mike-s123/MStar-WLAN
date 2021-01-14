@@ -6,12 +6,17 @@
 
 //#define RTCtestNtpSet 2  // deliberately sets RTC wrong for testing. 1=slow 997 ms, 2=fast 997 ms
 
+// forward declarations
 void debugMsg(String msg, int level=1);
 void debugMsgln(String msg, int level=1);
 void tryWLAN();
 void ctlLog();
+void stopLogDaily();
+signed char getAgingOffset();
+void oncePerFive();
+void oncePerHour();
+// end forward declarations
 
-signed char getAgingOffset(); // fwd declaration
 String getNtpTZ();
 String getNtpServer();
 unsigned short int getNtpPoll();
@@ -101,13 +106,13 @@ byte read_rtc_eeprom(int address) {
   byte data[1];
   byte i2cStat = rtc_eeprom.read(address, data, 1);
   debugMsg(F("Reading RTC eeprom, "),5);
-  debugMsgln(String(address)+":"+String(data[0]),5);
+  debugMsgln(String(address)+": "+String(data[0]),5);
   return data[0];
 }
 
 void write_rtc_eeprom(int address, byte data) {
   debugMsg(F("Writing RTC eeprom, "),4);
-  debugMsgln(String(address)+":"+String(data),4);
+  debugMsgln(String(address)+": "+String(data),4);
   byte writebyte[1];
   writebyte[0] = data;
   byte i2cStat = rtc_eeprom.write(address, writebyte, 1);
@@ -115,10 +120,10 @@ void write_rtc_eeprom(int address, byte data) {
   delay(10);
 }
 
-void setRtcLastSetTime(uint32_t set_time) {
+void setRtcLastSetTime(time_t set_time) {
   if (!rtcPresent) return;
-  debugMsgln(F("setRtcLastSetTime"),1);
-  uint32_t unow = set_time;
+  debugMsgln(F("setRtcLastSetTime"),2);
+  time_t unow = set_time;
   write_rtc_eeprom(RtcEepromYear, Year>>8);
   write_rtc_eeprom(RtcEepromYear+1, Year%256);
   write_rtc_eeprom(RtcEepromMonth, Month);
@@ -132,9 +137,9 @@ void setRtcLastSetTime(uint32_t set_time) {
   }
 }
     
-uint32_t getRtcLastSetTime() {
+time_t getRtcLastSetTime() {
   if (!rtcPresent) return 0;
-  uint32_t utime = 0;
+  time_t utime = 0;
   for (int i=3; i>-1; i--) {  // read high byte first so we can bit shift
     utime = utime << 8;
     utime += read_rtc_eeprom(RtcEepromLastSetTime+i);
@@ -142,10 +147,15 @@ uint32_t getRtcLastSetTime() {
   return utime;
 }
 
-uint32_t getUnixTime() {
-  RTClib RTC;
-  DateTime now = RTC.now();
-  uint32_t unow = now.unixtime();
+time_t getUnixTime() {
+  time_t unow;
+  if (rtcPresent){
+    RTClib RTC;
+    DateTime now = RTC.now();
+    unow = now.unixtime();
+  } else {
+    unow = UTC.now();  // from ntp
+  }
   return unow;
 }
 
@@ -182,7 +192,7 @@ String getRtcTimeString(int full = 1) {  // form: 1=full, 0=HMS
     if (full) {
       RTCTime = String(Month)+"/"+String(Day, DEC)+"/"+String(Year, DEC)+" ";
     }
-    RTCTime += String(Hour, DEC)+":"+String(Minute, DEC)+":"+String(Second, DEC);
+    RTCTime += String(Hour, DEC)+": "+String(Minute, DEC)+": "+String(Second, DEC);
     return RTCTime;
   }
 }
@@ -325,7 +335,7 @@ String checkRtcEeprom() {
   }
   if (chkstr1 != F(RTC_EEPROM_SIG)) {
     debugMsgln(F("invalid, resetting"),1);
-    debugMsgln("1:"+chkstr1+", 2:"+chkstr2,1);
+    debugMsgln("1: "+chkstr1+", 2: "+chkstr2,1);
     resetRtcEeprom();      
   } else {
   debugMsg(chkstr1+"...",3);
@@ -362,21 +372,21 @@ void checkClocks(int32_t rtc_diff_filtered) {
         howlong = UTC.now() - getRtcLastSetTime();            // number of seconds since we last set RTC time
         drift = -rtc_diff_filtered * 10000.0 / howlong;   // drift in 0.1 ppm, close to the DS3231 offset precision, - means RTC is slow
         new_offset = getAgingOffset() + (drift * RTC_DRIFT_FACTOR);
-        debugMsg(F("howlong:"),4);
+        debugMsg(F("howlong: "),4);
         debugMsgln(String(howlong),4);
-        debugMsg(F("rtc_diff_filtered:"),4);
+        debugMsg(F("rtc_diff_filtered: Got model preference"),4);
         debugMsgln(String(rtc_diff_filtered),4);
         debugMsgln(F(" ppm"),4);         
         if (new_offset != getAgingOffset()) {
           if (new_offset < -127) new_offset = -127;
           if (new_offset > 127) new_offset = 127;
           if (abs(new_offset) != 127) {  // if we're at the extreme, probably an error, skip
-            debugMsg(F("Changing RTC offset, drift:"),1);
+            debugMsg(F("Changing RTC offset, drift: Got model preference"),1);
             debugMsg(String(rtc_diff_filtered),1);
-            debugMsg(F(" ms, ppm:"),1);
+            debugMsg(F(" ms, ppm: "),1);
             debugMsg(String(drift/10.0,3),1); 
-            debugMsg(", old offset:" + String(getAgingOffset()),1);
-            debugMsgln(", new offset:" + String(new_offset),1);
+            debugMsg(", old offset: " + String(getAgingOffset()),1);
+            debugMsgln(", new offset: " + String(new_offset),1);
             setAgingOffset(new_offset);
           } 
         } else {
@@ -435,9 +445,6 @@ void oncePerMinute() { // not necessarily _on_ the minute
   int32_t ms_diff;
   int32_t real_rtc_diff_ms;
   
-  void oncePerFive(); //fwd dec
-  void oncePerHour(); //fwd dec
-  
   deleteEvent(oncePerMinute);          // will recreate later, if needed
 //  UTC.setEvent(oncePerMinute,UTC.now()+60);
   setEvent(oncePerMinute,now()+60);
@@ -464,24 +471,24 @@ void oncePerMinute() { // not necessarily _on_ the minute
       }
     }
     ms_diff = -(opm_millis - opm_ms - opm_rtc_ms);
-    debugMsgln("opm_millis:"+String(opm_millis),5);
-    debugMsgln("opm_ms:"+String(opm_ms),5);
-    debugMsgln("opm_rtc_ms:"+String(opm_rtc_ms),5);
-    debugMsgln("ms_diff:"+String(ms_diff),5);
+    debugMsgln("opm_millis: "+String(opm_millis),5);
+    debugMsgln("opm_ms: "+String(opm_ms),5);
+    debugMsgln("opm_rtc_ms: "+String(opm_rtc_ms),5);
+    debugMsgln("ms_diff: "+String(ms_diff),5);
   
     if (ms_diff < -999 || ms_diff > 999) { // sanity check, 
-      debugMsg(F("ms_diff out of bounds:"),2);
+      debugMsg(F("ms_diff out of bounds: "),2);
       debugMsgln(String(ms_diff),3);
       return;
     }
     real_rtc_diff_ms = ((opm_secs-rtc_secs) * 1000) + ms_diff;
-    debugMsgln("rtc_secs:"+String(rtc_secs),5);
-    debugMsgln("opm_secs:"+String(opm_secs),5);
-    debugMsgln("ms_diff:"+String(ms_diff),5);
-    debugMsgln("real_rtc_diff_ms:"+String(real_rtc_diff_ms),5);
+    debugMsgln("rtc_secs: "+String(rtc_secs),5);
+    debugMsgln("opm_secs: "+String(opm_secs),5);
+    debugMsgln("ms_diff: "+String(ms_diff),5);
+    debugMsgln("real_rtc_diff_ms: "+String(real_rtc_diff_ms),5);
     // moving average-like filter, 1000000 (1000 second) offset because it underflows on negative numbers
     rtc_diff_filtered = rtc_diff_ewmat.filter(real_rtc_diff_ms+1000000)-1000000; 
-    debugMsgln("RTC diff real/filt:" + String(real_rtc_diff_ms) + "/" + String(rtc_diff_filtered),4);
+    debugMsgln("RTC diff real/filt: " + String(real_rtc_diff_ms) + "/" + String(rtc_diff_filtered),4);
     
     if (timeStatus() == timeSet && abs(real_rtc_diff_ms - rtc_diff_filtered) < 5 ) {  // only if NTP is running and
       checkClocks(rtc_diff_filtered);                                                 // we've averaged to within 5 ms
@@ -506,17 +513,23 @@ void oncePerFive() { // every 5 minutes
 void oncePerHour() { // not necessarily _on_ the hour
   deleteEvent(oncePerHour); 
   UTC.setEvent(oncePerHour,UTC.now()+3600);
-  debugMsgln(F("oncePerHour"),2);
+  debugMsgln(F("oncePerHour"),3);
   if ((timeStatus() == timeNeedsSync) && rtcPresent) UTC.setTime(getUnixTime());     // lost ntp sync, update from RTC
-  timeval epoch = {myTZ.now(), myTZ.ms()}; // FAT is not TZ aware, use local TZ
+  timeval epoch = {UTC.now(), UTC.ms()}; // FAT is not TZ aware, use local TZ
   settimeofday((const timeval*)&epoch, 0); // set ESP ToD, for SD file timestamps
   debugMsgln(F("settimeofday"),4);
-  if (myTZ.hour() % 6 == 0) { // every 6 hours
+  if (myTZ.hour() % 6 == 0 && !noController) { // every 6 hours
       debugMsgln("Modbus errors/tries: " + String(mbuserrs) + "/" + String(mbustries) + " (" + String(((double)mbuserrs/(double)mbustries)*100.,3) + "%)", 1);
   }
   // TODO logrotate?
 }
 
+void midnight() {
+  deleteEvent(midnight); 
+  myTZ.setEvent(midnight,myTZ.now()+86400);
+  debugMsgln("Midnight",1);
+  stopLogDaily(); // save todays info
+}
 void eventConfirm() {
   debugMsgln(F("Events are running"),1);
 }
@@ -532,12 +545,12 @@ void setupClocks() {
    rtcPresent = true;
   }
   debugMsgln(F("RTC found"),1);
-  byte i2cStat = rtc_eeprom.begin(rtc_eeprom.twiClock100kHz);
-  if ( i2cStat != 0 ) {
-    debugMsgln(F("I2C Problem with RTC eeprom"),1);
-  }
 
   if (rtcPresent) { // found RTC
+    byte i2cStat = rtc_eeprom.begin(rtc_eeprom.twiClock100kHz); // check RTC EEPROM
+    if ( i2cStat != 0 ) {
+      debugMsgln(F("I2C Problem with RTC eeprom"),1);
+    }
     delay(10);
     if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)
       debugMsgln(F("RTC OSC stopped"),1);
@@ -558,44 +571,59 @@ void setupClocks() {
   // now, setup NTP
   myTZ.setDefault();                     // setup NTP service
   tzPosix = getNtpTZ();
-  debugMsg(F("Setting NtpTZ to:"),1);
+  debugMsg(F("Setting NtpTZ to: "),1);
   debugMsgln(tzPosix,1);
   ntpTZ = tzPosix;
   myTZ.setPosix(tzPosix);
-  tzPosix = getNtpServer(); // tzPosix is used as a temp
-  debugMsg(F("Setting NtpServer to:"),1);
-  debugMsgln(tzPosix,1);
-  setServer(tzPosix);
-  ntpServer = tzPosix;
+  ntpServer = getNtpServer();
+  debugMsg(F("Setting NtpServer to: "),1);
+  debugMsgln(ntpServer,1);
+  setServer(ntpServer);
   tzPosix = ""; // we were just using it temporarily
   ntp_temp = getNtpPoll();
-  debugMsg(F("Setting NtpPoll to:"),1);
+  debugMsg(F("Setting NtpPoll to: "),1);
   debugMsgln(String(ntp_temp),1);
   setInterval(ntp_temp);
   ntpInterval = ntp_temp;
   rtc_max_unsync = RTC_MAX_UNSYNC * sqrt(ntpInterval/600);
   delay(100);    
   debugMsgln(F("NTP trying to sync..."),1);
-  waitForSync(10);
+  waitForSync(15);
   ntp_state = timeStatus();
   if (ntp_state == timeSet) {
     debugMsg(F("NTP time is "),1);
     debugMsgln(myTZ.dateTime(RFC850),1);
-    if (rtcNeedsTime) {
-      rtcNeedsTime = setRtcTimeNTP(); 
-    }
+    timeval epoch = {UTC.now(), UTC.ms()}; // FAT is not TZ aware, use local TZ
+    settimeofday((const timeval*)&epoch, 0); // set ESP ToD, for SD file timestamps
+    if (rtcNeedsTime) rtcNeedsTime = setRtcTimeNTP(); 
   } else {
     debugMsgln(F("NTP not sync'd"),1);
-
+    const char* remote_host = ntpServer.c_str();
+  /*  if(Ping.ping(remote_host)) {
+      debugMsg("Can ping ",1);
+    } else {
+      debugMsg("Can't ping ",1);
+    }  
+    debugMsgln(ntpServer,1);
+   */ 
     if (rtcPresent && !rtcNeedsTime ) {
       debugMsgln(F("Setting time from RTC"),1);
       UTC.setTime(getUnixTime()); // from RTC to eztime
       debugMsg(F("RTC time is "),1);
       debugMsgln(myTZ.dateTime(RFC850),1);
     }
-
     ntp_state = timeStatus();  // tell NTP to keep trying
   }
+  bootTime = UTC.now();      // record when we booted, setupClocks only called once during setup()
+}
+
+time_t getMidnight() { // returns time of local midnight in UTC
+  tmElements_t tm ;
+  breakTime(myTZ.now(), tm);
+  tm.Hour = 0; tm.Minute = 0; tm.Second = 0; // beginning of today
+  time_t midnight = makeTime(tm) + (myTZ.getOffset() * 60) + 86400;
+  debugMsgln("midnight is "+String(midnight),3);
+  return(midnight);  
 }
 
 void setEvents() {
@@ -604,18 +632,20 @@ void setEvents() {
   deleteEvent(oncePerFive);
   deleteEvent(oncePerHour);
   deleteEvent(eventConfirm);
+  deleteEvent(midnight);
   UTC.setEvent(oncePerMinute,UTC.now()+30); // set timed events even if not ntp sync'd
   UTC.setEvent(oncePerFive,UTC.now()+20);
   UTC.setEvent(oncePerHour,UTC.now()+10);
   UTC.setEvent(eventConfirm,UTC.now()+5);
+  UTC.setEvent(midnight, getMidnight());
 }
 
 void checkNtp() {  // watches for changes to ntp state
   if ( ntp_state != timeStatus() ) { //state changed
     ntp_state = timeStatus();
-    debugMsg(F("NTP state changed, "),2);
-    debugMsgln(ntp_state_string(ntp_state),2);
-    if ( ntp_state == timeSet && rtcNeedsTime ) {
+    debugMsg(F("NTP state changed, "),1);
+    debugMsgln(ntp_state_string(ntp_state),1);
+    if ( (ntp_state == timeSet) && rtcNeedsTime ) {
       setRtcTimeNTP();
       setEvents();
     }

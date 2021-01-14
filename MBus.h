@@ -1,3 +1,7 @@
+// forward declarations
+void getFile(String model);
+// end forward declarations
+
 /*   
     uint8_t  readCoils(uint16_t, uint16_t);
     uint8_t  readDiscreteInputs(uint16_t, uint16_t);
@@ -43,6 +47,14 @@ static const uint8_t  ModbusMaster::ku8MBInvalidCRC = 0xE3
   ModbusMaster invalid response CRC exception. More...
 */
 
+void mbusErr() {
+  if (!noController) mbuserrs++;
+}
+
+void mbusTry() {
+  if (!noController) mbustries++;
+}
+
 String mbusErrLookup(uint8_t err){
   if (err == node.ku8MBIllegalFunction) return "ku8MBIllegalFunction";
   if (err == node.ku8MBIllegalDataAddress) return "ku8MBIllegalDataAddress";
@@ -65,8 +77,8 @@ int mbRegMax;               // holds largest address found
 String mbRegVar[REG_ROWS];
 String mbRegDesc[REG_ROWS];
 // TODO add V/A for ER_icomp
-enum mbRegUnits {noUnit, Volt, Amp, Celcius, Ah, kWh, Watt, days, hours, seconds, percent};
-String mbRegUnitName[] = {"-", "V", "A", "C", "Ah", "kWh", "W", "d", "h", "s", "%"};
+enum mbRegUnits {noUnit, Volt, Amp, Celsius, Ah, kWh, Watt, days, hours, seconds, percent};
+String mbRegUnitName[] = {"-", "V", "A", "&deg;C", "Ah", "kWh", "W", "d", "h", "s", "%"};
 mbRegUnits mbRegUnit[REG_ROWS];
 bool mbRegRW[REG_ROWS];
 
@@ -118,9 +130,9 @@ void postTransmission() {
 //  uart_wait_tx_done(UART_NUM_1, 15);          // wait for uart 1 to empty, timeout is 3 RTOS ticks - ~150 ms, enough to empty full buffer (127)
                                                 // doesn't work, results in "E (338308) uart: uart_wait_tx_done(1051): uart driver error"
   while (mbSerial.availableForWrite() < 0x7f) ; // delay until tx buffer is emptied (i.e. room for 0x7f chars)
-  delayMicroseconds(1719);                      // 1.5 char wait (1719 us) for final char to clock out
-                                                // 2005 (1.75),   4/130796 (0.003%) (1 index page)
-                                                // 1719 (1.5), 11/132644 (0.008%) (1 index page running)
+  delayMicroseconds(1719);                      // wait for final char to clock out
+                                                // 2005 (1.75), 55/401802 (0.014%) (1 index page)
+                                                // 1719 (1.5),  124/750414 (0.017%) (1 index page)
                                                 // 1432 (1.25), lots of fails 64/66 (96.970%)
   rxEnable(true);
 //  mbSerial.flush();                           // make sure we didn't receive our own stuff
@@ -177,9 +189,9 @@ int MBus_get_coil(uint16_t address, bool &value) {             // returns 0 on s
   uint8_t result = 1;
   for ( int i = 0 ; (i < 3) && result ; i++ ) {           // try up to 3 times
     result = node.readCoils(address, 1);                   // succcess = 0
-    mbustries++;
+    mbusTry();
     if (result) {
-      mbuserrs++;
+      mbusErr();
       debugMsgln(F("MBus_get_coil, mbuserr."),2);
     }
     delay(i*50);                                           // delay a bit more on each attempt
@@ -201,9 +213,9 @@ int MBus_write_coil(uint16_t address, String valu) {           // returns 0 on s
   row = getCoilIndex(address);
   if ( row > 0 ) {
     result = node.writeSingleCoil(address, state);
-    mbustries++;
+    mbusTry();
     if (result) {
-      mbuserrs++;
+      mbusErr();
       debugMsgln(F("MBus_write_coil, mbuserr."),2);
     }
     if ( ( address == 255 || address == 254 ) && state && result == node.ku8MBResponseTimedOut ){  
@@ -220,31 +232,25 @@ int MBus_get_reg_raw(uint16_t address, uint16_t &raw) {    // get register unint
   if (noController) return -1;
   int result=1;
   debugMsgln("MBus_get_reg_raw: "+String(address),4);
-  int newMbusErr = 0;
-  
-  for ( int i = 0 ; (i < 3) && (result != node.ku8MBSuccess) ; i++ ) {  // try 3 times
-    mbustries++;
+  int localMbusErr = 0;
+  mbusTry(); // only counts as one try
+  for ( int i = 0 ; (i < 3) && (result != node.ku8MBSuccess) ; i++ ) {  // 3 times
     result = node.readHoldingRegisters(address, 1);
     if (result == node.ku8MBSuccess) {
       raw = node.getResponseBuffer(0);
     } else {
       delay((i*50)+25); // increasing delay between failed attempts
-      mbuserrs++;
-      newMbusErr++;
-      debugMsgln("MBus_get_reg_raw, mbuserr:"+mbusErrLookup(result)+" addr:"+String(address),2);
+      localMbusErr++;
+      debugMsgln("MBus_get_reg_raw, mbuserr: "+mbusErrLookup(result)+" addr: "+String(address),4);
     }
   }
-  if (newMbusErr > 0 && result == node.ku8MBSuccess) {
-    debugMsgln("Recovered from error.",2);
+  if (result != node.ku8MBSuccess){
+    mbusErr();  // not counting recovered errs
+    debugMsgln("MBus_get_reg_raw, mbuserr: "+mbusErrLookup(result)+" addr: "+String(address),4);
+  } else if (localMbusErr > 0 ) {
+    debugMsgln("Recovered from error.",3);
     mbuserrs_recovered++;
   }
-
-/*  
-  result = node.readHoldingRegisters(address, 1);
-  if (result == node.ku8MBSuccess) {
-      raw = node.getResponseBuffer(0);
-    };
-*/    
   return result;
 }
 
@@ -289,12 +295,12 @@ int MBus_get_uint32(uint16_t address, uint32_t &value) {       // get unsigned l
   if (noController) return -1;
   debugMsgln("MBus_get_uint32: "+String(address),7);
   int result = node.readHoldingRegisters(address, 2);
-  mbustries++;
+  mbusTry();
   if (result == node.ku8MBSuccess) {
     value = node.getResponseBuffer(0) << 16 ;         // HI first
     value += node.getResponseBuffer(1) ;
   } else {
-    mbuserrs++;
+    mbusErr();
     debugMsgln(F("MBus_get_uint32, mbuserr."),2);
   }
   debugMsgln("Result: "+String(result),7);
@@ -305,12 +311,12 @@ int MBus_get_uint32_rev(uint16_t address, uint32_t &value) {  // get unsigned lo
   if (noController) return -1;
   debugMsgln("MBus_get_uint32: "+String(address),7);
   int result = node.readHoldingRegisters(address, 7);
-  mbustries++;
+  mbusTry();
   if (result == node.ku8MBSuccess) {
     value = node.getResponseBuffer(1) << 16 ;         // LO first
     value += node.getResponseBuffer(0) ;
   } else {
-    mbuserrs++;
+    mbusErr();
     debugMsgln(F("MBus_get_uint32_rev, mbuserr."),2);
   }
   debugMsgln("Result: "+String(result),4);
@@ -461,9 +467,9 @@ int mbGetFullReg(fullReg &myReg, uint16_t address) {  //given address, gets all 
 
 int MBusWSR(uint16_t address, unsigned int value) {
   int result = node.writeSingleRegister(address, value);
-  mbustries++;
+  mbusTry();
   if (result) {
-    mbuserrs++;
+    mbusErr();
     debugMsgln(F("MBusWSR, mbuserr."),2);
   }
   return result;
@@ -567,14 +573,14 @@ int MBus_get_regs_raw(uint16_t address, uint16_t *rawarray, int count) {  //TODO
   int result = 0;
   int passes = count / 32; // modbusmaster buffer is 64 bytes
   int leftover = count %32;
-  debugMsgln("RegsRaw, passes "+String(passes)+", left:"+String(leftover),7);
+  debugMsgln("RegsRaw, passes "+String(passes)+", left: "+String(leftover),7);
   int i;
   for (i = 0; i < passes; i++) {
 //    delay(5);
     result = node.readHoldingRegisters(address+(i*32), 32);
-    mbustries++;
+    mbusTry();
     if (result) {
-      mbuserrs++;
+      mbusErr();
       debugMsgln(F("MBus_get_regs_raw1, mbuserr."),2);
     }
     for (int j = 0; j<32; j++) {
@@ -584,9 +590,9 @@ int MBus_get_regs_raw(uint16_t address, uint16_t *rawarray, int count) {  //TODO
   }
 //  delay(5);
   result += node.readHoldingRegisters(address+i*32, leftover);
-  mbustries++;
+  mbusTry();
   if (result) {
-    mbuserrs++;
+    mbusErr();
     debugMsgln(F("MBus_get_regs_raw2, mbuserr."),2);
   }
   for ( i=0; i<leftover; i++) {
@@ -683,23 +689,23 @@ int readDeviceID(String &vendorName, String &productCode, String &majorMinorRevi
         int uartchars = mbSerial.available();
         char incoming = mbSerial.read();
         debugMsg(String(F("readDeviceID, mbSerial avail, count: ")) + String(uartchars,DEC),7); 
-        debugMsgln(String(F(", char:")) + String(incoming, DEC),7);
+        debugMsgln(String(F(", char: ")) + String(incoming, DEC),7);
         if (incoming == mbAddr) goodStart = true; // first byte of response should be address
         if (goodStart) response[count++] = incoming;
         doneTime = millis() + charwait; // started getting a response, change to char timeout
       }  //matches xx.available
       if (millis() > doneTime) { done = true; }  // no response or didn't get a char for a while
     } // while() - done getting response
-    mbustries++;
+    mbusTry();
     if (goodStart) {
       tries=4;
     } else {
-      mbuserrs++;
-      debugMsgln(F("readDeviceID, mbuserr."),2);
+      mbusErr();
+      debugMsgln(F("readDeviceID, mbuserr."),4);
       delay(tries*50); // delay a bit more between each try
     }
   }
-  debugMsgln(String(F("readDeviceID, bytes read:")) + String(count),5);
+  debugMsgln(String(F("readDeviceID, bytes read: ")) + String(count),5);
   
   if (count <= 1) { return -1; } else {count = 0;}
   id_idx = 8;
@@ -794,9 +800,9 @@ int mbusTCP() {
       refNum = mbbuffer[8]*256 + mbbuffer[9];   //register
       mbbuffer[10] == 0xff ? state = true : state = false ;
       result = node.writeSingleCoil(refNum, state);
-      mbustries++;
+      mbusTry();
       if (result) {
-        mbuserrs++;
+        mbusErr();
         debugMsgln(F("mbusTCP5, mbuserr."),2);
       }
       // good response is to just return what we got...
@@ -806,9 +812,9 @@ int mbusTCP() {
       refNum = mbbuffer[8]*256 + mbbuffer[9];   //register
       val    = mbbuffer[10]*256 + mbbuffer[11]; //value
       result = node.writeSingleRegister(refNum, val);
-      mbustries++;
+      mbusTry();
       if (result) {
-        mbuserrs++;
+        mbusErr();
         debugMsgln(F("mbusTCP6, mbuserr."),2);
       }
       // good response is to just return what we got...
@@ -883,7 +889,7 @@ String getModel() {
   majorMinorRevision.reserve(64);
   result = readDeviceID(vendorName, productCode, majorMinorRevision);
   if (result == -1 || productCode.length() > 20) productCode = "";
-  debugMsg(F("getModel, readDeviceID returned:"),5);
+  debugMsg(F("getModel, readDeviceID returned: "),5);
   debugMsgln(String(result),5);
   
   /* Model names
@@ -897,9 +903,9 @@ String getModel() {
   if (productCode.startsWith(F("TS-"))) {               mod = "TS"; }
   if (productCode.startsWith(F("TS-MPPT")))  {          mod = "TS-MPPT"; }
   if (productCode.startsWith(F("TS-MPPT-60-600V"))) {   mod = "TS-600"; }
-  debugMsg(F("getModel received:"),4);
+  debugMsg(F("getModel received: "),4);
   debugMsgln(productCode,4);
-  debugMsg(F("getModel selected:"),4);
+  debugMsg(F("getModel selected: "),4);
   debugMsgln(mod,4);
   fullModel = productCode;
   return mod;
@@ -918,15 +924,15 @@ void checkController() {
     if (model == "") {
       if (!lastState) debugMsgln(F("No controller found."),1);
       noController = true;
+      model = MODEL;
     } else {
       if (lastState) {
-        debugMsg(F("Controller found:"),1);
+        debugMsg(F("Controller found: "),1);
         debugMsgln(model,1);
         noController = false;
         refreshCtlLogFile();
       }
       if (lastModel != model) {             // model changed
-        void getFile(String model); // fwd declaration
         getFile(model);
         refreshCtlLogFile();
       }

@@ -30,9 +30,9 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     wifiMulti.~WiFiMulti(); // clear
     wlan_count = 1 ;
     if (password && strlen(password) > 0 ) {
-      debugMsg(F("wifiMulti adding SSID:"),3);
+      debugMsg(F("wifiMulti adding SSID: "),3);
       debugMsgln(ssid,3);
-      debugMsg(F("wifiMulti   with pass:"),9);
+      debugMsg(F("wifiMulti   with pass: "),9);
       debugMsgln(password,9);
       wifiMulti.addAP(ssid, password);        //esid.c_str()?
     } else {
@@ -45,9 +45,9 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
       if (esid[i] != "") {
         if ( epass[i] != "" ) {   // got both ssid and pass
           if (!wlanSet) { // skip if already there
-            debugMsg(F("wifiMulti adding SSID from EEPROM:"),3);
+            debugMsg(F("wifiMulti adding SSID from EEPROM: "),3);
             debugMsgln(esid[i],3);
-            debugMsg(F("wifiMulti   with pass from EEPROM:"),3);
+            debugMsg(F("wifiMulti   with pass from EEPROM: "),3);
             debugMsg(epass[i],9);
             debugMsgln("",3);
             wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
@@ -55,7 +55,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
           }
         } else {  // only ssid, no pass
           if (!wlanSet) {                  // skip if already there
-            debugMsg(F("wifiMulti adding SSID from EEPROM:"),3);
+            debugMsg(F("wifiMulti adding SSID from EEPROM: "),3);
             debugMsgln(esid[i],3);
             wifiMulti.addAP(esid[i].c_str());
             wlan_count++ ;
@@ -78,7 +78,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
     debugMsgln(F("WLAN changing to station mode."),1);
   #endif
   WiFi.setHostname(my_hostname.c_str());             // TODO not working
-  debugMsg(F("Using hostname: "),1);
+  debugMsg(F("Hostname: "),1);
   debugMsgln(WiFi.getHostname(),1);
 
   if (wlan_count) {    // if we have WLANs configured for station mode, try to connect
@@ -130,9 +130,9 @@ void tryWLAN() {
     } // while
     debugMsgln("",2);
     IPAddress ip = WiFi.localIP();
-    debugMsg(F("WLAN IP address:"),1);
+    debugMsg(F("WLAN IP address: "),1);
     debugMsgln(formatIPAsString(ip),1);
-    debugMsgln("Connected to:" + String(WiFi.SSID()),1);
+    debugMsgln("Connected to: " + String(WiFi.SSID()),1);
     if (!MDNS.begin(my_hostname.c_str())) {
       debugMsgln(F("Error setting up MDNS responder!"),1);
     } else {
