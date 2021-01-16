@@ -80,7 +80,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += F("<center><img src=\"/img/wrover.png\" alt=\"ESP32\"></center>");
   
   // Status table
-  response_message += getTableHead2Col(F("Status"), F("Name"), F("Value"));
+  response_message += getTableHead2Col(F("Platform"), F("Name"), F("Value"));
   if (rtcPresent || timeStatus() == timeSet ) {
     response_message += getTableRow2Col(F("Current Time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850));
   }
@@ -90,18 +90,29 @@ void platformPageHandler(AsyncWebServerRequest *request)
   long upHours = (upSecs - (upDays * 86400)) / 3600;
   long upMins = (upSecs - (upDays * 86400) - (upHours * 3600)) / 60;
   upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
-  String uptimeString = ""; 
+  String uptimeString = ((char *)0);
+  uptimeString.reserve(64);
+  bool upString = false;
   if (upDays) {
-    uptimeString += upDays; uptimeString += F(" d, "); 
+    uptimeString += upDays; uptimeString += F(" d"); 
+    upString = true;
   }
-  if ( upDays || upHours ) {
-    uptimeString += upHours, uptimeString += F(" h, "); 
+  if ( upHours ) {
+    if ( upString ) uptimeString += ", ";
+    uptimeString += upHours, uptimeString += F(" h");
+    upString = true;
   }  
-  if ( upDays || upHours || upMins ) {
-    uptimeString += upMins; uptimeString += F(" m, "); 
+  if ( upMins ) {
+    if ( upString ) uptimeString += ", ";
+    uptimeString += upMins; uptimeString += F(" m");
+    upString = true;
   }
-  uptimeString += upSecs; uptimeString += F(" s");
+  if ( upSecs ) {
+    if ( upString ) uptimeString += ", ";
+    uptimeString += upSecs; uptimeString += F(" s");
+  }
   response_message += getTableRow2Col(F("Uptime"), uptimeString);
+  uptimeString = "";
   response_message += getTableRow2Col(F("Modbus errors/tries"), String(mbuserrs)+"/"+String(mbustries)+" ("+String(((double)mbuserrs/(double)mbustries)*100.,3)+"%)");
 
   response_message += getTableRow2Col(F("Unique name"), my_name);

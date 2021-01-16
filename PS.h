@@ -2,6 +2,8 @@
  * This handles status, charging and other pages for Prostar controllers (and no controller)
  */
 
+float dailyMaxP=0; // accumulates the max solar power generated
+
 // forward declarations
 void updatePsLogDaily();
 // end forward declarations
@@ -446,8 +448,8 @@ void psLogDaily(bool record = false) {
    *     also - MaxPD - computed
    */
   struct log_struct { float MinBattV = 36, MaxBattV = 0, ChargeAh = 0, LoadAh = 0, \
-                    MaxArrV = 0; uint16_t AbsorpT = 0, EqT = 0, FloatT = 0; float MaxPD = 0; } static log_record;
-//  static log_struct log_record = {36,0,0,0,0,0,0,0,0};
+                    MaxArrV = 0; uint16_t AbsorpT = 0, EqT = 0, FloatT = 0; } static log_record;
+//  static log_struct log_record = {36,0,0,0,0,0,0,0};
   String value;
   float  f_value, maxPD;
   uint32_t i_value;
@@ -479,7 +481,7 @@ void psLogDaily(bool record = false) {
   f_value = value.toFloat(); // Array C
   MBus_get_reg(17, value);
   f_value = f_value * value.toFloat();
-  if (f_value > log_record.MaxPD) log_record.MaxPD = f_value;
+  if (f_value > dailyMaxP) dailyMaxP = f_value;
   
   if (!record) { 
     setEvent(updatePsLogDaily,now()+900);  // do it again in 15 minutes
@@ -512,7 +514,7 @@ void psLogDaily(bool record = false) {
     value = String(log_record.FloatT);
     rrd_update += value.c_str();
     rrd_update += ":";
-    value = String(log_record.MaxPD);
+    value = String(dailyMaxP);
     rrd_update += value.c_str();
 
     char* rrd_up[1] = { (char*)rrd_update.c_str() } ;
@@ -626,13 +628,19 @@ void psLog() {
   log_accumulate[log_record_num].LoadC = value.toFloat();
   if (model.startsWith(F("PS-MPPT"))) {
     MBus_get_reg(62, value); // Array Max Output Power (found during sweep)
-  rrd_update += ":";
-  rrd_update += value.c_str();
-    log_accumulate[log_record_num].MaxP = value.toFloat();
+    rrd_update += ":";
+    rrd_update += value.c_str();
+    if ( log_accumulate[log_record_num].ArrayC > 0.001 ) {      // MPPT reports last sweep value, even is it's currently dark
+      log_accumulate[log_record_num].MaxP = value.toFloat();    // so we only use that value if there's also current from the array
+    } else {
+      log_accumulate[log_record_num].MaxP = 0;                  // othewise, we'd record the last reported value all night.
+    }
+    if (log_accumulate[log_record_num].MaxP > dailyMaxP) dailyMaxP = log_accumulate[log_record_num].MaxP;
   } else {
     float p = log_accumulate[log_record_num].ArrayV * log_accumulate[log_record_num].ArrayC;
     log_accumulate[log_record_num].MaxP = p;
     String s = String(p);
+    if (p > dailyMaxP) dailyMaxP = p;
     rrd_update += ":";
     rrd_update += s.c_str();
   }

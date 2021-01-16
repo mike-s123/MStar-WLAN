@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.210114"
+#define SOFTWARE_VERSION "v2.210116"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
