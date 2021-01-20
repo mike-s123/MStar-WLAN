@@ -381,7 +381,7 @@ void checkClocks(int32_t rtc_diff_filtered) {
           if (new_offset < -127) new_offset = -127;
           if (new_offset > 127) new_offset = 127;
           if (abs(new_offset) != 127) {  // if we're at the extreme, probably an error, skip
-            debugMsg(F("Changing RTC offset, drift: Got model preference"),1);
+            debugMsg(F("Changing RTC offset, drift: "),1);
             debugMsg(String(rtc_diff_filtered),1);
             debugMsg(F(" ms, ppm: "),1);
             debugMsg(String(drift/10.0,3),1); 

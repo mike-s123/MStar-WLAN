@@ -7,7 +7,7 @@ var myVar = setTimeout(updateStatus, 5000);
                  {ctrlReg:"T_batt",label:""},
                  {ctrlReg:"adc_va",label:""},
                  {ctrlReg:"adc_ia",label:""},
-                 {ctrlReg:"Sweep_Pmax",label:"PMax: "},
+//                 {ctrlReg:"Sweep_Pmax",label:"PMax: "},
                  {ctrlReg:"adc_il",label:""},
                  {ctrlReg:"Ahc_daily",label:""},
                  {ctrlReg:"Ahl_daily",label:""},
@@ -40,10 +40,10 @@ var myVar = setTimeout(updateStatus, 5000);
           document.getElementById(obj.registers[i].register.name).innerHTML = item.label + obj.registers[i].register.valu + " " + obj.registers[i].register.unit;
           document.getElementById(obj.registers[i].register.name + "-body").innerHTML = obj.registers[i].register.valu + " " + obj.registers[i].register.unit;
         }
-        if ( obj.model == "PS-PWM" ) {  // PS-PWM doesn't provide array power, we do it
+//        if ( obj.model == "PS-PWM" ) {  // PS-PWM doesn't provide array power, we do it
           document.getElementById("Sweep_Pmax").innerHTML = power.toFixed(2) + " W" ;
           document.getElementById("Sweep_Pmax-body").innerHTML = power.toFixed(2) + " W" ;
-        };
+//        };
                                                     
       });
     });

@@ -45,9 +45,9 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
       if (esid[i] != "") {
         if ( epass[i] != "" ) {   // got both ssid and pass
           if (!wlanSet) { // skip if already there
-            debugMsg(F("wifiMulti adding SSID from EEPROM: "),3);
+            debugMsg(F("wifiMulti adding SSID: "),3);
             debugMsgln(esid[i],3);
-            debugMsg(F("wifiMulti   with pass from EEPROM: "),3);
+            debugMsg(F("wifiMulti   with pass: "),3);
             debugMsg(epass[i],9);
             debugMsgln("",3);
             wifiMulti.addAP(esid[i].c_str(), epass[i].c_str());
@@ -55,7 +55,7 @@ boolean connectToWLAN(const char* ssid = "", const char* password = "") {
           }
         } else {  // only ssid, no pass
           if (!wlanSet) {                  // skip if already there
-            debugMsg(F("wifiMulti adding SSID from EEPROM: "),3);
+            debugMsg(F("wifiMulti adding SSID: "),3);
             debugMsgln(esid[i],3);
             wifiMulti.addAP(esid[i].c_str());
             wlan_count++ ;

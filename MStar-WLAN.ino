@@ -22,7 +22,7 @@
  */
 
 using namespace std; 
-#define SOFTWARE_VERSION "v2.210116"
+#define SOFTWARE_VERSION "v2.210120"
 #define SERIAL_NUMBER "000001"
 #define BUILD_NOTES "ESP8266 support gone. Keep RTC in UTC. Dynamic updates of /status page.<br>\
                      Some changes for small flash. Change to ArduinoJSON 6, using PS_RAM.<br/>\
@@ -30,7 +30,8 @@ using namespace std;
                      REST fixes. Get files from SD Card if not found on flash. Pulsing LED.<br/>\
                      Change to littlefs. Improve OTA. Serve important stuff from PROGMEM.<br/>\
                      Settable debug level. REST timeout. Modbus reliability. EEPROM>Preferences. <br/>\
-                     Set controller logging period. Fahrenheit display. RRD/charting. Prep for email."
+                     Set controller logging period. Fahrenheit display. RRD/charting. Prep for email.<br/>\
+                     Fix solar power calc."
 
 #define DEBUG_ON 1               // enable debugging output. If defined, debug_level can be changed during runtime.
                                  // 0 off, 1 least detail, 8 most detail, 9 includes passwords

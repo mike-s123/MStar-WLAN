@@ -117,13 +117,13 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
       MBus_get_float(addy, vary);
       if (gotFirst) {
         adc_pa = adc_pa * vary;
-        if (model.startsWith(F("PS-MPPT"))) {
-          response_message += getStatusItemDiv("Sweep_Pmax", "PMax:"); // MPPT - Array Max Output Power (found during sweep)
-        } else {
+//        if (model.startsWith(F("PS-MPPT"))) {
+//          response_message += getStatusItemDiv("Sweep_Pmax", "PMax:"); // MPPT - Array Max Output Power (found during sweep)
+//        } else {
           response_message += F("<div id=\"Sweep_Pmax\">");  // PWM - calculate solar power
           response_message += String(adc_pa);
           response_message += F(" W</div>");
-        }
+//        }
         gotFirst = false;
       } else {
         adc_pa = vary;
@@ -179,12 +179,12 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
   result = mbGetFullReg(reg, 17);  // Array A
   response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
   float aWatts = reg.value.toFloat() * aVolts ;
-  if (model.startsWith(F("PS-MPPT"))) {
-    result = mbGetFullReg(reg, 62); // Array Pmax
-    response_message += getTableRow2Col(F("Max Watts (sweep)"), "<div id=\"Sweep_Pmax-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
-  } else {
+//  if (model.startsWith(F("PS-MPPT"))) {
+//    result = mbGetFullReg(reg, 62); // Array Pmax
+//    response_message += getTableRow2Col(F("Max Watts (sweep)"), "<div id=\"Sweep_Pmax-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
+//  } else {
     response_message += getTableRow2Col(F("Array Watts"), "<div id=\"Sweep_Pmax-body\">" + String(aWatts) + " W</div>");  
-  }
+//  }
   result = mbGetFullReg(reg, 76);  // Array MaxV
   response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
   response_message += getTableFoot();
@@ -626,7 +626,7 @@ void psLog() {
   rrd_update += ":";
   rrd_update += value.c_str();
   log_accumulate[log_record_num].LoadC = value.toFloat();
-  if (model.startsWith(F("PS-MPPT"))) {
+/*  if (model.startsWith(F("PS-MPPT"))) { // What controller reports is pretty useless, it will "stick" even overnight.
     MBus_get_reg(62, value); // Array Max Output Power (found during sweep)
     rrd_update += ":";
     rrd_update += value.c_str();
@@ -636,7 +636,9 @@ void psLog() {
       log_accumulate[log_record_num].MaxP = 0;                  // othewise, we'd record the last reported value all night.
     }
     if (log_accumulate[log_record_num].MaxP > dailyMaxP) dailyMaxP = log_accumulate[log_record_num].MaxP;
-  } else {
+  } else
+*/  
+  { // calculate the Solar power ourselves
     float p = log_accumulate[log_record_num].ArrayV * log_accumulate[log_record_num].ArrayC;
     log_accumulate[log_record_num].MaxP = p;
     String s = String(p);
