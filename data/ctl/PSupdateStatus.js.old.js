@@ -1,6 +1,5 @@
-var myVar = setTimeout(updateStatus, 5000);
 
-  function updateStatus () {
+async function updateRegisters () {
     var items = [{ctrlReg:"adc_vb_f_1m",label:""},
                  {ctrlReg:"adc_ib_f_1m",label:""},
                  {ctrlReg:"vb_ref",label:"Target: "},
@@ -20,7 +19,7 @@ var myVar = setTimeout(updateStatus, 5000);
                  {ctrlReg:"Va_max_daily",label:"Max: "}
                  ];
     var power = 0;             
-    var baseUrl = "/status?json={\"cmd\":\"readRegs\"%2C\"registers\":";
+    var baseUri = "/status?json={\"cmd\":\"readRegs\"%2C\"registers\":";
     var regarray = "[";
     var i; for (i = 0; i < items.length; i++) {    // create the json query
       if ( i > 0 ) { regarray += "%2C"; }
@@ -30,8 +29,8 @@ var myVar = setTimeout(updateStatus, 5000);
         regarray += "\"}";
       };
       regarray += "]}";
-      var theUrl = baseUrl + regarray;
-      fetch(theUrl).then(function(response) {
+      var theUri = baseUri + regarray;
+      await fetch(theUri).then(function(response) {
       response.json().then(function(obj) {        // this loops through the responses
         for (i = 0; i < obj.registers.length; i++) {
           if ( obj.registers[i].register.name == "adc_va" ) { power = obj.registers[i].register.valu };
@@ -40,19 +39,23 @@ var myVar = setTimeout(updateStatus, 5000);
           document.getElementById(obj.registers[i].register.name).innerHTML = item.label + obj.registers[i].register.valu + " " + obj.registers[i].register.unit;
           document.getElementById(obj.registers[i].register.name + "-body").innerHTML = obj.registers[i].register.valu + " " + obj.registers[i].register.unit;
         }
-          document.getElementById("Sweep_Pmax").innerHTML = power.toFixed(2) + " W" ;
-          document.getElementById("Sweep_Pmax-body").innerHTML = power.toFixed(2) + " W" ;                                                    
+        document.getElementById("Sweep_Pmax").innerHTML = power.toFixed(2) + " W" ;
+        document.getElementById("Sweep_Pmax-body").innerHTML = power.toFixed(2) + " W" ;                                                    
       });
     });
-	
-	getMaxPwr('/status?maxp');
-    setTimeout(updateStatus, 10000);  // update every 10 seconds
-  }
+ }
   
-	async function getMaxPwr(uri) {
-		let myObject = await fetch(uri);
-		let myText = await myObject.text();
-		document.getElementById("real_pmax").innerHTML = "Max: " + pwr + " W" ;
-		document.getElementById("real_pmax-body").innerHTML = pwr + " W" ;   
-	}
+async function getMaxPwr(uri) {
+	let myObject = await fetch(uri);
+	let pwr = await myObject.text();
+	document.getElementById("real_pmax").innerHTML = "Max: " + pwr + " W" ;
+	document.getElementById("real_pmax-body").innerHTML = pwr + " W" ;   
+}
 
+function updateStatus() {
+	updateRegisters();
+	getMaxPwr('/status?maxp');
+	setTimeout(updateStatus, 10000);  // update every 10 seconds
+}
+
+window.onload = updateStatus;

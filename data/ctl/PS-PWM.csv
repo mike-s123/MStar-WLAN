@@ -3,7 +3,7 @@
 #
 # Commented lines don't match documentation
 #
-r,0,sw_ver,Software Version,-,bcd,RO,
+r,0,sw_ver,Software Version,-,uint,RO,
 r,1,n_sys_v,Battery Voltage Settings multiplier (1 for 12V nominal - 2 for 24V nominal),-,f16,RO,
 r,r,4,vdd_actual,3.3V Supply Voltage,V,f16,RO,
 r,5,adc_fgdrive,Gate Drive Voltage,V,f16,RO,

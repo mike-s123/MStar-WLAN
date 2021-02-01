@@ -169,7 +169,7 @@ void cmdPageHandler(AsyncWebServerRequest *request) {
                     break;
     case set_rtc:   setRtcTime(rtcTime);
                     break;
-    case set_aging: setAgingOffset(offset);
+    case set_aging: setAgingTrim(offset);
                     break;
     case set_wlan:  putWLANs(ssid, psk, slot, wlanSsid, wlanPsk); // /cmd?setwlan=[0-3]&ssid=xxxx&psk=yyyy
                     break;

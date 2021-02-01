@@ -2,7 +2,7 @@
  * This handles status, charging and other pages for Prostar controllers (and no controller)
  */
 
-float dailyMaxP=0; // accumulates the max solar power generated
+float dailyMaxP=0, dailyMinBattV=36, dailyMaxBattV=0; // accumulates the max solar power generated
 
 // forward declarations
 void updatePsLogDaily();
@@ -17,7 +17,6 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
   fullReg reg;
   int result=0;
   String response_message((char *)0);
-  response_message.reserve(8000);
 // 56,57 alarms
 // 47 load fault
 // 34 array fault
@@ -31,9 +30,9 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
   
   if ( request->hasArg(F("json")) ) {  //Check if command received
     bool ok = false;
-    DynamicJsonDocument jsonIn(3000);
+    DynamicJsonDocument jsonIn(2000);
     DeserializationError jsonDesErr = deserializeJson(jsonIn, request->arg(F("json")).c_str());
-    DynamicJsonDocument jsonOutDoc(8000);
+    DynamicJsonDocument jsonOutDoc(6000);
     JsonObject jsonOut = jsonOutDoc.to<JsonObject>();
     String cmd = jsonIn[F("cmd")];
     if ( cmd == F("readRegs") ) {
@@ -63,7 +62,7 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
             registers[F("addr")]     = mbReg;
             registers[F("name")]     = mbRegVar[mbRegIdx];
             registers[F("desc")]     = mbRegDesc[mbRegIdx];
-            MBus_get_reg(mbReg, valu); 
+            MBus_get_reg(mbReg, valu);
             if ( mbRegVar[mbRegIdx] == "T_batt" && !celsius) {
               registers[F("valu")]    = String(((valu.toFloat() * 9.0/5.0)+32.0),1); // convert to Fahrenheit
               registers[F("unit")]    = "&deg;F";
@@ -71,6 +70,24 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
               registers[F("valu")]     = valu;
               registers[F("unit")]     = mbRegUnitName[mbRegUnit[mbRegIdx]];
             }
+            if ( mbRegVar[mbRegIdx] == "Vb_min_daily" ) {   // can't trust Morningstar
+              float x;
+              MBus_get_float(24, x);  // current battery V
+              if ( x < dailyMinBattV ) {
+                dailyMinBattV = x;
+                debugMsgln("New dailyMinBattV",2);
+              }
+              registers[F("valu")] = String(dailyMinBattV);
+            }
+            if ( mbRegVar[mbRegIdx] == "Vb_max_daily" ) {
+              float x;
+              MBus_get_float(24, x);
+              if ( x > dailyMaxBattV ) {
+                dailyMaxBattV = x;
+                debugMsgln("New dailyMaxBattV",2);
+              }
+              registers[F("valu")] = String(dailyMaxBattV);
+            }            
             registers[F("type")]     = mbRegTypeName[mbRegType[mbRegIdx]];
             MBus_get_reg_raw(mbReg, raw);
             if ( mbRegType[mbRegIdx] == dint || mbRegType[mbRegIdx] == dbitfield ||  mbRegType[mbRegIdx] == dn10 ) {  // only 32 bit datatypes ?
@@ -87,16 +104,22 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
         jsonErr(request, F("parsing failed"), F("bad request") , 400); return; 
       }
       if (ok) {  
-        response_message = "";
+        response_message.reserve(6000);
         serializeJsonPretty(jsonOut,response_message);
+        debugMsg(F("response_message size: "),3);
+        debugMsgln(String(response_message.length()),3);
         request->send(200, F("application/json"), response_message);
       } else {
         jsonErr(request, F("general error"), F("server error"), 500);
       }
     } // end readregs 
+    return; // end json
+  } else if ( request->hasArg(F("maxp")) ) {
+    response_message = String(dailyMaxP,2);
+    request->send(200, F("text/plain"), response_message);
+    response_message = "";
     return;
-  } // end json
-  
+  }
   response_message = getHTMLHead();
   response_message += getNavBar();
 
@@ -117,13 +140,13 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
       MBus_get_float(addy, vary);
       if (gotFirst) {
         adc_pa = adc_pa * vary;
-//        if (model.startsWith(F("PS-MPPT"))) {
-//          response_message += getStatusItemDiv("Sweep_Pmax", "PMax:"); // MPPT - Array Max Output Power (found during sweep)
-//        } else {
-          response_message += F("<div id=\"Sweep_Pmax\">");  // PWM - calculate solar power
-          response_message += String(adc_pa);
-          response_message += F(" W</div>");
-//        }
+        if (adc_pa > dailyMaxP) dailyMaxP = adc_pa;
+        response_message += F("<div id=\"Sweep_Pmax\">");  // PWM - calculate solar power
+        response_message += String(adc_pa);
+        response_message += F(" W</div>");
+        response_message += "<div id=\"real_pmax\">Max: ";
+        response_message += String(dailyMaxP,2);
+        response_message += " W</div>";
         gotFirst = false;
       } else {
         adc_pa = vary;
@@ -136,11 +159,36 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
       foo += String(((reg.value.toFloat() * 9.0/5.0)+32.0),1);
       foo += " &deg;F</div>";
       response_message += foo;
-    } else {
+    } else if ( registers[i] == "Vb_min_daily" ) {   // can't trust Morningstar
+      float x;
+      MBus_get_float(24, x);  // current battery V
+      if ( x < dailyMinBattV ) {
+        dailyMinBattV = x;
+        debugMsgln("New dailyMinBattV",2);
+      }
+      String foo = "<div id=\"Vb_min_daily\">";
+      foo += "Min: ";
+      foo += String(dailyMinBattV,2);
+      foo += " V</div>";
+      response_message += foo;
+    } else if ( registers[i] == "Vb_max_daily" ) {
+      float x;
+      MBus_get_float(24, x);  // current battery V
+      if ( x > dailyMaxBattV ) {
+        dailyMaxBattV = x;
+        debugMsgln("New dailyMaxBattV",2);
+      }
+      String foo = "<div id=\"Vb_max_daily\">";
+      foo += "Max: ";
+      foo += String(dailyMaxBattV,2);
+      foo += " V</div>";
+      response_message += foo;
+    } else {          
       response_message += getStatusItemDiv(registers[i], labels[i]);  // items are placed on graphic via <div> and local.css
     }
   }
-  response_message += F("</div>"); 
+  response_message += F("</div>");         
+
 
   response_message += getTableHead2Col(F("Battery"), F("Register"), F("Value"));
   result = mbGetFullReg(reg, 24);  // Batt V
@@ -156,9 +204,9 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
     response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + String(((reg.value.toFloat() * 9.0/5.0)+32.0),1) + "&deg; F</div>");    
   }
   result = mbGetFullReg(reg, 65);  // Batt minv
-  response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
+  response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + dailyMinBattV + " " + mbRegUnitName[reg.unit] + "</div>");
   result = mbGetFullReg(reg, 66);  // Batt maxv
-  response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
+  response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + dailyMaxBattV + " " + mbRegUnitName[reg.unit] + "</div>");
   response_message += getTableFoot();
  
   response_message += getTableHead2Col(F("Charging"), F("Register"), F("Value"));
@@ -179,12 +227,9 @@ void psStatusPageHandler (AsyncWebServerRequest *request) {
   result = mbGetFullReg(reg, 17);  // Array A
   response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
   float aWatts = reg.value.toFloat() * aVolts ;
-//  if (model.startsWith(F("PS-MPPT"))) {
-//    result = mbGetFullReg(reg, 62); // Array Pmax
-//    response_message += getTableRow2Col(F("Max Watts (sweep)"), "<div id=\"Sweep_Pmax-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
-//  } else {
-    response_message += getTableRow2Col(F("Array Watts"), "<div id=\"Sweep_Pmax-body\">" + String(aWatts) + " W</div>");  
-//  }
+  if (aWatts > dailyMaxP) dailyMaxP = aWatts;
+  response_message += getTableRow2Col(F("Array Watts"), "<div id=\"Sweep_Pmax-body\">" + String(aWatts) + " W</div>"); 
+  response_message += getTableRow2Col(F("Array Max Watts"), "<div id=\"real_pmax-body\">" + String(dailyMaxP) + " W</div>");
   result = mbGetFullReg(reg, 76);  // Array MaxV
   response_message += getTableRow2Col(reg.desc, "<div id=\"" + reg.var + "-body\">" + reg.value + " " + mbRegUnitName[reg.unit] + "</div>");
   response_message += getTableFoot();
@@ -447,18 +492,12 @@ void psLogDaily(bool record = false) {
    *     'time_fl_daily': 75
    *     also - MaxPD - computed
    */
-  struct log_struct { float MinBattV = 36, MaxBattV = 0, ChargeAh = 0, LoadAh = 0, \
+  struct log_struct { float ChargeAh = 0, LoadAh = 0, \
                     MaxArrV = 0; uint16_t AbsorpT = 0, EqT = 0, FloatT = 0; } static log_record;
 //  static log_struct log_record = {36,0,0,0,0,0,0,0};
   String value;
   float  f_value, maxPD;
   uint32_t i_value;
-  MBus_get_reg(65, value);
-  f_value = value.toFloat();
-  if (f_value < log_record.MinBattV) log_record.MinBattV = f_value;
-  MBus_get_reg(66, value);
-  f_value = value.toFloat();
-  if (f_value > log_record.MaxBattV) log_record.MaxBattV = f_value;
   MBus_get_reg(67, value);
   f_value = value.toFloat();
   if (f_value > log_record.ChargeAh) log_record.ChargeAh = f_value;
@@ -490,10 +529,12 @@ void psLogDaily(bool record = false) {
     String timeNow = String(getUnixTime());
     string rrd_update = timeNow.c_str();
     rrd_update += ":";
-    value = String(log_record.MinBattV);
+    value = String(dailyMinBattV);
+    dailyMinBattV = 36; // reset for tomorrow
     rrd_update += value.c_str();
     rrd_update += ":";
-    value = String(log_record.MaxBattV);
+    value = String(dailyMaxBattV);
+    dailyMaxBattV = 0; // reset for tomorrow
     rrd_update += value.c_str();
     rrd_update += ":";
     value = String(log_record.ChargeAh);
@@ -515,6 +556,7 @@ void psLogDaily(bool record = false) {
     rrd_update += value.c_str();
     rrd_update += ":";
     value = String(dailyMaxP);
+    dailyMaxP = 0; // reset for tomorrow
     rrd_update += value.c_str();
 
     char* rrd_up[1] = { (char*)rrd_update.c_str() } ;
@@ -548,7 +590,7 @@ void savePsLogDaily(){                // write daily min/max to rrd log
 
 void psLog() {
   /*
-   *   Battery V (18,adc_vb_f_1m)
+   *   Battery V (24,adc_vb_f_1m)
    *   Net A (25,adc_ib_f_1m)
    *   Target V (36,vb_ref)
    *   Battery temp (27,T_batt)
@@ -594,10 +636,18 @@ void psLog() {
   String timeNow = String(getUnixTime());
   string rrd_update = timeNow.c_str();
 //  string rrd_update = "N";
-  MBus_get_reg(18, value);
+  MBus_get_reg(24, value);
   rrd_update += ":";
   rrd_update += value.c_str();
   log_accumulate[log_record_num].BattV = value.toFloat();
+  if (log_accumulate[log_record_num].BattV > dailyMaxBattV) {
+    dailyMaxBattV = log_accumulate[log_record_num].BattV;
+    debugMsgln("New dailyMaxBattV",2);
+  }
+  if (log_accumulate[log_record_num].BattV < dailyMinBattV) {
+    dailyMinBattV = log_accumulate[log_record_num].BattV;
+    debugMsgln("New dailyMinBattV",2);
+  }  
   MBus_get_reg(25, value);  
   rrd_update += ":";
   rrd_update += value.c_str();
@@ -626,26 +676,13 @@ void psLog() {
   rrd_update += ":";
   rrd_update += value.c_str();
   log_accumulate[log_record_num].LoadC = value.toFloat();
-/*  if (model.startsWith(F("PS-MPPT"))) { // What controller reports is pretty useless, it will "stick" even overnight.
-    MBus_get_reg(62, value); // Array Max Output Power (found during sweep)
-    rrd_update += ":";
-    rrd_update += value.c_str();
-    if ( log_accumulate[log_record_num].ArrayC > 0.001 ) {      // MPPT reports last sweep value, even is it's currently dark
-      log_accumulate[log_record_num].MaxP = value.toFloat();    // so we only use that value if there's also current from the array
-    } else {
-      log_accumulate[log_record_num].MaxP = 0;                  // othewise, we'd record the last reported value all night.
-    }
-    if (log_accumulate[log_record_num].MaxP > dailyMaxP) dailyMaxP = log_accumulate[log_record_num].MaxP;
-  } else
-*/  
-  { // calculate the Solar power ourselves
-    float p = log_accumulate[log_record_num].ArrayV * log_accumulate[log_record_num].ArrayC;
-    log_accumulate[log_record_num].MaxP = p;
-    String s = String(p);
-    if (p > dailyMaxP) dailyMaxP = p;
-    rrd_update += ":";
-    rrd_update += s.c_str();
-  }
+  // calculate the Solar power ourselves - Morningstar's register is pretty useless
+  float p = log_accumulate[log_record_num].ArrayV * log_accumulate[log_record_num].ArrayC;
+  log_accumulate[log_record_num].MaxP = p;
+  String s = String(p);
+  if (p > dailyMaxP) dailyMaxP = p;
+  rrd_update += ":";
+  rrd_update += s.c_str();
   MBus_get_reg(33, value);
   rrd_update += ":";
   rrd_update += value.c_str();
@@ -681,7 +718,7 @@ void psLog() {
   if (++log_record_num < log_freq) return; // we accumulate 
   
   log_record_num = 0; 
-  for (int i=0; i < log_freq; i++){  // calculate 15 minute averages
+  for (int i=0; i < log_freq; i++){  // calculate averages
     log_consolidated.BattV += log_accumulate[i].BattV / (float)log_freq;
     log_consolidated.NetA += log_accumulate[i].NetA / (float)log_freq;
     log_consolidated.TargetV += log_accumulate[i].TargetV / (float)log_freq;

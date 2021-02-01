@@ -80,7 +80,7 @@ void platformPageHandler(AsyncWebServerRequest *request)
   response_message += F("<center><img src=\"/img/wrover.png\" alt=\"ESP32\"></center>");
   
   // Status table
-  response_message += getTableHead2Col(F("Platform"), F("Name"), F("Value"));
+  response_message += getTableHead2Col(F("Status"), F("Name"), F("Value"));
   if (rtcPresent || timeStatus() == timeSet ) {
     response_message += getTableRow2Col(F("Current Time"), myTZ.dateTime(getUnixTime(), UTC_TIME, RFC850));
   }
@@ -142,6 +142,13 @@ void platformPageHandler(AsyncWebServerRequest *request)
       "<a href=\"/sd" + ctlLogFileName + "\" target=\"_blank\">" + "/sd" + ctlLogFileName + "</a>" + \
       "&nbsp;&nbsp;" + \
       "<a href=\"/sd" + ctlLogFileName + "\" download>" + "(download)" + "</a>");
+  }
+  if (!noController) {
+    if (model.startsWith(F("PS-"))) {  // TODO make this universal
+      uint16_t fwv = 0;
+      MBus_get_uint16(0, fwv);
+      response_message += getTableRow2Col(F("Controller firmware version"), String(fwv));
+    }
   }
   response_message += getTableRow2Col(F("Platform serial number"), serialNumber.c_str());
   response_message += getTableFoot();
@@ -837,9 +844,9 @@ void setTimePageHandler(AsyncWebServerRequest *request) {
     }
     response_message += getTextInput(F("RTC ms offset"), F("rtc_diff_filtered"), String(rtc_diff_filtered), true);
     response_message += F("<br><br>");
-    response_message += getNumberInput(F("RTC crystal trim"), F("rtc_offset"), -127, 127, getAgingOffset(), false);
+    response_message += getNumberInput(F("RTC crystal trim"), F("rtc_trim"), -127, 127, getAgingTrim(), false);
     response_message += F("<br><div>(&plusmn;127 - lower makes RTC faster and the offset above decrease)</div><br>");
-    response_message += getJsButton(F("Set crystal trim"), F("setAging('rtc_offset')"));
+    response_message += getJsButton(F("Set crystal trim"), F("setAging('rtc_trim')"));
     response_message += F("<br><br>");
     response_message += getFormFoot();
   }

@@ -12,7 +12,7 @@ void debugMsgln(String msg, int level=1);
 void tryWLAN();
 void ctlLog();
 void stopLogDaily();
-signed char getAgingOffset();
+signed char getAgingTrim();
 void oncePerFive();
 void oncePerHour();
 // end forward declarations
@@ -26,7 +26,7 @@ unsigned short int getNtpPoll();
 
 /*
  * EEPROM on DS3231 module
- * 0    (1) Last set aging offset (so we have it if battery goes away)
+ * 0    (1) Last set aging trim (so we have it if battery goes away)
  * 1-2  (2) Year
  * 3    (1) Month
  * 4    (1) Day
@@ -45,7 +45,7 @@ unsigned short int getNtpPoll();
 #define RtcEepromMinute 6
 #define RtcEepromSecond 7
 #define RtcEepromLastSetTime 8
-#define RTC_DRIFT_FACTOR 1.0      // multiply drift offset correction by this
+#define RTC_DRIFT_FACTOR 1.0      // multiply drift trim correction by this
 
 #define NTP_DEFAULT_TZ "EST+5EDT,M3.2.0,M11.1.0"   // full POSIX format
 #define NTP_DEFAULT_INTERVAL 7207                 // seconds, best if not a multiple of 60
@@ -57,7 +57,7 @@ DS3231 Clock;
 extEEPROM rtc_eeprom(kbits_32, 1, 32, 0x57);
 #define RTC_I2C_ADDR 0x68
 #define RTC_EEPROM_I2C_ADDR 0x57  // ZS-042/HW-84 modules have pullups on A0-A2
-#define RTC_DEFAULT_OFFSET 0      // aging offset for ds3231, higher is slower
+#define RTC_DEFAULT_TRIM 0        // aging trim for ds3231, higher is slower
                                   // ~0.1 ppm per (~9 ms/day, 0.26 sec/month), higher is slower, 
                                   // 11.6 ppm is ~ 1 sec/day
 #define RTC_MAX_UNSYNC 125        // adjust when we're this many ms out of sync with NTP, for 601 sec NTP polls
@@ -211,7 +211,7 @@ void setRtc(boolean writeee=false) {
   Clock.setHour(Hour);
   Clock.setMinute(Minute);
   Clock.setSecond(Second);  // The OSF is cleared by function setSecond();.
-  signed char age = getAgingOffset();
+  signed char age = getAgingTrim();
   rtc_diff_ewmat.reset(); //reset averaging filter
   rtc_diff_filtered = 0;
   if (writeee) {
@@ -283,7 +283,7 @@ float getRtcTemp() {
   }
 }
 
-signed char getAgingOffset() {
+signed char getAgingTrim() {
   signed char age = 0;
   Wire.beginTransmission(RTC_I2C_ADDR);
   Wire.write(0x10);
@@ -293,13 +293,13 @@ signed char getAgingOffset() {
   return age;
 }
 
-void setAgingOffset(signed char offset)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~ 1 sec/day
+void setAgingTrim(signed char age)  // ~0.1 ppm per, higher is slower 11.6 ppm is ~ 1 sec/day
 {  
     Wire.beginTransmission(RTC_I2C_ADDR);
     Wire.write(0x10);
-    Wire.write(offset);
+    Wire.write(age);
     Wire.endTransmission();
-    write_rtc_eeprom(RtcEepromAge, offset);
+    write_rtc_eeprom(RtcEepromAge, age);
     rtc_diff_ewmat.reset(); //reset averaging filter
     rtc_diff_filtered = 0;
     /*
@@ -312,7 +312,7 @@ void setAgingOffset(signed char offset)  // ~0.1 ppm per, higher is slower 11.6 
 void resetRtcEeprom() {
   setRtcTimeNTP();
   setRtcLastSetTime(UTC.now());
-  setAgingOffset(RTC_DEFAULT_OFFSET);
+  setAgingTrim(RTC_DEFAULT_TRIM);
   writeRtcEepromSig();
 }  
 
@@ -361,7 +361,7 @@ void checkClocks(int32_t rtc_diff_filtered) {
     } else {
       uint32_t howlong;
       float drift;
-      int new_offset; 
+      int new_trim; 
       if (abs(rtc_diff_filtered) >= rtc_max_unsync) {     // only adjust if we're off by so much 
         debugMsgln(F("RTC/NTP out of sync"),3);
         if ((now() - lastNtpUpdateTime() > 120) ) {          // first make sure local drift isn't the issue
@@ -371,23 +371,23 @@ void checkClocks(int32_t rtc_diff_filtered) {
         }
         howlong = UTC.now() - getRtcLastSetTime();            // number of seconds since we last set RTC time
         drift = -rtc_diff_filtered * 10000.0 / howlong;   // drift in 0.1 ppm, close to the DS3231 offset precision, - means RTC is slow
-        new_offset = getAgingOffset() + (drift * RTC_DRIFT_FACTOR);
+        new_trim = getAgingTrim() + (drift * RTC_DRIFT_FACTOR);
         debugMsg(F("howlong: "),4);
         debugMsgln(String(howlong),4);
         debugMsg(F("rtc_diff_filtered: Got model preference"),4);
         debugMsgln(String(rtc_diff_filtered),4);
         debugMsgln(F(" ppm"),4);         
-        if (new_offset != getAgingOffset()) {
-          if (new_offset < -127) new_offset = -127;
-          if (new_offset > 127) new_offset = 127;
-          if (abs(new_offset) != 127) {  // if we're at the extreme, probably an error, skip
-            debugMsg(F("Changing RTC offset, drift: "),1);
+        if (new_trim != getAgingTrim()) {
+          if (new_trim < -127) new_trim = -127;
+          if (new_trim > 127) new_trim = 127;
+          if (abs(new_trim) != 127) {  // if we're at the extreme, probably an error, skip
+            debugMsg(F("Changing RTC trim, drift: "),1);
             debugMsg(String(rtc_diff_filtered),1);
             debugMsg(F(" ms, ppm: "),1);
             debugMsg(String(drift/10.0,3),1); 
-            debugMsg(", old offset: " + String(getAgingOffset()),1);
-            debugMsgln(", new offset: " + String(new_offset),1);
-            setAgingOffset(new_offset);
+            debugMsg(", old trim: " + String(getAgingTrim()),1);
+            debugMsgln(", new trim: " + String(new_trim),1);
+            setAgingTrim(new_trim);
           } 
         } else {
           debugMsgln("RTC drift of " + String(drift/10.0,3) + "ppm within limit",2);
@@ -445,10 +445,9 @@ void oncePerMinute() { // not necessarily _on_ the minute
   int32_t ms_diff;
   int32_t real_rtc_diff_ms;
   
-  deleteEvent(oncePerMinute);          // will recreate later, if needed
-//  UTC.setEvent(oncePerMinute,UTC.now()+60);
-  setEvent(oncePerMinute,now()+60);
-  
+  deleteEvent(oncePerMinute); 
+  setEvent(oncePerMinute,now()+60);  // for next time
+
   debugMsgln(F("oncePerMinute"),3);  
   if ( (timeStatus() == timeSet) && rtcPresent && !rtcNeedsTime ) { // ntp and rtc running  
     uint32_t opm_millis = millis();  // grab some times immediately
@@ -536,7 +535,7 @@ void eventConfirm() {
 
 void setupClocks() {
   unsigned short int ntp_temp;
-  bool rtcNeedsOffset = false;
+  bool rtcNeedsTrim = false;
 
   // first, check for RTC
   if (!Wire.requestFrom(RTC_I2C_ADDR, 2)) {
@@ -554,14 +553,14 @@ void setupClocks() {
     delay(10);
     if (!Clock.oscillatorCheck()) {  // check for Oscillator Stopped Flag (!good RTC)
       debugMsgln(F("RTC OSC stopped"),1);
-      rtcNeedsOffset = true; // probably need to reload offset and set time, too
+      rtcNeedsTrim = true; // probably need to reload offset and set time, too
       rtcNeedsTime = true;
       setRtc(false); // set dummy time, clear OSF
     }
   }
   if (rtcPresent) {  //previous check might have failed, found RTC, and it passed checks
     checkRtcEeprom();
-    if (rtcNeedsOffset) setAgingOffset(getAgingOffset());
+    if (rtcNeedsTrim) setAgingTrim(getAgingTrim());
     debugMsgln(F("RTC configuring interrupts"),1);
     Clock.enableOscillator(true, false, 0);                            // Ena SQW output, but not on batt, 1 Hz
     attachInterrupt(digitalPinToInterrupt(SQW_PIN), rtcIRQ, FALLING);  // runs rtcIRQ once a second, falling edge (start of second)    
@@ -626,14 +625,14 @@ time_t getMidnight() { // returns time of local midnight in UTC
   return(midnight);  
 }
 
-void setEvents() {
+void setEvents() { // set timed events even if not ntp sync'd
   debugMsgln(F("Creating timed events"),1);
   deleteEvent(oncePerMinute);
   deleteEvent(oncePerFive);
   deleteEvent(oncePerHour);
   deleteEvent(eventConfirm);
   deleteEvent(midnight);
-  UTC.setEvent(oncePerMinute,UTC.now()+30); // set timed events even if not ntp sync'd
+  UTC.setEvent(oncePerMinute,( UTC.now()-UTC.now()%60 ) +60 ); // top of minute (0 second)
   UTC.setEvent(oncePerFive,UTC.now()+20);
   UTC.setEvent(oncePerHour,UTC.now()+10);
   UTC.setEvent(eventConfirm,UTC.now()+5);

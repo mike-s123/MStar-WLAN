@@ -339,10 +339,19 @@ html{
     padding-left: 5px;
     padding-right: 5px;
   }
+  /* actual max power */
+  #real_pmax {
+    position: absolute;
+    top: 210px;
+    left: 150px;
+    color: black;
+    padding-left: 5px;
+    padding-right: 5px;
+  }
   /* Array power */
   #Sweep_Pmax {
     position: absolute;
-    top: 200px;
+    top: 190px;
     left: 150px;
     color: black;
     padding-left: 5px;

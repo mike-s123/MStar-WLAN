@@ -37,7 +37,6 @@ SOFTWARE.
 #include "ESPAsyncWebServer.h"
 #include "FS.h"
 
-
 class AsyncMyOtaClass{
 
     public:
@@ -123,8 +122,8 @@ class AsyncMyOtaClass{
                   if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) { // Start with max available size
 //                    Update.printError(Serial);
                     return request->send(400, "text/plain", "OTA could not begin");
-                  }
-                }
+                  } 
+                } // !index
 
                 // Write chunked data to the free sketch space
                 if(len){
